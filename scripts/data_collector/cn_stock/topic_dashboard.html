@@ -307,7 +307,7 @@
     </div>
 
     <script>
-        const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
+        const { createApp, ref, shallowRef, computed, onMounted, watch, nextTick } = Vue;
 
         createApp({
             setup() {
@@ -514,10 +514,14 @@
                     // Sync visibleRange initially
                     const currentOption = chartInstance.getOption();
                     if (currentOption.dataZoom && currentOption.dataZoom[0]) {
+                        const start = currentOption.dataZoom[0].startValue;
+                        const end = currentOption.dataZoom[0].endValue;
                         visibleRange.value = {
-                            start: currentOption.dataZoom[0].startValue,
-                            end: currentOption.dataZoom[0].endValue
+                            start: start !== undefined ? start : 0,
+                            end: end !== undefined ? end : kdata.length - 1
                         };
+                    } else {
+                        visibleRange.value = { start: 0, end: kdata.length - 1 };
                     }
 
                     // Listen to dataZoom events to sync the leaderboard
@@ -525,9 +529,11 @@
                     chartInstance.on('datazoom', () => {
                         const opt = chartInstance.getOption();
                         if (opt.dataZoom && opt.dataZoom[0]) {
+                            const start = opt.dataZoom[0].startValue;
+                            const end = opt.dataZoom[0].endValue;
                             visibleRange.value = {
-                                start: opt.dataZoom[0].startValue,
-                                end: opt.dataZoom[0].endValue
+                                start: start !== undefined ? start : 0,
+                                end: end !== undefined ? end : kdata.length - 1
                             };
                         }
                     });
