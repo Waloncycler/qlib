@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qlib Individual Stock Radar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #020617; color: #f8fafc; font-family: 'Inter', system-ui, sans-serif; }
+        .glass-panel { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(51, 65, 85, 0.4); backdrop-filter: blur(12px); }
+        .sidebar-btn { transition: all 0.2s; border-left: 3px solid transparent; }
+        .sidebar-btn.active { background: rgba(15, 23, 42, 0.8); border-left-color: #38bdf8; color: #f8fafc; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-slate-950 flex h-screen overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-64 glass-panel border-r border-slate-800/50 flex flex-col z-20">
+        <div class="p-6 border-b border-slate-800/50">
+            <h2 class="text-sm font-black bg-gradient-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent italic tracking-tighter mb-4">STOCK RADAR</h2>
+            <div class="flex items-center bg-slate-900 rounded-lg border border-slate-700 overflow-hidden">
+                <input type="text" id="symbol-input" value="SH600519" class="w-full bg-transparent text-sm text-white px-3 py-2 outline-none" placeholder="e.g. SH600519" onkeypress="if(event.key === 'Enter') updateSymbol()">
+                <button onclick="updateSymbol()" class="px-3 text-slate-400 hover:text-sky-400 transition-colors"><i class="fa-solid fa-search"></i></button>
+            </div>
+            <p class="text-[10px] text-slate-500 mt-2 font-mono" id="display-symbol">SH600519</p>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto p-4 space-y-2">
+            <button class="sidebar-btn active w-full text-left px-4 py-3 rounded-lg text-sm font-bold text-slate-400 hover:text-white hover:bg-slate-800/50 flex items-center" id="btn-market" onclick="switchLayer('market')">
+                <i class="fa-solid fa-candlestick-chart w-6 text-sky-400"></i> Market Layer
+            </button>
+            <button class="sidebar-btn w-full text-left px-4 py-3 rounded-lg text-sm font-bold text-slate-400 hover:text-white hover:bg-slate-800/50 flex items-center" id="btn-signals" onclick="switchLayer('signals')">
+                <i class="fa-solid fa-bolt w-6 text-yellow-400"></i> Signals Layer
+            </button>
+            <button class="sidebar-btn w-full text-left px-4 py-3 rounded-lg text-sm font-bold text-slate-400 hover:text-white hover:bg-slate-800/50 flex items-center" id="btn-capital" onclick="switchLayer('capital')">
+                <i class="fa-solid fa-coins w-6 text-emerald-400"></i> Capital Layer
+            </button>
+            <button class="sidebar-btn w-full text-left px-4 py-3 rounded-lg text-sm font-bold text-slate-400 hover:text-white hover:bg-slate-800/50 flex items-center" id="btn-fundamentals" onclick="switchLayer('fundamentals')">
+                <i class="fa-solid fa-file-invoice-dollar w-6 text-purple-400"></i> Fundamentals
+            </button>
+            <button class="sidebar-btn w-full text-left px-4 py-3 rounded-lg text-sm font-bold text-slate-400 hover:text-white hover:bg-slate-800/50 flex items-center" id="btn-news" onclick="switchLayer('news')">
+                <i class="fa-solid fa-newspaper w-6 text-rose-400"></i> News Layer
+            </button>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden">
+        <header class="h-14 glass-panel border-b border-slate-800/50 flex items-center px-6 shrink-0 justify-between">
+            <h2 class="text-sm font-bold text-slate-300 tracking-widest" id="layer-title">MARKET LAYER</h2>
+        </header>
+        
+        <div class="flex-1 overflow-y-auto p-6" id="content-area">
+            <!-- Dynamic Content -->
+        </div>
+    </main>
+
+    <script>
+        let currentSymbol = "SH600519";
+        let currentLayer = "market";
+        const rawDataBaseUrl = "/data/cn_stock/hierarchical";
+
+        async function fetchFile(url, type='text') {
+            try {
+                const res = await fetch(url);
+                if (!res.ok) return null;
+                return type === 'json' ? await res.json() : await res.text();
+            } catch (e) { return null; }
+        }
+
+        function parseCSV(text) {
+            if (!text) return [];
+            const lines = text.trim().split('\n');
+            if (lines.length < 2) return [];
+            const headers = lines[0].split(',').map(h => h.trim());
+            const result = [];
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                // Handling CSV with potential commas inside quotes is hard, but we'll use a simple split
+                const values = lines[i].split(',');
+                const obj = {};
+                headers.forEach((h, j) => obj[h] = values[j] ? values[j].trim() : null);
+                result.push(obj);
+            }
+            return result;
+        }
+
+        // ==========================================
+        // 1. MARKET LAYER
+        // ==========================================
+        async function renderMarketLayer(container) {
+            const csv = await fetchFile(`${rawDataBaseUrl}/market/${currentSymbol}_baidu_kline.csv`);
+            const data = parseCSV(csv);
+            if (data.length === 0) { container.innerHTML = `<div class="text-slate-500">Baidu K-Line Data Not Found for ${currentSymbol}</div>`; return; }
+
+            container.innerHTML = `
+                <div class="glass-panel p-6 rounded-2xl mb-6 shadow-xl">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4"><i class="fa-solid fa-chart-line mr-2"></i>Candlestick Chart</h3>
+                    <div id="k-chart" class="w-full h-[600px]"></div>
+                </div>
+            `;
+
+            const dates = data.map(d => d.date.split(' ')[0]);
+            const chart = echarts.init(document.getElementById('k-chart'));
+            chart.setOption({
+                backgroundColor: 'transparent',
+                tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+                legend: { data: ['K-Line', 'MA5', 'MA20'], textStyle: { color: '#94a3b8' } },
+                grid: { left: '5%', right: '5%', bottom: '15%' },
+                xAxis: { type: 'category', data: dates, scale: true, boundaryGap: false, axisLine: { lineStyle: { color: '#334155' } } },
+                yAxis: { scale: true, splitLine: { lineStyle: { color: 'rgba(51,65,85,0.2)' } } },
+                dataZoom: [{ type: 'inside', start: 50, end: 100 }, { show: true, type: 'slider', bottom: '5%', start: 50, end: 100, textStyle: { color: '#94a3b8' } }],
+                series: [
+                    {
+                        name: 'K-Line', type: 'candlestick',
+                        data: data.map(d => [parseFloat(d.open), parseFloat(d.close), parseFloat(d.low), parseFloat(d.high)]),
+                        itemStyle: { color: '#ef4444', color0: '#10b981', borderColor: '#ef4444', borderColor0: '#10b981' }
+                    },
+                    { name: 'MA5', type: 'line', data: data.map(d => parseFloat(d.ma5)), smooth: true, lineStyle: { width: 1, color: '#facc15' }, symbol: 'none' },
+                    { name: 'MA20', type: 'line', data: data.map(d => parseFloat(d.ma20)), smooth: true, lineStyle: { width: 1, color: '#c084fc' }, symbol: 'none' }
+                ]
+            });
+            window.addEventListener('resize', () => chart.resize());
+        }
+
+        // ==========================================
+        // 2. SIGNALS LAYER
+        // ==========================================
+        async function renderSignalsLayer(container) {
+            const thsCsv = await fetchFile(`${rawDataBaseUrl}/signals/ths_hot_reasons.csv`);
+            const ths = parseCSV(thsCsv).filter(r => r.code && r.code.includes(currentSymbol.replace(/[A-Za-z]/g, '')));
+
+            container.innerHTML = `
+                <div class="glass-panel p-6 rounded-2xl shadow-xl">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4"><i class="fa-solid fa-fire text-orange-500 mr-2"></i> THS Concept / Hot Reasons</h3>
+                    ${ths.length > 0 ? `
+                        <table class="w-full text-left text-sm">
+                            <thead class="border-b border-slate-700 text-slate-500 uppercase text-xs">
+                                <tr><th class="py-2">Concept Name</th><th class="py-2">Reasoning</th></tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800/50">
+                                ${ths.map(r => `<tr><td class="py-3 text-emerald-400 font-bold whitespace-nowrap pr-4">${r.name}</td><td class="py-3 text-slate-300">${r.reason}</td></tr>`).join('')}
+                            </tbody>
+                        </table>
+                    ` : `<div class="text-slate-500 py-4 text-sm">No concept reasons found for this symbol.</div>`}
+                </div>
+            `;
+        }
+
+        // ==========================================
+        // 3. CAPITAL LAYER
+        // ==========================================
+        async function renderCapitalLayer(container) {
+            const marginCsv = await fetchFile(`${rawDataBaseUrl}/capital/${currentSymbol}_margin_trading.csv`);
+            const flowCsv = await fetchFile(`${rawDataBaseUrl}/capital/${currentSymbol}_fund_flow_120d.csv`);
+            const margin = parseCSV(marginCsv);
+            const flow = parseCSV(flowCsv);
+
+            container.innerHTML = `
+                <div class="grid grid-cols-1 gap-6">
+                    <div class="glass-panel p-6 rounded-2xl shadow-xl">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4"><i class="fa-solid fa-money-bill-trend-up mr-2 text-emerald-400"></i> Margin Trading Balance (融资融券)</h3>
+                        ${margin.length ? `<div id="margin-chart" class="w-full h-80"></div>` : `<div class="text-slate-500 text-sm">No margin data found.</div>`}
+                    </div>
+                    <div class="glass-panel p-6 rounded-2xl shadow-xl">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4"><i class="fa-solid fa-water mr-2 text-sky-400"></i> 120-Day Capital Inflow Trend</h3>
+                        ${flow.length ? `<div id="cap-flow-chart" class="w-full h-80"></div>` : `<div class="text-slate-500 text-sm">No fund flow data found.</div>`}
+                    </div>
+                </div>
+            `;
+
+            if (margin.length > 0) {
+                const chart = echarts.init(document.getElementById('margin-chart'));
+                chart.setOption({
+                    backgroundColor: 'transparent', tooltip: { trigger: 'axis' },
+                    xAxis: { type: 'category', data: margin.map(m => m.date), axisLine: { lineStyle: { color: '#334155' } } },
+                    yAxis: { scale: true, splitLine: { lineStyle: { color: 'rgba(51,65,85,0.1)' } } },
+                    series: [{ name: 'Balance', type: 'line', data: margin.map(m => m.margin_balance || m.融资余额), smooth: true, areaStyle: { opacity: 0.1 }, color: '#38bdf8' }]
+                });
+            }
+            if (flow.length > 0) {
+                const chart = echarts.init(document.getElementById('cap-flow-chart'));
+                chart.setOption({
+                    backgroundColor: 'transparent', tooltip: { trigger: 'axis' },
+                    xAxis: { type: 'category', data: flow.map(f => f.date), axisLine: { lineStyle: { color: '#334155' } } },
+                    yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(51,65,85,0.1)' } } },
+                    series: [{ type: 'bar', data: flow.map(f => f.net_inflow || f.main_net_flow), color: '#10b981' }]
+                });
+            }
+        }
+
+        // ==========================================
+        // 4. FUNDAMENTALS LAYER
+        // ==========================================
+        async function renderFundamentalsLayer(container) {
+            const finCsv = await fetchFile(`${rawDataBaseUrl}/fundamentals/${currentSymbol}_mootdx_finance.csv`);
+            const fin = parseCSV(finCsv);
+
+            container.innerHTML = `
+                <div class="glass-panel p-6 rounded-2xl shadow-xl">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4"><i class="fa-solid fa-building mr-2 text-purple-400"></i> Core Financial Ratios</h3>
+                    ${fin.length > 0 ? `
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left">
+                                <thead class="text-slate-500 uppercase border-b border-slate-700 text-xs">
+                                    <tr><th class="py-3">Report Date</th><th>EPS (摊薄)</th><th>ROE% (净资产收益率)</th><th>Gross Margin% (毛利率)</th><th>Net Profit (净利润)</th></tr>
+                                </thead>
+                                <tbody class="text-slate-300 divide-y divide-slate-800/50">
+                                    ${fin.slice(0, 15).map(r => `
+                                        <tr class="hover:bg-slate-800/30 transition-colors">
+                                            <td class="py-3 font-mono text-sky-400">${r.date || r.report_date}</td>
+                                            <td>${r.eps || '--'}</td>
+                                            <td>${r.roe ? parseFloat(r.roe).toFixed(2) : '--'}</td>
+                                            <td>${r.gross_margin ? parseFloat(r.gross_margin).toFixed(2) : '--'}</td>
+                                            <td class="text-emerald-400 font-bold">${Number(r.net_profit || 0).toLocaleString()}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    ` : `<div class="text-slate-500 text-sm">No fundamental financial data found.</div>`}
+                </div>
+            `;
+        }
+
+        // ==========================================
+        // 5. NEWS LAYER
+        // ==========================================
+        async function renderNewsLayer(container) {
+            const clsJson = await fetchFile(`${rawDataBaseUrl}/news/cls_telegraph.json`, 'json');
+            const emNewsJson = await fetchFile(`${rawDataBaseUrl}/news/${currentSymbol}_eastmoney_news.json`, 'json');
+
+            container.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="glass-panel p-6 rounded-2xl shadow-xl">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4"><i class="fa-solid fa-bolt text-amber-500 mr-2"></i> CLS Telegraph (财联社电报)</h3>
+                        <div class="space-y-4 max-h-[700px] overflow-y-auto pr-2 custom-scrollbar">
+                            ${clsJson && clsJson.length > 0 ? clsJson.map(n => `
+                                <div class="p-4 bg-slate-900/50 rounded-xl border border-slate-800/50 hover:border-slate-700 transition-colors">
+                                    <p class="text-[10px] text-sky-400 font-mono mb-2"><i class="fa-regular fa-clock mr-1"></i>${n.time || n.ctime}</p>
+                                    <p class="text-sm text-slate-300 leading-relaxed">${n.content}</p>
+                                </div>
+                            `).join('') : '<div class="text-slate-500 text-sm">No recent telegraphs.</div>'}
+                        </div>
+                    </div>
+                    <div class="glass-panel p-6 rounded-2xl shadow-xl">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4"><i class="fa-solid fa-newspaper text-rose-500 mr-2"></i> Company News (${currentSymbol})</h3>
+                        <div class="space-y-4 max-h-[700px] overflow-y-auto pr-2 custom-scrollbar">
+                            ${emNewsJson && emNewsJson.length > 0 ? emNewsJson.map(n => `
+                                <div class="p-4 bg-slate-900/50 rounded-xl border border-slate-800/50 hover:border-slate-700 transition-colors">
+                                    <h4 class="text-sm font-bold text-slate-200 mb-2 leading-snug">${n.title}</h4>
+                                    <p class="text-[10px] text-slate-500 font-mono"><i class="fa-regular fa-calendar mr-1"></i>${n.time || n.publish_time}</p>
+                                </div>
+                            `).join('') : '<div class="text-slate-500 text-sm">No company news found.</div>'}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ==========================================
+        // UI LOGIC
+        // ==========================================
+        async function switchLayer(layer) {
+            currentLayer = layer;
+            document.querySelectorAll('.sidebar-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${layer}`).classList.add('active');
+            document.getElementById('layer-title').innerText = `${layer.toUpperCase()} LAYER`;
+            await renderContent();
+        }
+
+        async function updateSymbol() {
+            const input = document.getElementById('symbol-input').value.trim().toUpperCase();
+            if (input) {
+                currentSymbol = input;
+                document.getElementById('display-symbol').innerText = currentSymbol;
+                await renderContent();
+            }
+        }
+
+        async function renderContent() {
+            const container = document.getElementById('content-area');
+            container.innerHTML = `<div class="flex items-center justify-center h-full"><i class="fa-solid fa-circle-notch fa-spin text-sky-400 text-3xl"></i></div>`;
+            
+            try {
+                if (currentLayer === 'market') await renderMarketLayer(container);
+                else if (currentLayer === 'signals') await renderSignalsLayer(container);
+                else if (currentLayer === 'capital') await renderCapitalLayer(container);
+                else if (currentLayer === 'fundamentals') await renderFundamentalsLayer(container);
+                else if (currentLayer === 'news') await renderNewsLayer(container);
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = `<div class="text-red-400 p-6">Error loading layer: ${err.message}</div>`;
+            }
+        }
+
+        window.onload = renderContent;
+    </script>
+</body>
+</html>

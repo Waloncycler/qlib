@@ -30,6 +30,9 @@
             <button onclick="switchTab('topics')" id="tab-topics" class="px-5 py-1.5 text-xs font-semibold rounded-md text-slate-400 hover:text-slate-200 transition-all border border-transparent hover:bg-slate-800/50">
                 <i class="fa-solid fa-layer-group mr-2"></i>投资题材 (Topics)
             </button>
+            <button onclick="switchTab('stock')" id="tab-stock" class="px-5 py-1.5 text-xs font-semibold rounded-md text-slate-400 hover:text-slate-200 transition-all border border-transparent hover:bg-slate-800/50">
+                <i class="fa-solid fa-crosshairs mr-2"></i>个股分析 (Stock)
+            </button>
         </div>
 
         <div class="text-xs text-slate-500 font-mono" id="current-time"></div>
@@ -69,24 +72,30 @@
         <iframe src="topic_dashboard.html" class="w-full h-full border-none outline-none"></iframe>
     </main>
 
+    <!-- View 3: Stock Iframe -->
+    <main class="flex-1 hidden" id="stock-view">
+        <iframe src="stock_dashboard.html" class="w-full h-full border-none outline-none"></iframe>
+    </main>
+
     <script>
         function switchTab(tab) {
             const btnActive = "px-5 py-1.5 text-xs font-semibold rounded-md bg-sky-500/20 text-sky-400 border border-sky-500/30 transition-all shadow-sm";
             const btnInactive = "px-5 py-1.5 text-xs font-semibold rounded-md text-slate-400 hover:text-slate-200 transition-all border border-transparent hover:bg-slate-800/50";
             
-            if (tab === 'market') {
-                document.getElementById('market-view').classList.remove('hidden');
-                document.getElementById('topics-view').classList.add('hidden');
-                document.getElementById('tab-market').className = btnActive;
-                document.getElementById('tab-topics').className = btnInactive;
-                // Force echarts to resize when made visible again
-                setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
-            } else {
-                document.getElementById('market-view').classList.add('hidden');
-                document.getElementById('topics-view').classList.remove('hidden');
-                document.getElementById('tab-market').className = btnInactive;
-                document.getElementById('tab-topics').className = btnActive;
-            }
+            ['market', 'topics', 'stock'].forEach(t => {
+                const view = document.getElementById(t + '-view');
+                const btn = document.getElementById('tab-' + t);
+                if (t === tab) {
+                    view.classList.remove('hidden');
+                    btn.className = btnActive;
+                    if (tab === 'market') {
+                        setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+                    }
+                } else {
+                    view.classList.add('hidden');
+                    btn.className = btnInactive;
+                }
+            });
         }
 
         const rawDataBaseUrl = "/data/cn_stock/hierarchical";
@@ -193,7 +202,7 @@
 
             // 10. Timing
             series('c10', { legend: { data: ['Timing Signal 择时信号'], textStyle: { color: '#94a3b8' } },
-                yAxis: { type: 'value', min:-3, max:2, axisLabel: { formatter: v => v===1?'BULL 看多':v===-1?'BEAR 看空':v===-2?'S-BEAR 强空':'N 中性' } },
+                yAxis: { type: 'value', axisLabel: { formatter: v => v>0?'BULL 看多':v<0?'BEAR 看空':'N 中性' } },
                 series: [{ name: 'Timing Signal 择时信号', type: 'line', step: 'start', data: data.map(d => d.zizi_market_timing), color: '#facc15', lineStyle: { width: 3 } }] });
 
             // 11. Extreme
