@@ -1,0 +1,8 @@
+akshare
+mootdx
+requests
+pyyaml
+pandas
+tqdm
+loguru
+beautifulsoup4
