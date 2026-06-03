@@ -35,7 +35,17 @@
             </button>
         </div>
 
-        <div class="text-xs text-slate-500 font-mono" id="current-time"></div>
+        <div class="flex items-center gap-4">
+            <!-- Refresh Button -->
+            <button onclick="refreshData()" id="refresh-btn"
+                class="flex items-center gap-2 px-4 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25 transition-all active:scale-95">
+                <i class="fa-solid fa-arrows-rotate" id="refresh-icon"></i>
+                <span id="refresh-text">Refresh 刷新数据</span>
+            </button>
+            <span id="refresh-status" class="text-[10px] text-slate-500 font-mono hidden"></span>
+
+            <div class="text-xs text-slate-500 font-mono" id="current-time"></div>
+        </div>
     </header>
 
     <!-- View 1: Market Charts -->
@@ -55,11 +65,8 @@
             <div class="glass-panel p-5 rounded-xl"><h3 class="text-[10px] font-bold text-slate-500 uppercase mb-3">7. Board Structure 连板梯队结构</h3><div id="c7" class="w-full h-72"></div></div>
             <div class="glass-panel p-5 rounded-xl"><h3 class="text-[10px] font-bold text-slate-500 uppercase mb-3">8. Institutional LHB Flow 龙虎榜机构动向</h3><div id="c8" class="w-full h-72"></div></div>
             <!-- Row 5 -->
-            <div class="glass-panel p-5 rounded-xl"><h3 class="text-[10px] font-bold text-slate-500 uppercase mb-3">9. Northbound HSGT Flow 北向资金流向</h3><div id="c9" class="w-full h-72"></div></div>
-            <div class="glass-panel p-5 rounded-xl"><h3 class="text-[10px] font-bold text-slate-500 uppercase mb-3">10. VIP Market Timing Signal VIP择时信号</h3><div id="c10" class="w-full h-72"></div></div>
-            <!-- Row 6 -->
-            <div class="glass-panel p-5 rounded-xl"><h3 class="text-[10px] font-bold text-slate-500 uppercase mb-3">11. Extreme Signals 极端情绪(天地/地天)</h3><div id="c11" class="w-full h-72"></div></div>
-            <div class="glass-panel p-5 rounded-xl"><h3 class="text-[10px] font-bold text-slate-500 uppercase mb-3">12. Valuation & Profit 估值与赚钱效应</h3><div id="c12" class="w-full h-72"></div></div>
+            <div class="glass-panel p-5 rounded-xl"><h3 class="text-[10px] font-bold text-slate-500 uppercase mb-3">9. VIP Market Timing Signal VIP择时信号</h3><div id="c9" class="w-full h-72"></div></div>
+            <div class="glass-panel p-5 rounded-xl"><h3 class="text-[10px] font-bold text-slate-500 uppercase mb-3">10. Extreme Signals 极端情绪(天地/地天)</h3><div id="c10" class="w-full h-72"></div></div>
         </div>
 
         <div class="glass-panel p-4 rounded-xl mb-6">
@@ -78,6 +85,19 @@
     </main>
 
     <script>
+        // Programmatically unregister any service worker for this origin to prevent interception issues (like sw.js:14 TypeError)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                if (registrations.length > 0) {
+                    for (let registration of registrations) {
+                        registration.unregister();
+                    }
+                    console.log('Stale service worker unregistered. Reloading to apply changes...');
+                    window.location.reload();
+                }
+            });
+        }
+
         function switchTab(tab) {
             const btnActive = "px-5 py-1.5 text-xs font-semibold rounded-md bg-sky-500/20 text-sky-400 border border-sky-500/30 transition-all shadow-sm";
             const btnInactive = "px-5 py-1.5 text-xs font-semibold rounded-md text-slate-400 hover:text-slate-200 transition-all border border-transparent hover:bg-slate-800/50";
@@ -98,7 +118,14 @@
             });
         }
 
-        const rawDataBaseUrl = "/data/cn_stock/hierarchical";
+        const API_BASE = window.location.origin.startsWith('http') ? window.location.origin : 'http://localhost:8000';
+        function resolveDataUrl(layer, filename) {
+            if (window.location.origin.startsWith('http')) {
+                return `/data/cn_stock/hierarchical/${layer}/${filename}`;
+            } else {
+                return `http://localhost:8000/api/data/${layer}/${filename}`;
+            }
+        }
         function parseCSV(text) {
             if (!text) return [];
             const lines = text.trim().split('\n');
@@ -118,7 +145,7 @@
         }
 
         async function init() {
-            const csv = await (await fetch(`${rawDataBaseUrl}/signals/market_sentiment.csv`)).text();
+            const csv = await (await fetch(resolveDataUrl('signals', 'market_sentiment.csv'))).text();
             const data = parseCSV(csv);
             if (data.length === 0) return;
 
@@ -142,8 +169,8 @@
             // 1. Sentiment
             series('c1', { legend: { data: ['Score 情绪分', 'Up 上涨', 'Down 下跌'], textStyle: { color: '#94a3b8' } },
                 yAxis: [{ type: 'value', name: '家数' }, { type: 'value', name: '评分', max: 100, splitLine: { show: false } }],
-                series: [{ name: 'Up 上涨', type: 'bar', stack: 'a', data: data.map(d => d.up_count), color: '#10b981' },
-                         { name: 'Down 下跌', type: 'bar', stack: 'a', data: data.map(d => d.down_count), color: '#f43f5e' },
+                series: [{ name: 'Up 上涨', type: 'bar', stack: 'a', data: data.map(d => d.up_count ?? d.up_num), color: '#10b981' },
+                         { name: 'Down 下跌', type: 'bar', stack: 'a', data: data.map(d => d.down_count ?? d.down_num), color: '#f43f5e' },
                          { name: 'Score 情绪分', type: 'line', yAxisIndex: 1, data: data.map(d => d.sentiment_score), color: '#f59e0b', smooth: true }] });
 
             // 2. Breadth Highs
@@ -165,28 +192,36 @@
             // 4. Limit Up
             series('c4', { legend: { data: ['RealUp 自然涨停', 'ST-Up ST涨停', 'Broken 炸板'], textStyle: { color: '#94a3b8' } },
                 yAxis: { type: 'value', name: '家数' },
-                series: [{ name: 'RealUp 自然涨停', type: 'bar', stack: 'u', data: data.map(d => d.real_limit_up_count), color: '#ef4444' },
-                         { name: 'ST-Up ST涨停', type: 'bar', stack: 'u', data: data.map(d => d.st_limit_up_count), color: '#fca5a5' },
-                         { name: 'Broken 炸板', type: 'bar', data: data.map(d => d.broken_limit_up_count), color: '#f59e0b' }] });
+                series: [{ name: 'RealUp 自然涨停', type: 'bar', stack: 'u', data: data.map(d => d.real_limit_up_count ?? d.uplimit_n_num ?? d.limit_up_count ?? d.uplimit_num ?? 0), color: '#ef4444' },
+                         { name: 'ST-Up ST涨停', type: 'bar', stack: 'u', data: data.map(d => d.st_limit_up_count ?? 0), color: '#fca5a5' },
+                         { name: 'Broken 炸板', type: 'bar', data: data.map(d => d.broken_limit_up_count ?? d.zb_num ?? 0), color: '#f59e0b' }] });
 
             // 5. Limit Down
             series('c5', { legend: { data: ['RealDn 自然跌停', 'ST-Dn ST跌停'], textStyle: { color: '#94a3b8' } },
                 yAxis: { type: 'value', name: '家数' },
-                series: [{ name: 'RealDn 自然跌停', type: 'bar', stack: 'd', data: data.map(d => d.real_limit_down_count), color: '#0ea5e9' },
-                         { name: 'ST-Dn ST跌停', type: 'bar', stack: 'd', data: data.map(d => d.st_limit_down_count), color: '#7dd3fc' }] });
+                series: [{ name: 'RealDn 自然跌停', type: 'bar', stack: 'd', data: data.map(d => d.real_limit_down_count ?? d.limit_down_count ?? d.downlimit_num ?? 0), color: '#0ea5e9' },
+                         { name: 'ST-Dn ST跌停', type: 'bar', stack: 'd', data: data.map(d => d.st_limit_down_count ?? 0), color: '#7dd3fc' }] });
 
             // 6. Spec Quality
             series('c6', { legend: { data: ['PrevRet% 昨曾溢价', 'BrokenRate% 炸板率'], textStyle: { color: '#94a3b8' } },
                 yAxis: { type: 'value', name: '百分比' },
                 series: [{ name: 'PrevRet% 昨曾溢价', type: 'line', data: data.map(d => d.yesterday_limit_up_avg_return), color: '#8b5cf6' },
-                         { name: 'BrokenRate% 炸板率', type: 'line', data: data.map(d => d.broken_limit_up_rate*100), color: '#d946ef' }] });
+                         { name: 'BrokenRate% 炸板率', type: 'line', data: data.map(d => {
+                             if (d.broken_limit_up_rate !== null && d.broken_limit_up_rate !== undefined && !isNaN(d.broken_limit_up_rate)) {
+                                 return d.broken_limit_up_rate * 100;
+                             }
+                             const zb = d.broken_limit_up_count ?? d.zb_num ?? 0;
+                             const zt = d.limit_up_count ?? d.uplimit_num ?? 0;
+                             const total = zb + zt;
+                             return total > 0 ? (zb / total) * 100 : 0.0;
+                         }), color: '#d946ef' }] });
 
             // 7. Board Structure
             series('c7', { legend: { data: ['2-Con 二连板', '3+Con 高位板', 'MaxHeight 最高高度'], textStyle: { color: '#94a3b8' } },
                 yAxis: [{ type: 'value', name: '家数' }, { type: 'value', name: '板位', position: 'right', splitLine: { show: false } }],
-                series: [{ name: '2-Con 二连板', type: 'bar', data: data.map(d => d.lb_2_count), color: '#ec4899' },
-                         { name: '3+Con 高位板', type: 'bar', data: data.map(d => d.lb_3_plus_count), color: '#9d174d' },
-                         { name: 'MaxHeight 最高高度', type: 'line', yAxisIndex: 1, data: data.map(d => d.highest_consecutive_limit_up), color: '#fff', smooth: true }] });
+                series: [{ name: '2-Con 二连板', type: 'bar', data: data.map(d => d.lb_2_count ?? d.consecutive_limit_up_2_count ?? d.lb_2_num ?? 0), color: '#ec4899' },
+                         { name: '3+Con 高位板', type: 'bar', data: data.map(d => d.lb_3_plus_count ?? d.consecutive_limit_up_3_plus_count ?? d.lb_3_num ?? d.lb_h_num ?? 0), color: '#9d174d' },
+                         { name: 'MaxHeight 最高高度', type: 'line', yAxisIndex: 1, data: data.map(d => d.highest_consecutive_limit_up ?? d.max_lb_num ?? 0), color: '#fff', smooth: true }] });
 
             // 8. LHB
             series('c8', { legend: { data: ['NetBuy 净买额(亿)', 'Stocks 上榜数'], textStyle: { color: '#94a3b8' } },
@@ -194,30 +229,17 @@
                 series: [{ name: 'NetBuy 净买额(亿)', type: 'bar', data: data.map(d => d.dt_net_buy_wan/10000), color: '#10b981' },
                          { name: 'Stocks 上榜数', type: 'line', yAxisIndex: 1, data: data.map(d => d.dt_stock_count), color: '#38bdf8' }] });
 
-            // 9. HSGT
-            series('c9', { legend: { data: ['HSGT-Net 北向净买', 'Cum 累计买入'], textStyle: { color: '#94a3b8' } },
-                yAxis: [{ type: 'value', name: '当日(亿)' }, { type: 'value', name: '累计(亿)', position: 'right', splitLine: { show: false } }],
-                series: [{ name: 'HSGT-Net 北向净买', type: 'bar', data: data.map(d => d.hsgt_net_buy/100), color: '#059669' },
-                         { name: 'Cum 累计买入', type: 'line', yAxisIndex: 1, data: data.map(d => d.hsgt_cum_buy/100), color: '#fbbf24', smooth: true }] });
-
-            // 10. Timing
-            series('c10', { legend: { data: ['Timing Signal 择时信号'], textStyle: { color: '#94a3b8' } },
+            // 9. Timing
+            series('c9', { legend: { data: ['Timing Signal 择时信号'], textStyle: { color: '#94a3b8' } },
                 yAxis: { type: 'value', axisLabel: { formatter: v => v>0?'BULL 看多':v<0?'BEAR 看空':'N 中性' } },
-                series: [{ name: 'Timing Signal 择时信号', type: 'line', step: 'start', data: data.map(d => d.zizi_market_timing), color: '#facc15', lineStyle: { width: 3 } }] });
+                series: [{ name: 'Timing Signal 择时信号', type: 'line', step: 'start', data: data.map(d => d.timing_signal_type), color: '#facc15', lineStyle: { width: 3 } }] });
 
-            // 11. Extreme
-            series('c11', { legend: { data: ['Tiandi 天地板', 'Ditian 地天板', 'BigLeg 大长腿'], textStyle: { color: '#94a3b8' } },
+            // 10. Extreme
+            series('c10', { legend: { data: ['Tiandi 天地板', 'Ditian 地天板', 'BigLeg 大长腿'], textStyle: { color: '#94a3b8' } },
                 yAxis: { type: 'value', name: '家数' },
                 series: [{ name: 'Tiandi 天地板', type: 'bar', data: data.map(d => d.tiandi_num), color: '#ef4444' },
                          { name: 'Ditian 地天板', type: 'bar', data: data.map(d => d.ditian_num), color: '#10b981' },
                          { name: 'BigLeg 大长腿', type: 'line', data: data.map(d => d.bigleg_num), color: '#38bdf8', smooth: true }] });
-
-            // 12. Valuation
-            series('c12', { legend: { data: ['PE-Med PE中数', 'PB-Med PB中数', 'Profit% 赚钱效应'], textStyle: { color: '#94a3b8' } },
-                yAxis: [{ type: 'value', name: 'PE/PB' }, { type: 'value', name: '百分比', position: 'right', splitLine: { show: false } }],
-                series: [{ name: 'PE-Med PE中数', type: 'line', data: data.map(d => d.pe_median), color: '#fb7185' },
-                         { name: 'PB-Med PB中数', type: 'line', yAxisIndex: 0, data: data.map(d => d.pb_median), color: '#38bdf8' },
-                         { name: 'Profit% 赚钱效应', type: 'line', yAxisIndex: 1, data: data.map(d => d.profit_effect_pct), color: '#facc15', lineStyle: { type: 'dotted' } }] });
 
             const master = echarts.init(document.getElementById('master-zoom'));
             master.setOption({ grid: { top: 0, bottom: 0, left: '8%', right: '5%' }, xAxis: { type: 'category', show: false, data: dates }, yAxis: { show: false },
@@ -231,6 +253,87 @@
         }
 
         setInterval(() => { document.getElementById('current-time').innerText = new Date().toLocaleString(); }, 1000);
+
+
+
+        async function refreshData() {
+            const btn = document.getElementById('refresh-btn');
+            const icon = document.getElementById('refresh-icon');
+            const text = document.getElementById('refresh-text');
+            const status = document.getElementById('refresh-status');
+
+            // Disable button and show spinner
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            icon.classList.add('fa-spin');
+            text.textContent = '刷新中...';
+            status.classList.remove('hidden');
+            status.textContent = '正在获取最新数据...';
+            status.className = 'text-[10px] text-yellow-400 font-mono';
+
+            try {
+                const resp = await fetch(`${API_BASE}/api/refresh`, { method: 'POST' });
+                const data = await resp.json();
+
+                if (data.status === 'busy') {
+                    status.textContent = '⚠️ 刷新已在进行中';
+                    status.className = 'text-[10px] text-yellow-400 font-mono';
+                    resetBtn(3000);
+                    return;
+                }
+
+                // Poll for completion
+                pollRefreshStatus();
+            } catch (e) {
+                status.textContent = `❌ 请求失败: ${e.message}`;
+                status.className = 'text-[10px] text-red-400 font-mono';
+                resetBtn(5000);
+            }
+        }
+
+        function pollRefreshStatus() {
+            const icon = document.getElementById('refresh-icon');
+            const text = document.getElementById('refresh-text');
+            const status = document.getElementById('refresh-status');
+
+            const poller = setInterval(async () => {
+                try {
+                    const resp = await fetch(`${API_BASE}/api/refresh/status`);
+                    const data = await resp.json();
+
+                    if (!data.running) {
+                        clearInterval(poller);
+
+                        if (data.last_result === 'success') {
+                            status.textContent = `✅ 刷新成功 (${new Date(data.last_time).toLocaleTimeString()})`;
+                            status.className = 'text-[10px] text-emerald-400 font-mono';
+                            // Reload charts with new data
+                            await init();
+                        } else {
+                            status.textContent = `❌ 刷新失败: ${data.last_result}`;
+                            status.className = 'text-[10px] text-red-400 font-mono';
+                        }
+                        resetBtn(8000);
+                    }
+                } catch (e) {
+                    // Silently continue polling
+                }
+            }, 2000);
+        }
+
+        function resetBtn(delay) {
+            setTimeout(() => {
+                const btn = document.getElementById('refresh-btn');
+                const icon = document.getElementById('refresh-icon');
+                const text = document.getElementById('refresh-text');
+
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                icon.classList.remove('fa-spin');
+                text.textContent = 'Refresh 刷新数据';
+            }, delay);
+        }
+
         window.onload = init;
     </script>
 </body>

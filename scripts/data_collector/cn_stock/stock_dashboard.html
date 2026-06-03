@@ -61,9 +61,29 @@
     </main>
 
     <script>
+        // Programmatically unregister any service worker for this origin to prevent interception issues (like sw.js:14 TypeError)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                if (registrations.length > 0) {
+                    for (let registration of registrations) {
+                        registration.unregister();
+                    }
+                    console.log('Stale service worker unregistered. Reloading to apply changes...');
+                    window.location.reload();
+                }
+            });
+        }
+
+        const API_BASE = window.location.origin.startsWith('http') ? window.location.origin : 'http://localhost:8000';
+        function resolveDataUrl(layer, filename) {
+            if (window.location.origin.startsWith('http')) {
+                return `/data/cn_stock/hierarchical/${layer}/${filename}`;
+            } else {
+                return `http://localhost:8000/api/data/${layer}/${filename}`;
+            }
+        }
         let currentSymbol = "SH600519";
         let currentLayer = "market";
-        const rawDataBaseUrl = "/data/cn_stock/hierarchical";
 
         async function fetchFile(url, type='text') {
             try {
@@ -81,7 +101,6 @@
             const result = [];
             for (let i = 1; i < lines.length; i++) {
                 if (!lines[i].trim()) continue;
-                // Handling CSV with potential commas inside quotes is hard, but we'll use a simple split
                 const values = lines[i].split(',');
                 const obj = {};
                 headers.forEach((h, j) => obj[h] = values[j] ? values[j].trim() : null);
@@ -94,9 +113,29 @@
         // 1. MARKET LAYER
         // ==========================================
         async function renderMarketLayer(container) {
-            const csv = await fetchFile(`${rawDataBaseUrl}/market/${currentSymbol}_baidu_kline.csv`);
+            const csvPromise = fetchFile(resolveDataUrl('market', `${currentSymbol}_tencent_sina_kline.csv`));
+            const sentPromise = fetchFile(resolveDataUrl('signals', 'market_sentiment.csv'));
+            const [csv, sentCsv] = await Promise.all([csvPromise, sentPromise]);
+            
             const data = parseCSV(csv);
-            if (data.length === 0) { container.innerHTML = `<div class="text-slate-500">Baidu K-Line Data Not Found for ${currentSymbol}</div>`; return; }
+            if (data.length === 0) { container.innerHTML = `<div class="text-slate-500">K-Line Data Not Found for ${currentSymbol}</div>`; return; }
+
+            const sentData = parseCSV(sentCsv);
+            const signalMap = {};
+            sentData.forEach(row => {
+                const dateStr = row.date;
+                const sentiment = parseFloat(row.sentiment_score);
+                const uplimit = row.uplimit_num ? parseFloat(row.uplimit_num) : NaN;
+                const tiandi = row.tiandi_num ? parseFloat(row.tiandi_num) : NaN;
+                
+                let isBull = false;
+                if (isNaN(uplimit) || isNaN(tiandi)) {
+                    isBull = (sentiment >= 55.0);
+                } else {
+                    isBull = (sentiment >= 55.0 && uplimit >= 40 && tiandi <= 2);
+                }
+                signalMap[dateStr] = isBull ? 1.0 : 0.0;
+            });
 
             container.innerHTML = `
                 <div class="glass-panel p-6 rounded-2xl mb-6 shadow-xl">
@@ -109,11 +148,33 @@
             const chart = echarts.init(document.getElementById('k-chart'));
             chart.setOption({
                 backgroundColor: 'transparent',
-                tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
-                legend: { data: ['K-Line', 'MA5', 'MA20'], textStyle: { color: '#94a3b8' } },
+                tooltip: { 
+                    trigger: 'axis', 
+                    axisPointer: { type: 'cross' },
+                    formatter: function(params) {
+                        let res = params[0].name + '<br/>';
+                        params.forEach(p => {
+                            if (p.seriesName === 'K-Line') {
+                                res += p.marker + '开盘: ' + p.value[1] + ' 收盘: ' + p.value[2] + ' 最低: ' + p.value[3] + ' 最高: ' + p.value[4] + '<br/>';
+                            } else if (p.seriesName === 'VIP择时信号') {
+                                let sigText = p.value === 1.0 ? '<span style="color:#ef4444;font-weight:bold;">BULL 看多</span>' : '<span style="color:#10b981;font-weight:bold;">BEAR 看空/轻仓</span>';
+                                res += p.marker + p.seriesName + ': ' + sigText + '<br/>';
+                            } else if (p.seriesName === 'MA5' || p.seriesName === 'MA20') {
+                                res += p.marker + p.seriesName + ': ' + (isNaN(p.value) ? '--' : p.value.toFixed(2)) + '<br/>';
+                            } else {
+                                res += p.marker + p.seriesName + ': ' + p.value + '<br/>';
+                            }
+                        });
+                        return res;
+                    }
+                },
+                legend: { data: ['K-Line', 'MA5', 'MA20', 'VIP择时信号'], textStyle: { color: '#94a3b8' } },
                 grid: { left: '5%', right: '5%', bottom: '15%' },
                 xAxis: { type: 'category', data: dates, scale: true, boundaryGap: false, axisLine: { lineStyle: { color: '#334155' } } },
-                yAxis: { scale: true, splitLine: { lineStyle: { color: 'rgba(51,65,85,0.2)' } } },
+                yAxis: [
+                    { scale: true, splitLine: { lineStyle: { color: 'rgba(51,65,85,0.2)' } } },
+                    { type: 'value', min: 0, max: 6, show: false, splitLine: { show: false } }
+                ],
                 dataZoom: [{ type: 'inside', start: 50, end: 100 }, { show: true, type: 'slider', bottom: '5%', start: 50, end: 100, textStyle: { color: '#94a3b8' } }],
                 series: [
                     {
@@ -122,7 +183,23 @@
                         itemStyle: { color: '#ef4444', color0: '#10b981', borderColor: '#ef4444', borderColor0: '#10b981' }
                     },
                     { name: 'MA5', type: 'line', data: data.map(d => parseFloat(d.ma5)), smooth: true, lineStyle: { width: 1, color: '#facc15' }, symbol: 'none' },
-                    { name: 'MA20', type: 'line', data: data.map(d => parseFloat(d.ma20)), smooth: true, lineStyle: { width: 1, color: '#c084fc' }, symbol: 'none' }
+                    { name: 'MA20', type: 'line', data: data.map(d => parseFloat(d.ma20)), smooth: true, lineStyle: { width: 1, color: '#c084fc' }, symbol: 'none' },
+                    {
+                        name: 'VIP择时信号',
+                        type: 'line',
+                        step: 'start',
+                        yAxisIndex: 1,
+                        data: dates.map(date => signalMap[date] !== undefined ? signalMap[date] : 0.0),
+                        lineStyle: { width: 2, color: '#ef4444' },
+                        areaStyle: {
+                            opacity: 0.35,
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: '#ef4444' },
+                                { offset: 1, color: 'rgba(239, 68, 68, 0.05)' }
+                            ])
+                        },
+                        symbol: 'none'
+                    }
                 ]
             });
             window.addEventListener('resize', () => chart.resize());
@@ -132,7 +209,7 @@
         // 2. SIGNALS LAYER
         // ==========================================
         async function renderSignalsLayer(container) {
-            const thsCsv = await fetchFile(`${rawDataBaseUrl}/signals/ths_hot_reasons.csv`);
+            const thsCsv = await fetchFile(resolveDataUrl('signals', 'ths_hot_reasons.csv'));
             const ths = parseCSV(thsCsv).filter(r => r.code && r.code.includes(currentSymbol.replace(/[A-Za-z]/g, '')));
 
             container.innerHTML = `
@@ -156,8 +233,8 @@
         // 3. CAPITAL LAYER
         // ==========================================
         async function renderCapitalLayer(container) {
-            const marginCsv = await fetchFile(`${rawDataBaseUrl}/capital/${currentSymbol}_margin_trading.csv`);
-            const flowCsv = await fetchFile(`${rawDataBaseUrl}/capital/${currentSymbol}_fund_flow_120d.csv`);
+            const marginCsv = await fetchFile(resolveDataUrl('capital', `${currentSymbol}_margin_trading.csv`));
+            const flowCsv = await fetchFile(resolveDataUrl('capital', `${currentSymbol}_fund_flow_120d.csv`));
             const margin = parseCSV(marginCsv);
             const flow = parseCSV(flowCsv);
 
@@ -198,7 +275,7 @@
         // 4. FUNDAMENTALS LAYER
         // ==========================================
         async function renderFundamentalsLayer(container) {
-            const finCsv = await fetchFile(`${rawDataBaseUrl}/fundamentals/${currentSymbol}_mootdx_finance.csv`);
+            const finCsv = await fetchFile(resolveDataUrl('fundamentals', `${currentSymbol}_mootdx_finance.csv`));
             const fin = parseCSV(finCsv);
 
             container.innerHTML = `
@@ -232,8 +309,8 @@
         // 5. NEWS LAYER
         // ==========================================
         async function renderNewsLayer(container) {
-            const clsJson = await fetchFile(`${rawDataBaseUrl}/news/cls_telegraph.json`, 'json');
-            const emNewsJson = await fetchFile(`${rawDataBaseUrl}/news/${currentSymbol}_eastmoney_news.json`, 'json');
+            const clsJson = await fetchFile(resolveDataUrl('news', 'cls_telegraph.json'), 'json');
+            const emNewsJson = await fetchFile(resolveDataUrl('news', `${currentSymbol}_eastmoney_news.json`), 'json');
 
             container.innerHTML = `
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">

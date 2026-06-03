@@ -90,6 +90,17 @@ class CnStockCollector(BaseCollector):
             raise ValueError(f"Unknown data source: {self.source}")
 
     def get_instrument_list(self) -> list:
+        # If standard source directory contains existing files, only update those to save time and API quota
+        for path_str in [getattr(self, "save_dir", ""), "/Users/walox/qlib/data/cn_stock/standard/source"]:
+            if path_str:
+                p = Path(path_str)
+                if p.exists():
+                    csv_files = list(p.glob("*.csv"))
+                    if csv_files:
+                        symbols = [f.stem for f in csv_files]
+                        logger.info(f"Existing CSV files found in target directory. Restricting update to: {symbols}")
+                        return symbols
+
         logger.info(f"Fetching stock list from source: {self.source}...")
         symbols = self.adapter.get_instrument_list()
         logger.info(f"Retrieved {len(symbols)} symbols from source.")
@@ -113,6 +124,7 @@ class CnStockCollector(BaseCollector):
         layer: str,
         symbol: str = "SH600519",
         save_dir: [str, Path] = "./data/cn_stock/hierarchical",
+        start_date: pd.Timestamp = None
     ):
         import json
         layer = layer.lower()
@@ -127,6 +139,7 @@ class CnStockCollector(BaseCollector):
         else:
             symbols = [symbol]
 
+        import concurrent.futures
         logger.info(f"Downloading layer '{layer}' for {len(symbols)} symbols. Output directory: {save_path}")
 
         if layer == "market":
@@ -135,9 +148,10 @@ class CnStockCollector(BaseCollector):
             mdx = MootdxAdapter(self.config)
             em = EastmoneyAdapter(self.config)
             
-            for sym in symbols:
+            def process_market(sym):
                 try:
-                    df_k = baidu.fetch_symbol_data(sym, "1d", pd.Timestamp("2026-01-01"), pd.Timestamp.now())
+                    sd = start_date if start_date else pd.Timestamp("2022-01-01")
+                    df_k = baidu.fetch_symbol_data(sym, "1d", sd, pd.Timestamp.now())
                     if not df_k.empty:
                         df_k.to_csv(save_path / f"{sym}_baidu_kline.csv", index=False)
                         logger.info(f"Saved Baidu KLine for {sym}")
@@ -145,7 +159,8 @@ class CnStockCollector(BaseCollector):
                     logger.error(f"Failed to fetch Baidu Kline for {sym}: {e}")
 
                 try:
-                    df_ts = ts.fetch_symbol_data(sym, "1d", pd.Timestamp("2026-01-01"), pd.Timestamp.now())
+                    sd = start_date if start_date else pd.Timestamp("2022-01-01")
+                    df_ts = ts.fetch_symbol_data(sym, "1d", sd, pd.Timestamp.now())
                     if not df_ts.empty:
                         df_ts.to_csv(save_path / f"{sym}_tencent_sina_kline.csv", index=False)
                         logger.info(f"Saved Tencent/Sina KLine for {sym}")
@@ -168,6 +183,9 @@ class CnStockCollector(BaseCollector):
                         logger.info(f"Saved Eastmoney snapshot for {sym}")
                 except Exception as e:
                     logger.error(f"Failed to fetch Eastmoney snapshot for {sym}: {e}")
+                    
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                list(executor.map(process_market, symbols))
 
         elif layer == "signals":
             ths_hot = ThsHotReasonAdapter(self.config)
@@ -179,85 +197,102 @@ class CnStockCollector(BaseCollector):
             em_ind = EastmoneyIndustryAdapter(self.config)
             sentiment_adapter = MarketSentimentAdapter(self.config)
 
-            try:
-                sent_data = sentiment_adapter.get_market_sentiment()
-                if sent_data:
-                    csv_path = save_path / "market_sentiment.csv"
-                    if csv_path.exists():
-                        try:
-                            df_existing = pd.read_csv(csv_path)
-                            df_existing["date"] = df_existing["date"].astype(str)
-                        except Exception as e:
-                            logger.warning(f"Failed to read existing market sentiment CSV: {e}. Re-creating.")
+            def process_sentiment():
+                try:
+                    sent_data = sentiment_adapter.get_market_sentiment()
+                    if sent_data:
+                        csv_path = save_path / "market_sentiment.csv"
+                        if csv_path.exists():
+                            try:
+                                df_existing = pd.read_csv(csv_path)
+                                df_existing["date"] = df_existing["date"].astype(str)
+                            except Exception as e:
+                                logger.warning(f"Failed to read existing market sentiment CSV: {e}. Re-creating.")
+                                df_existing = pd.DataFrame()
+                        else:
                             df_existing = pd.DataFrame()
-                    else:
-                        df_existing = pd.DataFrame()
 
-                    df_new = pd.DataFrame([sent_data])
-                    df_new["date"] = df_new["date"].astype(str)
+                        df_new = pd.DataFrame([sent_data])
+                        df_new["date"] = df_new["date"].astype(str)
 
-                    if not df_existing.empty:
-                        df_existing = df_existing.set_index("date")
-                        df_new = df_new.set_index("date")
-                        df_combined = df_new.combine_first(df_existing).reset_index()
-                    else:
-                        df_combined = df_new
+                        if not df_existing.empty:
+                            df_existing = df_existing.set_index("date")
+                            df_new = df_new.set_index("date")
+                            df_combined = df_new.combine_first(df_existing).reset_index()
+                        else:
+                            df_combined = df_new
 
-                    df_combined = df_combined.sort_values("date")
-                    # Ensure columns order is clean
-                    cols_order = [
-                        "date", "up_count", "down_count", "flat_count", "suspended_count",
-                        "limit_up_count", "real_limit_up_count", "st_limit_up_count",
-                        "limit_down_count", "real_limit_down_count", "st_limit_down_count",
-                        "sentiment_score", "up_down_ratio",
-                        "broken_limit_up_count", "broken_limit_up_rate",
-                        "highest_consecutive_limit_up", "consecutive_limit_up_2_count",
-                        "consecutive_limit_up_3_plus_count", "yesterday_limit_up_avg_return",
-                        "high20", "high60", "high120", "low20", "low60", "low120"
-                    ]
-                    # Filter only columns we actually have to prevent crash
-                    cols_order = [c for c in cols_order if c in df_combined.columns]
-                    df_combined = df_combined[cols_order]
+                        df_combined = df_combined.sort_values("date")
+                        cols_order = [
+                            "date", "up_count", "down_count", "flat_count", "suspended_count",
+                            "limit_up_count", "real_limit_up_count", "st_limit_up_count",
+                            "limit_down_count", "real_limit_down_count", "st_limit_down_count",
+                            "sentiment_score", "up_down_ratio",
+                            "broken_limit_up_count", "broken_limit_up_rate",
+                            "highest_consecutive_limit_up", "consecutive_limit_up_2_count",
+                            "consecutive_limit_up_3_plus_count", "yesterday_limit_up_avg_return",
+                            "high20", "high60", "high120", "low20", "low60", "low120"
+                        ]
+                        other_cols = [c for c in df_combined.columns if c not in cols_order]
+                        final_cols = [c for c in cols_order if c in df_combined.columns] + other_cols
+                        df_combined = df_combined[final_cols]
+                        
+                        from data_schema import validate_market_sentiment
+                        if validate_market_sentiment(df_combined):
+                            df_combined.to_csv(csv_path, index=False)
+                            logger.info(f"Saved market sentiment data for date {sent_data['date']} to {csv_path}")
+                        else:
+                            logger.error(f"Skipped saving market sentiment data for {sent_data['date']} due to schema validation failure.")
+                            # fallback: save raw data for debugging
+                            df_new.to_csv(csv_path.with_name("market_sentiment_failed_schema.csv"), index=False)
+                except Exception as e:
+                    logger.error(f"Failed to process market sentiment data: {e}")
 
-                    df_combined.to_csv(csv_path, index=False)
-                    logger.info(f"Saved market sentiment data for date {sent_data['date']} to {csv_path}")
-            except Exception as e:
-                logger.error(f"Failed to process market sentiment data: {e}")
+            def process_ths_hot():
+                try:
+                    df_hot = ths_hot.get_hot_reasons()
+                    if not df_hot.empty:
+                        df_hot.to_csv(save_path / "ths_hot_reasons.csv", index=False)
+                        logger.info("Saved THS Hot Reasons")
+                except Exception as e:
+                    logger.error(f"Failed to fetch THS Hot Reasons: {e}")
 
+            def process_ths_north():
+                try:
+                    df_north = ths_north.fetch_realtime_minute_flow()
+                    if not df_north.empty:
+                        df_north.to_csv(save_path / "ths_northbound_realtime_minute.csv", index=False)
+                        logger.info("Saved THS Northbound Realtime Minute flow")
+                except Exception as e:
+                    logger.error(f"Failed to fetch Northbound minute flow: {e}")
+                try:
+                    df_north_hist = ths_north.load_cached_history()
+                    if not df_north_hist.empty:
+                        df_north_hist.to_csv(save_path / "ths_northbound_history.csv", index=False)
+                        logger.info("Saved THS Northbound historical flow")
+                except Exception as e:
+                    logger.error(f"Failed to fetch Northbound history: {e}")
 
-            try:
-                df_hot = ths_hot.get_hot_reasons()
-                if not df_hot.empty:
-                    df_hot.to_csv(save_path / "ths_hot_reasons.csv", index=False)
-                    logger.info("Saved THS Hot Reasons")
-            except Exception as e:
-                logger.error(f"Failed to fetch THS Hot Reasons: {e}")
+            def process_em_ind():
+                try:
+                    df_ind = em_ind.get_industry_board_rankings()
+                    if not df_ind.empty:
+                        df_ind.to_csv(save_path / "eastmoney_industry_rankings.csv", index=False)
+                        logger.info("Saved Eastmoney Industry rankings")
+                except Exception as e:
+                    logger.error(f"Failed to fetch Industry rankings: {e}")
 
-            try:
-                df_north = ths_north.fetch_realtime_minute_flow()
-                if not df_north.empty:
-                    df_north.to_csv(save_path / "ths_northbound_realtime_minute.csv", index=False)
-                    logger.info("Saved THS Northbound Realtime Minute flow")
-            except Exception as e:
-                logger.error(f"Failed to fetch Northbound minute flow: {e}")
-            
-            try:
-                df_north_hist = ths_north.load_cached_history()
-                if not df_north_hist.empty:
-                    df_north_hist.to_csv(save_path / "ths_northbound_history.csv", index=False)
-                    logger.info("Saved THS Northbound historical flow")
-            except Exception as e:
-                logger.error(f"Failed to fetch Northbound history: {e}")
+            # Run market-wide signal sources in parallel
+            with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+                futures = [
+                    executor.submit(process_sentiment),
+                    executor.submit(process_ths_hot),
+                    executor.submit(process_ths_north),
+                    executor.submit(process_em_ind),
+                ]
+                concurrent.futures.wait(futures)
 
-            try:
-                df_ind = em_ind.get_industry_board_rankings()
-                if not df_ind.empty:
-                    df_ind.to_csv(save_path / "eastmoney_industry_rankings.csv", index=False)
-                    logger.info("Saved Eastmoney Industry rankings")
-            except Exception as e:
-                logger.error(f"Failed to fetch Industry rankings: {e}")
-
-            for sym in symbols:
+            def process_signals_symbol(sym):
                 try:
                     concepts = baidu_concept.get_concept_blocks(sym)
                     if concepts:
@@ -295,6 +330,9 @@ class CnStockCollector(BaseCollector):
                 except Exception as e:
                     logger.error(f"Failed to fetch Lockup Expiry for {sym}: {e}")
 
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                list(executor.map(process_signals_symbol, symbols))
+
         elif layer == "capital":
             margin = MarginTradingAdapter(self.config)
             block = BlockTradeAdapter(self.config)
@@ -302,7 +340,7 @@ class CnStockCollector(BaseCollector):
             dividend = DividendAdapter(self.config)
             fflow120 = StockFundFlow120dAdapter(self.config)
 
-            for sym in symbols:
+            def process_capital_symbol(sym):
                 try:
                     df_m = margin.get_margin_trading(sym)
                     if not df_m.empty:
@@ -343,13 +381,16 @@ class CnStockCollector(BaseCollector):
                 except Exception as e:
                     logger.error(f"Failed to fetch 120d Fund Flow for {sym}: {e}")
 
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                list(executor.map(process_capital_symbol, symbols))
+
         elif layer == "fundamentals":
             m_fin = MootdxFinanceAdapter(self.config)
             m_f10 = MootdxF10Adapter(self.config)
             em_info = EastmoneyStockInfoAdapter(self.config)
             sina = SinaFinancialReportAdapter(self.config)
 
-            for sym in symbols:
+            def process_fundamentals_symbol(sym):
                 try:
                     df_fin = m_fin.get_financial_snapshot(sym)
                     if not df_fin.empty:
@@ -385,28 +426,32 @@ class CnStockCollector(BaseCollector):
                     except Exception as e:
                         logger.error(f"Failed to fetch Sina statement {rtype} for {sym}: {e}")
 
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                list(executor.map(process_fundamentals_symbol, symbols))
+
         elif layer == "news":
             em_news = EastmoneyStockNewsAdapter(self.config)
             cls_tel = ClsTelegraphAdapter(self.config)
             em_global = EastmoneyGlobalNewsAdapter(self.config)
 
-            try:
-                df_tel = cls_tel.fetch_telegraph()
-                if not df_tel.empty:
-                    df_tel.to_json(save_path / "cls_telegraph.json", orient="records", force_ascii=False, indent=4)
-                    logger.info("Saved CLS Telegraph Stream")
-            except Exception as e:
-                logger.error(f"Failed to fetch CLS telegraph: {e}")
+            def process_news_general():
+                try:
+                    df_tel = cls_tel.fetch_telegraph()
+                    if not df_tel.empty:
+                        df_tel.to_json(save_path / "cls_telegraph.json", orient="records", force_ascii=False, indent=4)
+                        logger.info("Saved CLS Telegraph Stream")
+                except Exception as e:
+                    logger.error(f"Failed to fetch CLS telegraph: {e}")
 
-            try:
-                df_gl = em_global.fetch_global_news()
-                if not df_gl.empty:
-                    df_gl.to_json(save_path / "eastmoney_global_news.json", orient="records", force_ascii=False, indent=4)
-                    logger.info("Saved Eastmoney Global News Stream")
-            except Exception as e:
-                logger.error(f"Failed to fetch Eastmoney global news: {e}")
-
-            for sym in symbols:
+                try:
+                    df_gl = em_global.fetch_global_news()
+                    if not df_gl.empty:
+                        df_gl.to_json(save_path / "eastmoney_global_news.json", orient="records", force_ascii=False, indent=4)
+                        logger.info("Saved Eastmoney Global News Stream")
+                except Exception as e:
+                    logger.error(f"Failed to fetch Eastmoney global news: {e}")
+                    
+            def process_news_symbol(sym):
                 try:
                     df_n = em_news.fetch_stock_news(sym)
                     if not df_n.empty:
@@ -414,6 +459,10 @@ class CnStockCollector(BaseCollector):
                         logger.info(f"Saved Eastmoney stock news for {sym}")
                 except Exception as e:
                     logger.error(f"Failed to fetch Eastmoney stock news for {sym}: {e}")
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                executor.submit(process_news_general)
+                list(executor.map(process_news_symbol, symbols))
 
         elif layer == "research":
             em_rep = EastmoneyReportAdapter(self.config)
@@ -423,7 +472,7 @@ class CnStockCollector(BaseCollector):
             pdf_dir = save_path / "pdf"
             pdf_dir.mkdir(exist_ok=True)
 
-            for sym in symbols:
+            def process_research_symbol(sym):
                 try:
                     # Try to retrieve using report list
                     df_rep = em_rep.fetch_report_list(sym)
@@ -454,10 +503,13 @@ class CnStockCollector(BaseCollector):
                 except Exception as e:
                     logger.error(f"Failed to fetch iwencai results for {sym}: {e}")
 
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                list(executor.map(process_research_symbol, symbols))
+
         elif layer == "filings":
             cninfo = CninfoAnnouncementsAdapter(self.config)
 
-            for sym in symbols:
+            def process_filings_symbol(sym):
                 try:
                     df_fil = cninfo.fetch_announcements(sym)
                     if not df_fil.empty:
@@ -465,6 +517,9 @@ class CnStockCollector(BaseCollector):
                         logger.info(f"Saved cninfo filings list for {sym}")
                 except Exception as e:
                     logger.error(f"Failed to fetch cninfo filings for {sym}: {e}")
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                list(executor.map(process_filings_symbol, symbols))
 
         else:
             raise ValueError(f"Unknown hierarchical layer: {layer}")
@@ -494,7 +549,7 @@ class CnStockNormalize(BaseNormalize):
                     df = df.rename(columns={col: "date"})
                     break
         
-        df["date"] = pd.to_datetime(df["date"])
+        df["date"] = pd.to_datetime(df["date"], format="mixed")
         df = df.sort_values("date").drop_duplicates("date")
         
         # Parse numeric columns
@@ -596,6 +651,7 @@ class Run(BaseRun):
         symbol: str = "SH600519",
         save_dir: str = "./data/cn_stock/hierarchical",
         limit_nums: int = None,
+        start_date: str = None
     ):
         """Download layer-specific data (signals, capital, fundamentals, news, research, filings, market)."""
         collector = CnStockCollector(
@@ -604,7 +660,8 @@ class Run(BaseRun):
             source=self.source,
             config_path=self.config_path,
         )
-        collector.download_layer(layer=layer, symbol=symbol, save_dir=save_dir)
+        sd = pd.Timestamp(start_date) if start_date else None
+        collector.download_layer(layer=layer, symbol=symbol, save_dir=save_dir, start_date=sd)
 
 
 if __name__ == "__main__":

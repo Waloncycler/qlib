@@ -12,6 +12,7 @@ from adapters.base import (
     to_qlib_symbol,
     UA,
     get_mootdx_client,
+    resilient_request,
 )
 
 logger = logging.getLogger("CN_Stock_Adapters_Fundamentals")
@@ -112,7 +113,7 @@ class EastmoneyStockInfoAdapter(BaseSourceAdapter):
         }
         headers = {"User-Agent": UA}
         try:
-            r = requests.get(url, params=params, headers=headers, timeout=10)
+            r = resilient_request("get", url, params=params, headers=headers)
             d = r.json().get("data", {})
             if d:
                 return {
@@ -164,7 +165,7 @@ class SinaFinancialReportAdapter(BaseSourceAdapter):
         }
         headers = {"User-Agent": UA}
         try:
-            r = requests.get(url, params=params, headers=headers, timeout=15)
+            r = resilient_request("get", url, params=params, headers=headers)
             d = r.json()
             data = d.get("result", {}).get("data", {})
             report_list = data.get("report_list", {})

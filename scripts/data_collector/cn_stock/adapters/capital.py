@@ -11,6 +11,7 @@ from adapters.base import (
     eastmoney_datacenter,
     to_qlib_symbol,
     UA,
+    resilient_request,
 )
 
 logger = logging.getLogger("CN_Stock_Adapters_Capital")
@@ -232,7 +233,7 @@ class StockFundFlow120dAdapter(BaseSourceAdapter):
             "Origin": "https://quote.eastmoney.com",
         }
         try:
-            r = requests.get(url, params=params, headers=headers, timeout=15)
+            r = resilient_request("get", url, params=params, headers=headers)
             d = r.json()
             klines = d.get("data", {}).get("klines", [])
             rows = []

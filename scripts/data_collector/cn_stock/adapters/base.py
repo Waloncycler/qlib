@@ -55,6 +55,64 @@ def to_tencent_symbol(symbol: str) -> str:
     return f"{prefix}{code}"
 
 
+def resilient_request(
+    method: str,
+    url: str,
+    max_retries: int = 3,
+    backoff_base: float = 1.5,
+    timeout: int = 15,
+    **kwargs,
+) -> requests.Response:
+    """Unified HTTP request with exponential backoff retry.
+
+    Automatically retries on ConnectionError, Timeout, SSLError,
+    and RemoteDisconnected errors.
+
+    Args:
+        method: HTTP method ('get' or 'post').
+        max_retries: Maximum number of retry attempts.
+        backoff_base: Base for exponential backoff (seconds).
+        timeout: Request timeout in seconds.
+        **kwargs: Passed directly to requests.request().
+
+    Returns:
+        requests.Response object.
+
+    Raises:
+        requests.RequestException: If all retries are exhausted.
+    """
+    import time
+    from requests.exceptions import ConnectionError, Timeout, ChunkedEncodingError
+
+    kwargs.setdefault("timeout", timeout)
+    if "headers" not in kwargs:
+        kwargs["headers"] = {"User-Agent": UA}
+
+    last_exc = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            resp = requests.request(method, url, **kwargs)
+            return resp
+        except (ConnectionError, Timeout, ChunkedEncodingError, OSError) as e:
+            last_exc = e
+            if attempt < max_retries:
+                wait = backoff_base ** attempt
+                logger.warning(
+                    f"Request to {url} failed (attempt {attempt}/{max_retries}): {e}. "
+                    f"Retrying in {wait:.1f}s..."
+                )
+                time.sleep(wait)
+            else:
+                logger.error(
+                    f"Request to {url} failed after {max_retries} attempts: {e}"
+                )
+        except Exception as e:
+            # Non-retryable errors (e.g. invalid JSON, programming errors)
+            raise
+
+    raise last_exc
+
+
 def eastmoney_datacenter(
     report_name: str,
     columns: str = "ALL",
@@ -76,7 +134,7 @@ def eastmoney_datacenter(
         "client": "WEB",
     }
     try:
-        r = requests.get(DATACENTER_URL, params=params, headers={"User-Agent": UA}, timeout=15)
+        r = resilient_request("get", DATACENTER_URL, params=params, headers={"User-Agent": UA})
         d = r.json()
         if d.get("result") and d["result"].get("data"):
             return d["result"]["data"]

@@ -43,8 +43,8 @@ def run_backfill():
         if not existing_df.empty and "date" in existing_df.columns:
             last_date = existing_df["date"].max()
             logger.info(f"Found existing CSV with last date: {last_date}")
-            START_DATE = (pd.to_datetime(last_date) + timedelta(days=1)).strftime("%Y-%m-%d")
-            logger.info(f"Changing START_DATE to {START_DATE} for incremental update.")
+            START_DATE = (pd.to_datetime(last_date) - timedelta(days=15)).strftime("%Y-%m-%d")
+            logger.info(f"Changing START_DATE to {START_DATE} to backfill/overwrite the last 15 days.")
 
     # ── Step 1: 获取上证指数日线作为交易日骨架 ──────────────────────────────
     logger.info("Step 1/3: Fetching SH Composite Index daily data...")
@@ -256,8 +256,10 @@ def run_backfill():
     if rows:
         df_out = pd.DataFrame(rows)
         if existing_df is not None and not existing_df.empty:
+            existing_df = existing_df[~existing_df["date"].isin(df_out["date"])]
             df_out = pd.concat([existing_df, df_out], ignore_index=True)
-            logger.info(f"Appended {len(rows)} new rows.")
+            df_out = df_out.sort_values("date").reset_index(drop=True)
+            logger.info(f"Merged and updated overlapping dates.")
         df_out.to_csv(csv_path, index=False)
         logger.info(f"✓ Saved {len(df_out)} rows → {csv_path}")
         logger.info(f"\nDate range: {df_out['date'].iloc[0]} ~ {df_out['date'].iloc[-1]}")

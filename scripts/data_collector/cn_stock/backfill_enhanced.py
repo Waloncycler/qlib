@@ -35,7 +35,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("EnhancedBackfill")
 
 # ─── 配置 ───────────────────────────────────────────────────────────────────
-START_DATE = "2022-01-01"   
+START_DATE = "2026-05-25"   
 TOTAL_STOCKS = 5350          
 # ────────────────────────────────────────────────────────────────────────────
 

@@ -1,0 +1,14 @@
+# 默认跟踪的静态股票列表
+static_symbols:
+  - SH600519  # 贵州茅台
+  - SZ000001  # 平安银行
+  - SZ300750  # 宁德时代
+
+# 自动追加多维度热门股（全部启用）
+auto_hot_stocks: true
+hot_stock_sources:
+  dragon_tiger_top_n: 10     # 龙虎榜净买前 N
+  limit_up_leaders: true      # 当日涨停板龙头（连板最高 + 首板最强）
+  northbound_top_n: 5         # 北向资金净买前 N
+  industry_leaders_top_n: 5   # 当日领涨行业板块龙头
+  broken_limit_up: true       # 炸板股（高关注度）

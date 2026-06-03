@@ -15,6 +15,7 @@ from adapters.base import (
     to_tencent_symbol,
     UA,
     get_mootdx_client,
+    resilient_request,
 )
 
 logger = logging.getLogger("CN_Stock_Adapters_Market")
@@ -152,10 +153,10 @@ class TencentSinaAdapter(BaseSourceAdapter):
             "symbol": tencent_code,
             "scale": 240 if interval == "1d" else 1,
             "ma": 5,
-            "datalen": 1023,
+            "datalen": 2000,
         }
         try:
-            res = requests.get(url, params=params, headers={"User-Agent": UA}, timeout=10)
+            res = resilient_request("get", url, params=params, headers={"User-Agent": UA})
             if res.status_code == 200:
                 data = res.json()
                 if isinstance(data, list) and data:
@@ -169,8 +170,11 @@ class TencentSinaAdapter(BaseSourceAdapter):
                     df["factor"] = 1.0
                     df["symbol"] = to_qlib_symbol(symbol)
                     df["date"] = pd.to_datetime(df["date"])
+                    df = df.sort_values("date").reset_index(drop=True)
+                    df["ma5"] = df["close"].rolling(5).mean()
+                    df["ma20"] = df["close"].rolling(20).mean()
                     df = df[(df["date"] >= start_datetime) & (df["date"] <= end_datetime)]
-                    return df[["date", "open", "high", "low", "close", "volume", "factor", "symbol"]]
+                    return df[["date", "open", "high", "low", "close", "volume", "factor", "symbol", "ma5", "ma20"]]
         except Exception as e:
             logger.error(f"Sina KLine failed for {symbol}: {e}")
         return pd.DataFrame()
@@ -255,10 +259,14 @@ class BaiduKlineAdapter(BaseSourceAdapter):
             "Referer": "https://gushitong.baidu.com/",
         }
         try:
-            r = requests.get(url, params=params, headers=headers, timeout=10)
+            r = resilient_request("get", url, params=params, headers=headers)
             d = r.json()
             result = d.get("Result", {})
-            md = result.get("newMarketData", {})
+            if isinstance(result, list):
+                if not result:
+                    return pd.DataFrame()
+                result = result[0]
+            md = result.get("newMarketData", {}) if isinstance(result, dict) else {}
             keys = md.get("keys", [])
             rows_str = md.get("marketData", "").split(";")
             
@@ -317,7 +325,7 @@ class EastmoneyAdapter(BaseSourceAdapter):
             "fields": "f12",
         }
         try:
-            res = requests.get(url, params=params, timeout=10)
+            res = resilient_request("get", url, params=params)
             if res.status_code == 200:
                 data = res.json()
                 diff = data.get("data", {}).get("diff", [])
@@ -350,7 +358,7 @@ class EastmoneyAdapter(BaseSourceAdapter):
             "fields": "f2,f3,f6,f8,f12,f14,f22",
         }
         try:
-            res = requests.get(url, params=params, timeout=10)
+            res = resilient_request("get", url, params=params)
             if res.status_code == 200:
                 data = res.json()
                 diff = data.get("data", {}).get("diff", [])

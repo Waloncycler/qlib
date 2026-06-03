@@ -9,6 +9,7 @@ from adapters.base import (
     to_ts_code,
     to_tencent_symbol,
     eastmoney_datacenter,
+    resilient_request,
 )
 
 from adapters.market import (

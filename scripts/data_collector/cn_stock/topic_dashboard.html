@@ -146,6 +146,37 @@
         .loader { border: 3px solid rgba(255,255,255,0.1); border-radius: 50%; border-top: 3px solid var(--accent-color); width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
+        .leaderboard-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .leaderboard-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+        .leaderboard-card.selected {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
+        }
+        .leaderboard-card.selected span {
+            color: var(--accent-color) !important;
+        }
+        
+        .highlighted-row {
+            background: rgba(56, 189, 248, 0.08) !important;
+        }
+        .highlighted-row td.col-stock {
+            color: var(--accent-color) !important;
+        }
+
     </style>
 </head>
 <body>
@@ -254,8 +285,9 @@
                             </div>
                             <div v-else style="display: flex; flex-wrap: wrap; gap: 10px;">
                                 <div v-for="stock in activeStocksLeaderboard" :key="stock.name" 
-                                     style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 12px; transition: background 0.2s;"
-                                     onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                                     class="leaderboard-card"
+                                     :class="{ selected: selectedStock === stock.name }"
+                                     @click="toggleStockSelection(stock.name)">
                                     <span style="font-weight: 600; color: #e2e8f0; font-size: 14px;">{{ stock.name }}</span>
                                     <div style="display: flex; gap: 6px; font-size: 12px; font-weight: 500;">
                                         <span v-if="stock.up > 0" style="color: #ef4444; background: rgba(239, 68, 68, 0.15); padding: 2px 6px; border-radius: 4px;">{{ stock.up }} 涨停</span>
@@ -282,7 +314,10 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr v-for="(row, index) in selectedTopic.rows" :key="index">
+                                    <tr v-for="(row, index) in selectedTopic.rows" :key="index"
+                                        :class="{ 'highlighted-row': selectedStock === row['个股'] }"
+                                        @click="toggleStockSelection(row['个股'])"
+                                        style="cursor: pointer;">
                                         <td class="col-category">
                                             {{ row['一级大类'] }}
                                             <div v-if="row['二级小类']" style="font-size: 11px; opacity: 0.6; margin-top: 2px;">{{ row['二级小类'] }}</div>
@@ -307,26 +342,75 @@
     </div>
 
     <script>
+        // Programmatically unregister any service worker for this origin to prevent interception issues (like sw.js:14 TypeError)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                if (registrations.length > 0) {
+                    for (let registration of registrations) {
+                        registration.unregister();
+                    }
+                    console.log('Stale service worker unregistered. Reloading to apply changes...');
+                    window.location.reload();
+                }
+            });
+        }
+
         const { createApp, ref, shallowRef, computed, onMounted, watch, nextTick } = Vue;
+        const API_BASE = window.location.origin.startsWith('http') ? window.location.origin : 'http://localhost:8000';
+
+        function resolveDataUrl(layer, filename) {
+            if (window.location.origin.startsWith('http')) {
+                return `/data/cn_stock/hierarchical/${layer}/${filename}`;
+            } else {
+                return `http://localhost:8000/api/data/${layer}/${filename}`;
+            }
+        }
 
         createApp({
             setup() {
                 const topics = ref([]);
                 const klines = ref({});
+                const signalMap = ref({});
                 const loading = ref(true);
                 const error = ref(null);
                 const searchQuery = ref('');
                 const selectedTopic = ref(null);
+                const selectedStock = ref(null);
                 const leaderboardDays = ref(0);
                 const customDays = ref(null);
                 const visibleRange = ref({ start: 0, end: 99999 });
                 let chartInstance = null;
 
+                const toggleStockSelection = (stockName) => {
+                    if (selectedStock.value === stockName) {
+                        selectedStock.value = null;
+                    } else {
+                        selectedStock.value = stockName;
+                    }
+                };
+
+                const parseCSV = (text) => {
+                    if (!text) return [];
+                    const lines = text.trim().split('\n');
+                    if (lines.length < 2) return [];
+                    const headers = lines[0].split(',').map(h => h.trim());
+                    const result = [];
+                    for (let i = 1; i < lines.length; i++) {
+                        if (!lines[i].trim()) continue;
+                        const values = lines[i].split(',');
+                        const obj = {};
+                        headers.forEach((h, j) => obj[h] = values[j] ? values[j].trim() : null);
+                        result.push(obj);
+                    }
+                    return result;
+                };
+
                 const loadData = async () => {
                     try {
-                        const [topicRes, klineRes] = await Promise.all([
-                            fetch('/data/cn_stock/hierarchical/signals/zizizaizai_topics.json'),
-                            fetch('/data/cn_stock/hierarchical/signals/zizizaizai_klines.json').catch(() => null)
+                        const [topicRes, klineRes, sentRes] = await Promise.all([
+                            fetch(resolveDataUrl('signals', 'zizizaizai_topics.json')),
+                            fetch(resolveDataUrl('signals', 'zizizaizai_klines.json')).catch(() => null),
+                            fetch(resolveDataUrl('signals', 'market_sentiment.csv')).catch(() => null)
                         ]);
                         
                         if (!topicRes.ok) throw new Error(`HTTP error! status: ${topicRes.status}`);
@@ -334,6 +418,26 @@
                         const data = await topicRes.json();
                         if (klineRes && klineRes.ok) {
                             klines.value = await klineRes.json();
+                        }
+                        if (sentRes && sentRes.ok) {
+                            const text = await sentRes.text();
+                            const sentData = parseCSV(text);
+                            const tempMap = {};
+                            sentData.forEach(row => {
+                                const dateStr = row.date;
+                                const sentiment = parseFloat(row.sentiment_score);
+                                const uplimit = row.uplimit_num ? parseFloat(row.uplimit_num) : NaN;
+                                const tiandi = row.tiandi_num ? parseFloat(row.tiandi_num) : NaN;
+                                
+                                let isBull = false;
+                                if (isNaN(uplimit) || isNaN(tiandi)) {
+                                    isBull = (sentiment >= 55.0);
+                                } else {
+                                    isBull = (sentiment >= 55.0 && uplimit >= 40 && tiandi <= 2);
+                                }
+                                tempMap[dateStr] = isBull ? 1.0 : 0.0;
+                            });
+                            signalMap.value = tempMap;
                         }
                         
                         topics.value = data.sort((a, b) => {
@@ -403,28 +507,80 @@
                     // Instead of markPoints which might overlap terribly, we use scatter plots with labels above/below candles.
                     const upScatterData = [];
                     const downScatterData = [];
-                    const gt5ScatterData = [];
+                    const hasSelectedStock = !!selectedStock.value;
 
                     kdata.forEach((d, idx) => {
                         try {
                             // Extract up limits
                             let ups = JSON.parse(d.up_limit_stocks || "[]");
-                            let upText = ups.map(u => `[${u.time}] ${u.name}`).join('\n');
-                            if (upText) {
-                                upScatterData.push({
-                                    value: [idx, d.high, upText],
-                                    symbolOffset: [0, -15] // move above the wick
-                                });
+                            if (hasSelectedStock) {
+                                let selectedUp = ups.find(u => u.name === selectedStock.value);
+                                if (selectedUp) {
+                                    let upText = `🔥 [${selectedUp.time}] ${selectedUp.name} 🔥`;
+                                    upScatterData.push({
+                                        value: [idx, d.high, upText],
+                                        symbolOffset: [0, -15],
+                                        label: {
+                                            show: true,
+                                            position: 'top',
+                                            formatter: function(p) { return p.value[2]; },
+                                            backgroundColor: '#ea580c', // Bright orange for selected up limit
+                                            borderColor: '#fef08a',
+                                            borderWidth: 1.5,
+                                            fontSize: 11,
+                                            fontWeight: 'bold',
+                                            color: '#fff',
+                                            shadowColor: '#ea580c',
+                                            shadowBlur: 10,
+                                            padding: [4, 6],
+                                            borderRadius: 3
+                                        }
+                                    });
+                                }
+                            } else {
+                                let upText = ups.map(u => `[${u.time}] ${u.name}`).join('\n');
+                                if (upText) {
+                                    upScatterData.push({
+                                        value: [idx, d.high, upText],
+                                        symbolOffset: [0, -15]
+                                    });
+                                }
                             }
                             
                             // Extract down limits
                             let downs = JSON.parse(d.down_limit_stocks || "[]");
-                            let downText = downs.map(u => `[${u.time}] ${u.name}`).join('\n');
-                            if (downText) {
-                                downScatterData.push({
-                                    value: [idx, d.low, downText],
-                                    symbolOffset: [0, 15] // move below the wick
-                                });
+                            if (hasSelectedStock) {
+                                let selectedDown = downs.find(u => u.name === selectedStock.value);
+                                if (selectedDown) {
+                                    let downText = `❄ [${selectedDown.time}] ${selectedDown.name} ❄`;
+                                    downScatterData.push({
+                                        value: [idx, d.low, downText],
+                                        symbolOffset: [0, 15],
+                                        label: {
+                                            show: true,
+                                            position: 'bottom',
+                                            formatter: function(p) { return p.value[2]; },
+                                            backgroundColor: '#059669', // Emerald green for selected down limit
+                                            borderColor: '#a7f3d0',
+                                            borderWidth: 1.5,
+                                            fontSize: 11,
+                                            fontWeight: 'bold',
+                                            color: '#fff',
+                                            shadowColor: '#059669',
+                                            shadowBlur: 10,
+                                            padding: [4, 6],
+                                            borderRadius: 3
+                                        }
+                                    });
+                                }
+                            } else {
+                                let downText = downs.map(u => `[${u.time}] ${u.name}`).join('\n');
+                                if (downText) {
+                                    downScatterData.push({
+                                        value: [idx, d.low, downText],
+                                        symbolOffset: [0, 15]
+                                    });
+                                }
                             }
                         } catch(e) {}
                     });
@@ -433,28 +589,50 @@
                         backgroundColor: 'transparent',
                         tooltip: { 
                             trigger: 'axis',
-                            axisPointer: { type: 'cross' }
+                            axisPointer: { type: 'cross' },
+                            formatter: function(params) {
+                                let res = params[0].name + '<br/>';
+                                params.forEach(p => {
+                                    if (p.seriesName.includes('Topic Index') || p.seriesName.includes('题材指数')) {
+                                        res += p.marker + '开盘: ' + p.value[1] + ' 收盘: ' + p.value[2] + ' 最低: ' + p.value[3] + ' 最高: ' + p.value[4] + '<br/>';
+                                    } else if (p.seriesName === 'VIP择时信号') {
+                                        let sigText = p.value === 1.0 ? '<span style="color:#38bdf8;font-weight:bold;">BULL 看多</span>' : '<span style="color:#94a3b8;">BEAR 看空/轻仓</span>';
+                                        res += p.marker + p.seriesName + ': ' + sigText + '<br/>';
+                                    } else if (p.seriesName.includes('Limit') || p.seriesName.includes('涨停') || p.seriesName.includes('跌停')) {
+                                        if (p.value && p.value[2]) {
+                                            res += p.marker + p.seriesName + ': ' + p.value[2].replace(/\n/g, ', ') + '<br/>';
+                                        }
+                                    } else {
+                                        res += p.marker + p.seriesName + ': ' + p.value + '<br/>';
+                                    }
+                                });
+                                return res;
+                            }
                         },
                         legend: {
                             show: true,
                             data: [
                                 { name: 'Topic Index (题材指数)' },
                                 { name: 'Limit Up (涨停)', itemStyle: { color: '#ef4444' } },
-                                { name: 'Limit Down (跌停)', itemStyle: { color: '#10b981' } }
+                                { name: 'Limit Down (跌停)', itemStyle: { color: '#10b981' } },
+                                { name: 'VIP择时信号', itemStyle: { color: '#38bdf8' } }
                             ],
                             textStyle: { color: '#94a3b8' },
                             top: 0
                         },
                         grid: { left: '3%', right: '3%', bottom: '15%', top: '10%', containLabel: true },
                         xAxis: { type: 'category', data: dates, axisLine: { lineStyle: { color: '#334155' } }, axisLabel: { color: '#64748b' } },
-                        yAxis: { 
-                            type: 'value', 
-                            scale: true, 
-                            splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }, 
-                            axisLabel: { color: '#64748b' },
-                            max: function (value) { return value.max + (value.max - value.min) * 0.2; },
-                            min: function (value) { return value.min - (value.max - value.min) * 0.2; }
-                        },
+                        yAxis: [
+                            { 
+                                type: 'value', 
+                                scale: true, 
+                                splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }, 
+                                axisLabel: { color: '#64748b' },
+                                max: function (value) { return value.max + (value.max - value.min) * 0.2; },
+                                min: function (value) { return value.min - (value.max - value.min) * 0.2; }
+                            },
+                            { type: 'value', min: 0, max: 6, show: false, splitLine: { show: false } }
+                        ],
                         dataZoom: [{ type: 'inside', start: 60, end: 100 }, { type: 'slider', show: true, bottom: 0, textStyle: { color: '#64748b' } }],
                         series: [
                             {
@@ -505,6 +683,25 @@
                                     lineHeight: 14
                                 },
                                 z: 10
+                            },
+                            {
+                                name: 'VIP择时信号',
+                                type: 'line',
+                                step: 'start',
+                                yAxisIndex: 1,
+                                data: dates.map(date => {
+                                    const dStr = date.split(' ')[0];
+                                    return signalMap.value[dStr] !== undefined ? signalMap.value[dStr] : 0.0;
+                                }),
+                                lineStyle: { width: 0 },
+                                areaStyle: {
+                                    opacity: 0.15,
+                                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                        { offset: 0, color: '#38bdf8' },
+                                        { offset: 1, color: 'transparent' }
+                                    ])
+                                },
+                                symbol: 'none'
                             }
                         ]
                     };
@@ -564,12 +761,18 @@
                 };
 
                 watch(selectedTopic, () => {
+                    selectedStock.value = null;
                     nextTick(() => {
                         renderChart();
                     });
                 });
 
+                watch(selectedStock, () => {
+                    renderChart();
+                });
+
                 const selectTopic = (topic) => {
+                    selectedStock.value = null;
                     selectedTopic.value = topic;
                 };
 
@@ -652,9 +855,12 @@
                     error,
                     searchQuery,
                     selectedTopic,
+                    selectedStock,
+                    toggleStockSelection,
                     leaderboardDays,
                     customDays,
                     visibleRange,
+                    signalMap,
                     setCustomDays,
                     applyCustomDays,
                     filteredTopics,

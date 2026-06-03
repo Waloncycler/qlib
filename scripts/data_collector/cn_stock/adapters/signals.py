@@ -14,6 +14,7 @@ from adapters.base import (
     get_market_prefix,
     to_qlib_symbol,
     UA,
+    resilient_request,
 )
 
 logger = logging.getLogger("CN_Stock_Adapters_Signals")
@@ -43,7 +44,7 @@ class ThsHotReasonAdapter(BaseSourceAdapter):
         url = f"http://zx.10jqka.com.cn/event/api/getharden/date/{query_date}/orderby/date/orderway/desc/charset/GBK/"
         headers = {"User-Agent": UA}
         try:
-            r = requests.get(url, headers=headers, timeout=10)
+            r = resilient_request("get", url, headers=headers)
             data = r.json()
             if data.get("errocode", 0) != 0:
                 logger.warning(f"THS hot reasons error: {data.get('errormsg')}")
@@ -92,7 +93,7 @@ class ThsNorthboundAdapter(BaseSourceAdapter):
             "Referer": "https://data.hexin.cn/",
         }
         try:
-            r = requests.get(url, headers=headers, timeout=10)
+            r = resilient_request("get", url, headers=headers)
             d = r.json()
             times = d.get("time", [])
             hgt = d.get("hgt", [])
@@ -247,7 +248,7 @@ class EastmoneyFundFlowAdapter(BaseSourceAdapter):
             "Origin": "https://quote.eastmoney.com",
         }
         try:
-            r = requests.get(url, params=params, headers=headers, timeout=10)
+            r = resilient_request("get", url, params=params, headers=headers)
             d = r.json()
             klines = d.get("data", {}).get("klines", [])
             rows = []
@@ -478,7 +479,7 @@ class EastmoneyIndustryAdapter(BaseSourceAdapter):
         }
         headers = {"User-Agent": UA}
         try:
-            r = requests.get(url, params=params, headers=headers, timeout=15)
+            r = resilient_request("get", url, params=params, headers=headers)
             d = r.json()
             items = d.get("data", {}).get("diff", [])
             rows = []

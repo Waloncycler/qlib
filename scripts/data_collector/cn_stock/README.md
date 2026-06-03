@@ -58,3 +58,9 @@ python scripts/dump_bin.py dump_all \
     --csv_path ~/.qlib/cn_stock_data/normalize \
     --qlib_dir ~/.qlib/qlib_data/cn_data
 ```
+
+### 4. Smart Backfill with iWencai
+If there are missing sentiment or valuation data points in `market_sentiment.csv` (often the case for 2021 or older dates), use the smart backfill script. It has quota protection (max 190 queries/run) and prioritizes recent dates first:
+```bash
+python scripts/data_collector/cn_stock/backfill_iwencai_smart.py
+```

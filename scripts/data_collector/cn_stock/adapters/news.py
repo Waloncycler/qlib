@@ -13,6 +13,7 @@ from adapters.base import (
     BaseSourceAdapter,
     to_qlib_symbol,
     UA,
+    resilient_request,
 )
 
 logger = logging.getLogger("CN_Stock_Adapters_News")
@@ -60,7 +61,7 @@ class EastmoneyStockNewsAdapter(BaseSourceAdapter):
         params = {"cb": cb, "param": inner_params}
         headers = {"User-Agent": UA, "Referer": "https://so.eastmoney.com/"}
         try:
-            r = requests.get(url, params=params, headers=headers, timeout=15)
+            r = resilient_request("get", url, params=params, headers=headers)
             text = r.text
             # Extract JSON string out of jQuery callback function wrappers
             json_str = text[text.index("(") + 1 : text.rindex(")")]
@@ -106,7 +107,7 @@ class ClsTelegraphAdapter(BaseSourceAdapter):
         params = {"rn": str(page_size), "page": "1"}
         headers = {"User-Agent": UA, "Referer": "https://www.cls.cn/"}
         try:
-            r = requests.get(url, params=params, headers=headers, timeout=10)
+            r = resilient_request("get", url, params=params, headers=headers)
             d = r.json()
             items = d.get("data", {}).get("roll_data", [])
             rows = []
@@ -154,7 +155,7 @@ class EastmoneyGlobalNewsAdapter(BaseSourceAdapter):
         }
         headers = {"User-Agent": UA, "Referer": "https://kuaixun.eastmoney.com/"}
         try:
-            r = requests.get(url, params=params, headers=headers, timeout=10)
+            r = resilient_request("get", url, params=params, headers=headers)
             d = r.json()
             items = d.get("data", {}).get("fastNewsList", [])
             rows = []

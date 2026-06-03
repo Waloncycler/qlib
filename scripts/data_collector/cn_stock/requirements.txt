@@ -6,3 +6,5 @@ pandas
 tqdm
 loguru
 beautifulsoup4
+fastapi
+uvicorn
