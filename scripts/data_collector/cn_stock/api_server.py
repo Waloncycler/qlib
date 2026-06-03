@@ -118,7 +118,7 @@ def resolve_symbol(query: str):
     if query.isdigit() and len(query) == 6:
         if query.startswith("6"): return {"symbol": f"SH{query}"}
         if query.startswith("0") or query.startswith("3"): return {"symbol": f"SZ{query}"}
-        if query.startswith("4") or query.startswith("8"): return {"symbol": f"BJ{query}"}
+        if query.startswith("4") or query.startswith("8") or query.startswith("9"): return {"symbol": f"BJ{query}"}
         
     # Use Tencent Smartbox API for Chinese name or pinyin autocomplete
     try:
@@ -138,6 +138,21 @@ def resolve_symbol(query: str):
                         return {"symbol": f"{market}{code}"}
     except Exception as e:
         logger.error(f"Tencent search failed: {e}")
+        
+    # Fallback to Eastmoney Smartbox API (better for BSE and newer stocks)
+    try:
+        url = f"https://searchapi.eastmoney.com/api/suggest/get?input={query}&type=14&token=D43BF722C8E33BDC906FB84D85E326E8"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        res = requests.get(url, headers=headers, timeout=5)
+        data = res.json()
+        if "QuotationCodeTable" in data and data["QuotationCodeTable"].get("Data"):
+            first_match = data["QuotationCodeTable"]["Data"][0]
+            code = first_match["Code"]
+            if code.startswith("6"): return {"symbol": f"SH{code}"}
+            if code.startswith("0") or code.startswith("3"): return {"symbol": f"SZ{code}"}
+            if code.startswith("4") or code.startswith("8") or code.startswith("9"): return {"symbol": f"BJ{code}"}
+    except Exception as e:
+        logger.error(f"Eastmoney search failed: {e}")
         
     raise HTTPException(status_code=404, detail="Stock not found")
 

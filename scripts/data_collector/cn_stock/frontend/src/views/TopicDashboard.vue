@@ -398,7 +398,7 @@ const updateChartOption = () => {
     backgroundColor: 'transparent',
     tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
     legend: { data: [{name: 'Topic Index'}, {name: 'Limit Up', itemStyle: {color: '#ef4444'}}, {name: 'Limit Down', itemStyle: {color: '#10b981'}}], textStyle: { color: '#9ba1a6' } },
-    grid: { left: '3%', right: '3%', bottom: '15%', top: '10%', containLabel: true },
+    grid: { left: '3%', right: '3%', bottom: '15%', top: '10%' },
     xAxis: { type: 'category', data: dates, axisLine: { lineStyle: { color: '#334155' } }, axisLabel: { color: '#9ba1a6' } },
     yAxis: { type: 'value', scale: true, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }, axisLabel: { color: '#9ba1a6' } },
     dataZoom: dzConfig,

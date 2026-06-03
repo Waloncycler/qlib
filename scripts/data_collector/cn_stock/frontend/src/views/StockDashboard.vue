@@ -98,6 +98,12 @@
         </div>
       </div>
       <div class="chart-panel glass-panel">
+        <div class="chart-toggles-floating">
+          <label class="toggle-label" title="涨跌停"><input type="checkbox" v-model="chartToggles.showLimit" /> 涨跌停</label>
+          <label class="toggle-label" title="20日新高"><input type="checkbox" v-model="chartToggles.showHigh20" /> 20日新高</label>
+          <label class="toggle-label" title="异动预警"><input type="checkbox" v-model="chartToggles.showAbnormal" /> 异动预警</label>
+          <label class="toggle-label" title="异动预测线"><input type="checkbox" v-model="chartToggles.showPrediction" /> 异动预测线</label>
+        </div>
         <v-chart class="chart" :option="klineOption" autoresize />
       </div>
     </div>
@@ -229,6 +235,21 @@ const showSuccess = (msg) => {
 
 // Market Layer
 const klineOption = shallowRef({})
+let klineRawData = []
+let stockNameCache = ''
+const chartToggles = ref({
+  showLimit: true,
+  showHigh20: true,
+  showAbnormal: true,
+  showPrediction: true
+})
+
+watch(chartToggles, () => {
+  if (klineRawData.length) {
+    klineOption.value = createKlineOption(stockNameCache, klineRawData, chartToggles.value)
+  }
+}, { deep: true })
+
 const dragonTiger = ref(null)
 const lockupData = ref(null)
 
@@ -339,7 +360,9 @@ const handleSearch = async () => {
 
   const klineData = await fetchCsv('market', `${s}_tencent_sina_kline.csv`)
   if (klineData && klineData.length) {
-    klineOption.value = createKlineOption(stockName, klineData)
+    klineRawData = klineData
+    stockNameCache = stockName
+    klineOption.value = createKlineOption(stockName, klineData, chartToggles.value)
     hasData.value = true
   }
   
@@ -618,8 +641,23 @@ if (route.params.symbol) {
 .up { color: var(--danger); }
 .down { color: var(--success); }
 
-.chart-panel { padding: 16px; height: 450px; }
+.chart-panel { padding: 16px; height: 450px; position: relative; }
 .chart { width: 100%; height: 100%; }
+.chart-toggles-floating { 
+  position: absolute; 
+  top: 12px; 
+  left: 20px; 
+  display: flex; 
+  gap: 12px; 
+  z-index: 10; 
+  background: rgba(15, 23, 42, 0.7); 
+  padding: 4px 10px; 
+  border-radius: 6px; 
+  border: 1px solid rgba(255,255,255,0.05);
+  backdrop-filter: blur(4px);
+}
+.toggle-label { font-size: 0.8rem; color: #cbd5e1; display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
+.toggle-label input { accent-color: #38bdf8; cursor: pointer; margin: 0; }
 
 .markdown-body {
   max-height: 500px;
