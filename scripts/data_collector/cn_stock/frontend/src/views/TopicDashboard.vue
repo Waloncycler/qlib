@@ -19,22 +19,21 @@
     </div>
 
     <div class="layout">
-      <!-- Sidebar for topic list -->
-      <div class="topic-list glass-panel">
-        <div class="search-box">
-          <input type="text" v-model="searchQuery" placeholder="Search topics..." class="search-input" />
-          <SearchIcon class="search-icon" />
-        </div>
-        <div class="list-container">
+      <!-- Top Bar for topic list -->
+      <div class="topic-top-bar glass-panel">
+        <button class="scroll-btn" @click="scrollList(-1)" :disabled="!canScrollLeft" v-show="topicsList.length > 0">
+          <ChevronLeftIcon class="icon-small" />
+        </button>
+        <div class="list-container-horizontal" ref="listContainer" @scroll="checkScroll">
           <div 
-            v-for="topic in filteredTopics" 
+            v-for="topic in topicsList" 
             :key="topic.id"
-            class="topic-item"
+            class="topic-item-horizontal"
             :class="{ active: selectedTopic?.id === topic.id }"
             @click="selectTopic(topic)"
           >
             <div class="topic-name-row">
-              <span class="topic-name">{{ topic.name }}</span>
+              <span class="topic-name" :title="topic.name">{{ topic.name }}</span>
               <span class="stock-badge">{{ topic.rows ? topic.rows.length : 0 }} stocks</span>
             </div>
             <div class="topic-meta">
@@ -43,6 +42,9 @@
             </div>
           </div>
         </div>
+        <button class="scroll-btn" @click="scrollList(1)" :disabled="!canScrollRight" v-show="topicsList.length > 0">
+          <ChevronRightIcon class="icon-small" />
+        </button>
       </div>
 
       <!-- Main chart & table area -->
@@ -88,7 +90,12 @@
                    class="leaderboard-card"
                    :class="{'selected': selectedStock === stock.name}"
                    @click="toggleStockSelection(stock.name)">
-                <div class="lb-name">{{ stock.name }}</div>
+                <div class="lb-header">
+                  <div class="lb-name">{{ stock.name }}</div>
+                  <button class="lb-action-btn" @click.stop="goToStockExplorer(stock.name)" title="Open in Stock Data Explorer">
+                    <ExternalLinkIcon class="icon-tiny" />
+                  </button>
+                </div>
                 <div class="lb-counts">
                   <span class="lb-up" v-if="stock.up > 0">🔥 {{ stock.up }}</span>
                   <span class="lb-down" v-if="stock.down > 0">❄ {{ stock.down }}</span>
@@ -134,10 +141,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, shallowRef } from 'vue'
-import { RefreshCwIcon, AlertTriangleIcon, SearchIcon, HashIcon } from 'lucide-vue-next'
+import { ref, computed, onMounted, watch, shallowRef, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
+import { RefreshCwIcon, AlertTriangleIcon, HashIcon, ExternalLinkIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-vue-next'
 import { useDataLoader } from '../composables/useDataLoader'
 
+const router = useRouter()
 const { loading, error, fetchTopics, triggerBackendRefresh, checkRefreshStatus } = useDataLoader()
 
 const backendUpdating = ref(false)
@@ -168,13 +177,36 @@ const pollStatus = () => {
 
 const topicsList = ref([])
 const klinesMap = shallowRef({})
-const searchQuery = ref('')
 const selectedTopic = ref(null)
 const selectedStock = ref(null)
 const topicKlineOption = shallowRef({})
 
-const leaderboardDays = ref(0)
-const customDays = ref(null)
+const listContainer = ref(null)
+const canScrollLeft = ref(false)
+const canScrollRight = ref(true)
+
+const checkScroll = () => {
+  if (!listContainer.value) return
+  const el = listContainer.value
+  canScrollLeft.value = el.scrollLeft > 0
+  canScrollRight.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 1
+}
+
+const scrollList = (direction) => {
+  if (!listContainer.value) return
+  const scrollAmount = 350 // pixels to scroll per click
+  listContainer.value.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' })
+  setTimeout(checkScroll, 400)
+}
+
+watch(topicsList, () => {
+  nextTick(() => {
+    checkScroll()
+  })
+})
+
+const leaderboardDays = ref(90)
+const customDays = ref(90)
 const zoomStartValue = ref(null)
 const zoomEndValue = ref(null)
 
@@ -222,21 +254,6 @@ watch(customDays, (val) => {
   }
 })
 
-const filteredTopics = computed(() => {
-  if (!searchQuery.value) return topicsList.value
-  const query = searchQuery.value.toLowerCase()
-  return topicsList.value.filter(t => {
-    if (t.name.toLowerCase().includes(query)) return true
-    if (t.rows && Array.isArray(t.rows)) {
-      return t.rows.some(row => 
-        (row['个股'] && row['个股'].toLowerCase().includes(query)) ||
-        (row['一级大类'] && row['一级大类'].toLowerCase().includes(query))
-      )
-    }
-    return false
-  })
-})
-
 const activeStocksLeaderboard = ref([])
 
 const toggleStockSelection = (stockName) => {
@@ -281,14 +298,18 @@ const buildLeaderboard = () => {
     .slice(0, 20) // show top 20
 }
 
+const goToStockExplorer = (stockName) => {
+  router.push({ name: 'Stock', params: { symbol: stockName } })
+}
+
 const selectTopic = (topic) => {
   selectedTopic.value = topic
   selectedStock.value = null
   zoomStartValue.value = null
   zoomEndValue.value = null
   if (leaderboardDays.value === -1) {
-    leaderboardDays.value = 0
-    customDays.value = null
+    leaderboardDays.value = 90
+    customDays.value = 90
   }
   buildLeaderboard()
   updateChartOption()
@@ -427,20 +448,26 @@ onMounted(() => {
 .icon.spin { animation: spin 1s linear infinite; }
 @keyframes spin { 100% { transform: rotate(360deg); } }
 
-.layout { display: flex; gap: 16px; flex: 1; min-height: 0; overflow: hidden; }
-.topic-list { width: 320px; display: flex; flex-direction: column; overflow: hidden; }
-.search-box { padding: 16px; position: relative; border-bottom: 1px solid rgba(255,255,255,0.05); }
-.search-input { width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 10px 12px 10px 36px; border-radius: 6px; outline: none; }
-.search-icon { position: absolute; left: 26px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); width: 16px; height: 16px; }
-.list-container { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
-.topic-item { padding: 12px; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
-.topic-item:hover { background: rgba(255,255,255,0.05); }
-.topic-item.active { background: rgba(59, 130, 246, 0.2); border-left: 3px solid var(--accent-color); }
-.topic-name-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
-.topic-name { font-weight: 600; font-size: 0.95rem; }
-.stock-badge { font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; }
+.layout { display: flex; flex-direction: column; gap: 16px; flex: 1; min-height: 0; overflow: hidden; }
+.topic-top-bar { display: flex; align-items: center; padding: 12px 16px; gap: 12px; overflow: hidden; flex-shrink: 0; border-radius: 12px; }
+
+.scroll-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-secondary); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
+.scroll-btn:hover:not(:disabled) { background: rgba(59, 130, 246, 0.15); color: var(--accent-color); border-color: rgba(59, 130, 246, 0.3); }
+.scroll-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.icon-small { width: 18px; height: 18px; }
+
+.list-container-horizontal { flex: 1; display: flex; overflow-x: auto; gap: 10px; padding-bottom: 4px; align-items: center; scrollbar-width: none; scroll-behavior: smooth; }
+.list-container-horizontal::-webkit-scrollbar { display: none; }
+
+.topic-item-horizontal { display: flex; flex-direction: column; padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s; min-width: 160px; max-width: 220px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; }
+.topic-item-horizontal:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.15); transform: translateY(-1px); }
+.topic-item-horizontal.active { background: rgba(59, 130, 246, 0.15); border-color: var(--accent-color); box-shadow: 0 0 10px rgba(59, 130, 246, 0.1); }
+
+.topic-name-row { display: flex; justify-content: space-between; margin-bottom: 6px; align-items: center; gap: 8px; }
+.topic-name { font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stock-badge { font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; flex-shrink: 0; }
 .topic-meta { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-secondary); }
-.top-badge { color: var(--danger); font-weight: bold; background: rgba(239, 68, 68, 0.1); padding: 0 4px; border-radius: 4px; }
+.top-badge { color: var(--danger); font-weight: bold; background: rgba(239, 68, 68, 0.1); padding: 0 6px; border-radius: 4px; margin-left: auto; }
 
 .main-content { flex: 1; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; padding-right: 8px; }
 .main-header { padding: 20px; }
@@ -461,12 +488,16 @@ onMounted(() => {
 .filter-btn { background: rgba(255,255,255,0.1); color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.85rem; cursor: pointer; }
 .filter-btn.active { background: var(--accent-color); }
 
-.leaderboard-grid { display: flex; flex-wrap: wrap; gap: 12px; }
-.leaderboard-card { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); padding: 12px 16px; border-radius: 8px; cursor: pointer; transition: all 0.2s; min-width: 120px; }
-.leaderboard-card:hover { border-color: rgba(255,255,255,0.2); }
-.leaderboard-card.selected { border-color: var(--accent-color); background: rgba(59, 130, 246, 0.1); }
-.lb-name { font-weight: 600; margin-bottom: 4px; }
-.lb-counts { display: flex; gap: 8px; font-size: 0.9rem; font-weight: bold; }
+.leaderboard-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.leaderboard-card { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s; min-width: 100px; display: flex; flex-direction: column; gap: 2px; }
+.leaderboard-card:hover { border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); }
+.leaderboard-card.selected { border-color: var(--accent-color); background: rgba(59, 130, 246, 0.15); }
+.lb-header { display: flex; justify-content: space-between; align-items: center; }
+.lb-name { font-weight: 600; font-size: 0.9rem; }
+.lb-action-btn { background: transparent; color: var(--text-secondary); border: none; cursor: pointer; padding: 2px; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: all 0.2s; margin-left: 8px; }
+.lb-action-btn:hover { color: var(--accent-color); background: rgba(255,255,255,0.1); }
+.icon-tiny { width: 13px; height: 13px; }
+.lb-counts { display: flex; gap: 6px; font-size: 0.8rem; font-weight: bold; }
 .lb-up { color: var(--danger); }
 .lb-down { color: var(--success); }
 

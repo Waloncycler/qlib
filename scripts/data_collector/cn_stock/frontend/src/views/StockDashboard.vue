@@ -29,10 +29,11 @@
           v-if="hasData"
           @click="runYmosAudit" 
           class="btn-ymos"
-          :disabled="isAuditing"
+          :disabled="isAuditing || isBackgroundFetching"
+          :title="isBackgroundFetching ? 'Waiting for background data sync...' : ''"
         >
           <i class="fa-solid fa-microchip mr-2" :class="{'fa-spin': isAuditing}"></i> 
-          {{ isAuditing ? 'Auditing...' : 'Run Deep Risk Audit' }}
+          {{ isAuditing ? 'Auditing...' : (isBackgroundFetching ? 'Syncing Data...' : 'Run Deep Risk Audit') }}
         </button>
       </div>
     </header>
@@ -208,6 +209,7 @@ const symbol = ref(route.params.symbol || 'SH600519')
 const successMsg = ref('')
 const hasData = ref(false)
 const activeTab = ref('market')
+const isBackgroundFetching = ref(false)
 const { createKlineOption, createLineOption, createBarOption } = useChartFactory()
 
 let toastTimer = null
@@ -342,6 +344,7 @@ const handleSearch = async () => {
   }
   
   // 2. LAZY LOAD the rest of the layers in the background
+  isBackgroundFetching.value = true
   Promise.all([
     triggerRealtimeFetch(s, 'signals'),
     triggerRealtimeFetch(s, 'capital'),
@@ -396,6 +399,8 @@ const handleSearch = async () => {
     if (emNews && emNews.length) eastmoneyNews.value = emNews
   }).catch(err => {
     console.error("Error fetching background layers", err)
+  }).finally(() => {
+    isBackgroundFetching.value = false
   })
 }
 

@@ -28,3 +28,11 @@
 - [timing_strategy.py](file:///Users/walox/qlib/timing_strategy.py): 择时增强策略
 - [examples/](file:///Users/walox/qlib/examples): Qlib 官方示例
 - [docs/](file:///Users/walox/qlib/docs): 文档（含上游 Qlib README 备份）
+
+## ⚠️ CRITICAL RULES FOR LLMs / AGENTS (环境与运行规范)
+1. **执行环境 (Virtual Environment)**: 
+   绝对不要使用全局的 `python` 或 `python3` 命令来运行项目代码。本项目的所有依赖均安装在项目根目录下的 `.venv` 虚拟环境中。
+2. **启动项目 (Startup)**: 
+   启动后端和前端服务时，**必须且只能使用项目根目录下的 `./start.sh` 脚本**。该脚本已经处理了虚拟环境路径和环境变量加载。
+3. **执行独立脚本 (Running Scripts)**: 
+   如果需要单独运行某个 python 脚本或安装依赖，必须显式调用虚拟环境下的解释器（例如：`.venv/bin/python scripts/.../xxx.py` 或 `.venv/bin/pip install xxx`）。

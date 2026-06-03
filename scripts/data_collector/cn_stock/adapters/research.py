@@ -186,7 +186,8 @@ class IwencaiAdapter(BaseSourceAdapter):
             "size": size,
         }
         try:
-            r = requests.post(f"{self.base_url}/v1/comprehensive/search", json=payload, headers=headers, timeout=30)
+            from adapters.base import resilient_request
+            r = resilient_request("post", f"{self.base_url}/v1/comprehensive/search", json=payload, headers=headers, timeout=30, max_retries=3)
             if r.status_code == 200:
                 data = r.json()
                 if data.get("status_code") == 0:
@@ -223,7 +224,8 @@ class IwencaiAdapter(BaseSourceAdapter):
             "expand_index": "true",
         }
         try:
-            r = requests.post(f"{self.base_url}/v1/query2data", json=payload, headers=headers, timeout=30)
+            from adapters.base import resilient_request
+            r = resilient_request("post", f"{self.base_url}/v1/query2data", json=payload, headers=headers, timeout=30, max_retries=3)
             if r.status_code == 200:
                 data = r.json()
                 if data.get("status_code") == 0:
