@@ -55,3 +55,20 @@ tags
 # User custom ignores
 data/
 *.json
+
+# Runtime logs & temp files
+api_server.log
+scratch_*.py
+patch_*.py
+temp_*
+
+# Python environment
+.venv/
+uv.lock
+
+# Frontend build artifacts
+**/node_modules/
+**/dist/
+
+# Secret credentials
+secret.yaml

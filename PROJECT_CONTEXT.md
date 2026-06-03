@@ -1,34 +1,30 @@
-# Project Context: Microsoft Qlib
+# Project Context: A 股量化投研平台
 
-Qlib is an AI-oriented quantitative investment platform that aims to realize the potential, empower research, and create value using AI technologies in quantitative investment, from exploring ideas to implementing productions.
+基于 Microsoft Qlib 的 A 股量化投研系统，集成多源数据采集、市场情绪信号、交互式可视化看板和择时策略回测。
 
 ## Core Goals
-- **Empower AI in Quant**: Integrate state-of-the-art machine learning algorithms (deep learning, reinforcement learning, ensemble models) into quantitative trading research.
-- **Provide High-Performance Infrastructure**: Offer highly efficient data servers, feature extraction, backtesting, and execution pipelines.
-- **Enable End-to-End Workflows**: Cover the entire quant research workflow, including:
-  1. Data processing and storage (efficient binary format, expression cache, dataset cache).
-  2. Signal forecasting (supervised learning, market dynamics adaptation).
-  3. Portfolio management and risk modeling.
-  4. Trading strategies and execution (order execution, RL-based decisions, nested executors).
-  5. Backtest evaluation (performance metrics, visualization).
-  6. Online serving (rolling models, server deployment).
+- **多源数据采集**: 从百度、腾讯、新浪、东方财富、乐咕乐股、ZIZIZAIZAI、iWencai 等渠道采集 A 股市场数据
+- **实时看板可视化**: Vue 3 + ECharts 交互式看板，覆盖市场情绪、热点题材、个股研究、AI 早报、回测结果
+- **择时增强回测**: 基于市场情绪信号的 TimingTopkDropoutStrategy 策略
+- **API 服务**: FastAPI 后端提供股票解析、数据查询、YMOS 风控审计等接口
 
 ## Technology Stack
-- **Languages**: Python (Logic, Pipeline), Cython (C-extensions for performance in data queries).
+- **Languages**: Python (后端逻辑、数据流水线), JavaScript/Vue 3 (前端看板), Cython (C 扩展加速数据查询)
+- **Backend**: FastAPI, Uvicorn
+- **Frontend**: Vue 3, Vite, ECharts, vue-router
 - **Libraries**:
-  - Scientific Computing: `numpy`, `pandas`, `scipy`.
-  - Machine Learning: PyTorch, LightGBM, CatBoost, XGBoost.
-  - Development tools: `pytest` for tests, `sphinx` for documentation.
-- **Storage**: Custom binary storage format designed for rapid queries with C/C++ extensions, far outperforming general-purpose databases like MySQL/MongoDB.
+  - 数据: `numpy`, `pandas`, `akshare`, `requests`
+  - ML: PyTorch, LightGBM
+  - Dev: `pytest`, `sphinx`
+- **Storage**: Qlib 自定义二进制格式 + CSV/JSON 分层存储
 
 ## Directory Map
-- [qlib/data](file:///Users/walox/qlib/qlib/data): Data retrieval, expression calculation, caching, and storage.
-- [qlib/model](file:///Users/walox/qlib/qlib/model): Base classes for models, trainers, and meta-learning modules.
-- [qlib/contrib/model](file:///Users/walox/qlib/qlib/contrib/model): Implementations of specific machine learning models (e.g. GATs, GRU, TRA, TabNet).
-- [qlib/strategy](file:///Users/walox/qlib/qlib/strategy): Strategy abstractions.
-- [qlib/contrib/strategy](file:///Users/walox/qlib/qlib/contrib/strategy): Concrete portfolio/trading strategies (e.g. SignalStrategy, RuleStrategy).
-- [qlib/backtest](file:///Users/walox/qlib/qlib/backtest): Order execution, exchange simulator, position tracker, and report generation.
-- [qlib/workflow](file:///Users/walox/qlib/qlib/workflow): Experiment recording, task scheduling, and automation workflow.
-- [qlib/rl](file:///Users/walox/qlib/qlib/rl): Reinforcement learning environment, policy wrappers, and training algorithms.
-- [examples](file:///Users/walox/qlib/examples): Example config files, workflows, and tutorials.
-- [scripts](file:///Users/walox/qlib/scripts): Scripts for data collection, formatting, and analysis.
+- [qlib/](file:///Users/walox/qlib/qlib): Qlib 核心框架（上游代码，不修改）
+- [scripts/data_collector/cn_stock/](file:///Users/walox/qlib/scripts/data_collector/cn_stock): 自定义 A 股数据采集与 API 服务
+- [scripts/data_collector/cn_stock/adapters/](file:///Users/walox/qlib/scripts/data_collector/cn_stock/adapters): 数据源适配器（插件化）
+- [scripts/data_collector/cn_stock/frontend/](file:///Users/walox/qlib/scripts/data_collector/cn_stock/frontend): Vue 3 交互式看板
+- [data/cn_stock/](file:///Users/walox/qlib/data/cn_stock): 本地数据存储（分层 + Qlib 标准格式）
+- [custom_workflow.py](file:///Users/walox/qlib/custom_workflow.py): 回测工作流入口
+- [timing_strategy.py](file:///Users/walox/qlib/timing_strategy.py): 择时增强策略
+- [examples/](file:///Users/walox/qlib/examples): Qlib 官方示例
+- [docs/](file:///Users/walox/qlib/docs): 文档（含上游 Qlib README 备份）
