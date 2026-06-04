@@ -101,7 +101,7 @@ const search = async () => {
   results.value = []
 
   try {
-    const res = await fetch('http://localhost:8000/api/iwencai/search', {
+    const res = await fetch('/api/iwencai/search', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

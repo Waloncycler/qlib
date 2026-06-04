@@ -8,7 +8,7 @@ from typing import List, Optional
 import requests
 import pandas as pd
 
-from adapters.base import (
+from .base import (
     BaseSourceAdapter,
     clean_symbol,
     to_qlib_symbol,

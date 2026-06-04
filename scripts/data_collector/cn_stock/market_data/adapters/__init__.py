@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT License.
 
-from adapters.base import (
+from .base import (
     BaseSourceAdapter,
     clean_symbol,
     get_market_prefix,
@@ -12,7 +12,7 @@ from adapters.base import (
     resilient_request,
 )
 
-from adapters.market import (
+from .market import (
     MootdxAdapter,
     AkshareAdapter,
     TencentSinaAdapter,
@@ -20,7 +20,7 @@ from adapters.market import (
     EastmoneyAdapter,
 )
 
-from adapters.signals import (
+from .signals import (
     ThsHotReasonAdapter,
     ThsNorthboundAdapter,
     BaiduConceptAdapter,
@@ -31,7 +31,7 @@ from adapters.signals import (
     MarketSentimentAdapter,
 )
 
-from adapters.capital import (
+from .capital import (
     MarginTradingAdapter,
     BlockTradeAdapter,
     ShareholderAdapter,
@@ -39,30 +39,30 @@ from adapters.capital import (
     StockFundFlow120dAdapter,
 )
 
-from adapters.research import (
+from .research import (
     EastmoneyReportAdapter,
     ThsConsensusAdapter,
     IwencaiAdapter,
 )
 
-from adapters.news import (
+from .news import (
     EastmoneyStockNewsAdapter,
     ClsTelegraphAdapter,
     EastmoneyGlobalNewsAdapter,
 )
 
-from adapters.fundamentals import (
+from .fundamentals import (
     MootdxFinanceAdapter,
     MootdxF10Adapter,
     EastmoneyStockInfoAdapter,
     SinaFinancialReportAdapter,
 )
 
-from adapters.filings import (
+from .filings import (
     CninfoAnnouncementsAdapter,
 )
 
-from adapters.legacy import (
+from .legacy import (
     ZizizaizaiAdapter,
     ZzshareAdapter,
 )

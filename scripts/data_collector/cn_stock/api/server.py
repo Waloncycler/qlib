@@ -1,5 +1,9 @@
 import os
 import sys
+
+# Force MLFlow to allow file store to fix backend crashes
+os.environ["MLFLOW_ALLOW_FILE_STORE"] = "true"
+
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,13 +15,15 @@ import yaml
 from pydantic import BaseModel
 
 CUR_DIR = Path(__file__).resolve().parent
-WORKSPACE_DIR = CUR_DIR.parent.parent.parent
+PROJECT_DIR = CUR_DIR.parent
+WORKSPACE_DIR = PROJECT_DIR.parent.parent.parent
 DATA_DIR = WORKSPACE_DIR / "data/cn_stock/hierarchical"
 
 # Import our stock resolver and adapters
-sys.path.append(str(CUR_DIR))
-from stock_resolver import StockResolver
-from adapters.research import IwencaiAdapter
+sys.path.append(str(PROJECT_DIR))
+sys.path.append(str(PROJECT_DIR.parent.parent))
+from core.stock_resolver import StockResolver
+from market_data.adapters.research import IwencaiAdapter
 
 app = FastAPI(title="Qlib CN Stock API")
 
@@ -34,7 +40,7 @@ resolver = StockResolver()
 
 # Setup Iwencai
 config = {}
-secret_path = CUR_DIR / "secret.yaml"
+secret_path = PROJECT_DIR / "secret.yaml"
 if secret_path.exists():
     with open(secret_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f) or {}
@@ -164,6 +170,49 @@ _refresh_lock = threading.Lock()
 _refresh_status = {"running": False, "last_result": None, "last_time": None}
 
 
+_reports_refresh_status = {"running": False, "last_time": None, "last_result": None}
+_reports_refresh_lock = threading.Lock()
+
+@app.post("/api/refresh/reports")
+def refresh_reports_only():
+    """
+    Triggers only the AI Reports update, avoiding the full global data refresh.
+    """
+    if _reports_refresh_status["running"]:
+        return {"status": "busy", "message": "A reports refresh is already running. Please wait."}
+
+    def _do_refresh():
+        _reports_refresh_status["running"] = True
+        _reports_refresh_status["last_result"] = None
+        try:
+            script = str(PROJECT_DIR / "zizizaizai/reports.py")
+            logger.info(f"[Refresh Reports] Running: {script}")
+            result = subprocess.run([sys.executable, script], capture_output=True, text=True, timeout=120, cwd=str(CUR_DIR))
+
+            if result.returncode == 0:
+                _reports_refresh_status["last_result"] = "success"
+                logger.info("[Refresh Reports] Completed successfully.")
+            else:
+                _reports_refresh_status["last_result"] = "error"
+                logger.error(f"[Refresh Reports] Failed: {result.stderr if result.stderr else result.stdout}")
+        except Exception as e:
+            _reports_refresh_status["last_result"] = f"exception: {str(e)}"
+            logger.error(f"[Refresh Reports] Exception: {e}")
+        finally:
+            import datetime as dt
+            _reports_refresh_status["running"] = False
+            _reports_refresh_status["last_time"] = dt.datetime.now().isoformat()
+
+    with _reports_refresh_lock:
+        t = threading.Thread(target=_do_refresh, daemon=True)
+        t.start()
+
+    return {"status": "started", "message": "Reports refresh started in background."}
+
+@app.get("/api/refresh/reports/status")
+def get_reports_refresh_status():
+    return _reports_refresh_status
+
 @app.post("/api/refresh")
 def refresh_data():
     """
@@ -180,13 +229,13 @@ def refresh_data():
         _refresh_status["last_result"] = None
         try:
             # Run update_all_data.py with --force to do a full refresh of sentiment, topics, and stock layers
-            update_script = str(CUR_DIR / "update_all_data.py")
+            update_script = str(PROJECT_DIR / "tasks/update_daily.py")
             cmd = [
                 sys.executable, update_script,
                 "--force",
             ]
             logger.info(f"[Refresh] Running: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=180, cwd=str(CUR_DIR))
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, cwd=str(PROJECT_DIR))
 
             if result.returncode == 0:
                 _refresh_status["last_result"] = "success"
@@ -359,6 +408,52 @@ def get_backtest_results():
         }
     except Exception as e:
         logger.error(f"Error fetching backtest results: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+class SingleBacktestRequest(BaseModel):
+    symbol: str
+    start_date: str
+    end_date: str
+
+import subprocess
+import json
+
+@app.post("/api/backtest/single")
+def run_single_stock_backtest(req: SingleBacktestRequest):
+    try:
+        # First ensure the stock data is resolved
+        resolver.resolve_single_stock(req.symbol)
+        
+        # Run the single stock backtest script
+        cmd = [
+            sys.executable,
+            "single_stock_backtest.py",
+            "--symbol", req.symbol,
+            "--start", req.start_date,
+            "--end", req.end_date
+        ]
+        
+        logger.info(f"Running single stock backtest: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        # Parse the JSON from the last line of stdout
+        lines = result.stdout.strip().split('\n')
+        json_line = lines[-1] if lines else "{}"
+        
+        try:
+            parsed = json.loads(json_line)
+            if parsed.get("status") == "error":
+                raise HTTPException(status_code=400, detail=parsed.get("message", "Backtest failed"))
+            return parsed
+        except json.JSONDecodeError:
+            logger.error(f"Failed to parse JSON output: {result.stdout}")
+            logger.error(f"Stderr: {result.stderr}")
+            raise HTTPException(status_code=500, detail="Backend failed to return valid JSON results.")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error running single backtest: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 import requests
@@ -563,4 +658,4 @@ def ymos_risk_audit(symbol: str):
 if __name__ == "__main__":
     import uvicorn
     # Run the server on port 28456
-    uvicorn.run("api_server:app", host="0.0.0.0", port=28456, reload=True)
+    uvicorn.run("api.server:app", host="0.0.0.0", port=28456, reload=True)

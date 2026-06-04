@@ -60,7 +60,7 @@ def resilient_request(
     url: str,
     max_retries: int = 3,
     backoff_base: float = 1.5,
-    timeout: int = 15,
+    timeout: int = 8,
     **kwargs,
 ) -> requests.Response:
     """Unified HTTP request with exponential backoff retry.

@@ -1,0 +1,24 @@
+-e [0;34m=======================================[0m
+-e [0;34m🚀 正在启动 A 股量化投研平台...[0m
+-e [0;34m=======================================[0m
+-e [0;32m👉 [1/2] 正在启动后端 API 服务器...[0m
+-e [0;32m👉 [2/2] 正在启动前端看板 (Vite)...[0m
+-e [0;32m✅ 启动成功！[0m
+-e ---------------------------------------
+-e 👉 前端看板: [0;34mhttp://localhost:28457[0m
+-e 👉 后端 API: [0;34mhttp://localhost:28456[0m
+-e ---------------------------------------
+按 Ctrl+C 停止所有服务...
+
+> frontend@0.0.0 dev
+> vite
+
+6:48:37 PM [vite] (client) Re-optimizing dependencies because vite config has changed
+Port 28457 is in use, trying another one...
+
+  VITE v8.0.14  ready in 243 ms
+
+  ➜  Local:   http://localhost:28458/
+  ➜  Network: use --host to expose
+INFO:     Will watch for changes in these directories: ['/Users/walox/qlib/scripts/data_collector/cn_stock']
+ERROR:    [Errno 48] Address already in use

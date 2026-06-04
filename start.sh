@@ -28,8 +28,11 @@ fi
 echo -e "${GREEN}👉 [1/2] 正在启动后端 API 服务器...${NC}"
 cd "$PROJECT_ROOT/scripts/data_collector/cn_stock"
 
+# 允许 MLflow 使用本地文件系统存储
+export MLFLOW_ALLOW_FILE_STORE=true
+
 # 在后台启动 API，使用项目的 python 环境
-"$PROJECT_ROOT/.venv/bin/python" api_server.py &
+"$PROJECT_ROOT/.venv/bin/python" api/server.py &
 API_PID=$!
 
 # ==========================================

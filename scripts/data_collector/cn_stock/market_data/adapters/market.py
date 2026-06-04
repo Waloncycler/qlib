@@ -7,7 +7,7 @@ from typing import List, Optional
 import pandas as pd
 import requests
 
-from adapters.base import (
+from .base import (
     BaseSourceAdapter,
     clean_symbol,
     get_market_prefix,

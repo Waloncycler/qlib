@@ -3,10 +3,26 @@
     <header class="header">
       <div class="header-left">
         <h1 class="title">Stock Data Explorer</h1>
-        <span v-if="hasData" class="ymos-tag">
-          <i class="fa-solid fa-user-secret mr-1"></i> YMOS 首席风控官 & 逻辑校准官
-        </span>
-        <p class="subtitle">Deep dive into multi-dimensional stock data.</p>
+      </div>
+    </header>
+    
+    <div class="header-controls">
+      <div v-if="hasData" class="tabs-container-center glass-panel">
+        <button class="tab-btn-center" :class="{active: activeTab === 'market'}" @click="activeTab = 'market'">
+          <i class="fa-solid fa-candlestick-chart tab-icon-center text-sky-400"></i> Market
+        </button>
+        <button class="tab-btn-center" :class="{active: activeTab === 'signals'}" @click="activeTab = 'signals'">
+          <i class="fa-solid fa-bolt tab-icon-center text-yellow-400"></i> Signals
+        </button>
+        <button class="tab-btn-center" :class="{active: activeTab === 'capital'}" @click="activeTab = 'capital'">
+          <i class="fa-solid fa-coins tab-icon-center text-emerald-400"></i> Capital
+        </button>
+        <button class="tab-btn-center" :class="{active: activeTab === 'fundamentals'}" @click="activeTab = 'fundamentals'">
+          <i class="fa-solid fa-file-invoice-dollar tab-icon-center text-purple-400"></i> Fundamentals
+        </button>
+        <button class="tab-btn-center" :class="{active: activeTab === 'news'}" @click="activeTab = 'news'">
+          <i class="fa-solid fa-newspaper tab-icon-center text-rose-400"></i> News
+        </button>
       </div>
       
       <div class="header-actions">
@@ -36,7 +52,7 @@
           {{ isAuditing ? 'Auditing...' : (isBackgroundFetching ? 'Syncing Data...' : 'Run Deep Risk Audit') }}
         </button>
       </div>
-    </header>
+    </div>
     <!-- Floating Toast Notifications -->
     <div class="toast-container">
       <transition name="toast-fade">
@@ -54,23 +70,7 @@
       </transition>
     </div>
 
-    <div v-if="hasData" class="tabs-container glass-panel">
-      <button class="tab-btn" :class="{active: activeTab === 'market'}" @click="activeTab = 'market'">
-        <i class="fa-solid fa-candlestick-chart tab-icon text-sky-400"></i> Market
-      </button>
-      <button class="tab-btn" :class="{active: activeTab === 'signals'}" @click="activeTab = 'signals'">
-        <i class="fa-solid fa-bolt tab-icon text-yellow-400"></i> Signals
-      </button>
-      <button class="tab-btn" :class="{active: activeTab === 'capital'}" @click="activeTab = 'capital'">
-        <i class="fa-solid fa-coins tab-icon text-emerald-400"></i> Capital
-      </button>
-      <button class="tab-btn" :class="{active: activeTab === 'fundamentals'}" @click="activeTab = 'fundamentals'">
-        <i class="fa-solid fa-file-invoice-dollar tab-icon text-purple-400"></i> Fundamentals
-      </button>
-      <button class="tab-btn" :class="{active: activeTab === 'news'}" @click="activeTab = 'news'">
-        <i class="fa-solid fa-newspaper tab-icon text-rose-400"></i> News
-      </button>
-    </div>
+
 
     <!-- YMOS Risk Audit Result Panel (Global) -->
     <div v-if="hasData && (auditResult || isAuditing)" class="glass-panel ymos-result-panel">
@@ -83,114 +83,35 @@
     </div>
 
     <!-- 1. Market Layer -->
-    <div v-if="hasData && activeTab === 'market'" class="layer-content">
-      <div class="grid-cards mb-4">
-        <div class="stat-card glass-panel" v-if="dragonTiger">
-          <div class="stat-label">LHB Net Buy (龙虎榜净买)</div>
-          <div class="stat-value" :class="dragonTiger.NET_BUY_AMT > 0 ? 'up' : 'down'">
-            {{ (dragonTiger.NET_BUY_AMT / 10000).toFixed(2) }} 万
-          </div>
-        </div>
-        <div class="stat-card glass-panel" v-if="lockupData">
-          <div class="stat-label">Next Lockup Expiry</div>
-          <div class="stat-value">{{ lockupData.date }}</div>
-          <div class="stat-subtext">{{ lockupData.ratio }}%</div>
-        </div>
-      </div>
-      <div class="chart-panel glass-panel">
-        <div class="chart-toggles-floating">
-          <label class="toggle-label" title="涨跌停"><input type="checkbox" v-model="chartToggles.showLimit" /> 涨跌停</label>
-          <label class="toggle-label" title="20日新高"><input type="checkbox" v-model="chartToggles.showHigh20" /> 20日新高</label>
-          <label class="toggle-label" title="异动预警"><input type="checkbox" v-model="chartToggles.showAbnormal" /> 异动预警</label>
-          <label class="toggle-label" title="异动预测线"><input type="checkbox" v-model="chartToggles.showPrediction" /> 异动预测线</label>
-        </div>
-        <v-chart class="chart" :option="klineOption" autoresize />
-      </div>
-    </div>
+    <MarketTab v-if="hasData && activeTab === 'market'" 
+      :dragonTiger="dragonTiger"
+      :lockupData="lockupData"
+      :klineOption="klineOption"
+      v-model:chartToggles="chartToggles"
+    />
 
     <!-- 2. Signals Layer -->
-    <div v-if="hasData && activeTab === 'signals'" class="layer-content">
-      <div class="glass-panel p-6">
-        <h3 class="section-title text-yellow-400"><i class="fa-solid fa-fire mr-2"></i> THS Concept / Hot Reasons</h3>
-        <table class="data-table mt-4" v-if="thsReasons.length > 0">
-          <thead>
-            <tr><th>Concept Name</th><th>Reasoning</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="(reason, idx) in thsReasons" :key="idx">
-              <td class="font-bold text-emerald-400 whitespace-nowrap">{{ reason.name }}</td>
-              <td class="text-slate-300">{{ reason.reason || reason.reason_tags }}</td>
-            </tr>
-          </tbody>
-        </table>
-        <div v-else class="empty-state-small">No concept reasons found for this symbol.</div>
-      </div>
-
-    </div>
+    <SignalsTab v-if="hasData && activeTab === 'signals'"
+      :thsReasons="thsReasons"
+    />
 
     <!-- 3. Capital Layer -->
-    <div v-if="hasData && activeTab === 'capital'" class="layer-content grid-2-col">
-      <div class="chart-panel glass-panel">
-        <v-chart class="chart" :option="marginOption" autoresize />
-      </div>
-      <div class="chart-panel glass-panel">
-        <v-chart class="chart" :option="fundFlowOption" autoresize />
-      </div>
-    </div>
+    <CapitalTab v-if="hasData && activeTab === 'capital'"
+      :marginOption="marginOption"
+      :fundFlowOption="fundFlowOption"
+    />
 
     <!-- 4. Fundamentals Layer -->
-    <div v-if="hasData && activeTab === 'fundamentals'" class="layer-content">
-      <div class="glass-panel p-6">
-        <h3 class="section-title text-purple-400"><i class="fa-solid fa-building mr-2"></i> Core Financial Ratios</h3>
-        <div class="table-scroll mt-4" v-if="financeData.length > 0">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Report Date</th>
-                <th>EPS (摊薄)</th>
-                <th>ROE% (净资产收益率)</th>
-                <th>Gross Margin% (毛利率)</th>
-                <th>Net Profit (净利润)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(fin, idx) in financeData" :key="idx">
-                <td class="font-mono text-sky-400">{{ fin.date || fin.report_date || fin.updated_date }}</td>
-                <td>{{ fin.eps || (fin.jinglirun && fin.zongguben ? (fin.jinglirun / fin.zongguben).toFixed(2) : '--') }}</td>
-                <td>{{ fin.roe ? parseFloat(fin.roe).toFixed(2) : (fin.jinglirun && fin.jingzichan ? (fin.jinglirun / fin.jingzichan * 100).toFixed(2) : '--') }}</td>
-                <td>{{ fin.gross_margin ? parseFloat(fin.gross_margin).toFixed(2) : '--' }}</td>
-                <td class="text-emerald-400 font-bold">{{ fin.net_profit ? Number(fin.net_profit).toLocaleString() : (fin.jinglirun ? Number(fin.jinglirun).toLocaleString() : '--') }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div v-else class="empty-state-small">No fundamental financial data found.</div>
-      </div>
-    </div>
+    <FundamentalsTab v-if="hasData && activeTab === 'fundamentals'"
+      :financeData="financeData"
+    />
 
     <!-- 5. News Layer -->
-    <div v-if="hasData && activeTab === 'news'" class="layer-content grid-2-col">
-      <div class="glass-panel p-6 flex flex-col h-[600px]">
-        <h3 class="section-title text-amber-500 mb-4"><i class="fa-solid fa-bolt mr-2"></i> CLS Telegraph (财联社电报)</h3>
-        <div class="overflow-y-auto custom-scrollbar flex-1 space-y-4 pr-2">
-          <div v-for="(news, idx) in clsTelegraphs" :key="idx" class="news-card">
-            <p class="news-time"><i class="fa-regular fa-clock mr-1"></i>{{ news.time || news.ctime }}</p>
-            <p class="news-content">{{ news.content }}</p>
-          </div>
-          <div v-if="!clsTelegraphs.length" class="empty-state-small">No recent telegraphs.</div>
-        </div>
-      </div>
-      <div class="glass-panel p-6 flex flex-col h-[600px]">
-        <h3 class="section-title text-rose-500 mb-4"><i class="fa-solid fa-newspaper mr-2"></i> Company News ({{ symbol }})</h3>
-        <div class="overflow-y-auto custom-scrollbar flex-1 space-y-4 pr-2">
-          <div v-for="(news, idx) in eastmoneyNews" :key="idx" class="news-card">
-            <h4 class="news-title">{{ news.title }}</h4>
-            <p class="news-time mt-2"><i class="fa-regular fa-calendar mr-1"></i>{{ formatTime(news.time || news.publish_time || news.date) }}</p>
-          </div>
-          <div v-if="!eastmoneyNews.length" class="empty-state-small">No company news found.</div>
-        </div>
-      </div>
-    </div>
+    <NewsTab v-if="hasData && activeTab === 'news'"
+      :symbol="symbol"
+      :clsTelegraphs="clsTelegraphs"
+      :eastmoneyNews="eastmoneyNews"
+    />
     
     <div v-if="!hasData && !loading && !error" class="empty-state glass-panel">
       <TrendingUpIcon class="empty-icon" />
@@ -207,6 +128,12 @@ import { useDataLoader } from '../composables/useDataLoader'
 import { useChartFactory } from '../composables/useChartFactory'
 import { marked } from 'marked'
 import axios from 'axios'
+
+import MarketTab from '../components/tabs/MarketTab.vue'
+import SignalsTab from '../components/tabs/SignalsTab.vue'
+import CapitalTab from '../components/tabs/CapitalTab.vue'
+import FundamentalsTab from '../components/tabs/FundamentalsTab.vue'
+import NewsTab from '../components/tabs/NewsTab.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -273,14 +200,7 @@ const financeData = ref([])
 const clsTelegraphs = ref([])
 const eastmoneyNews = ref([])
 
-const formatTime = (t) => {
-  if (!t) return ''
-  if (typeof t === 'number' && t > 100000000000) {
-    const d = new Date(t)
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
-  }
-  return t
-}
+
 
 const runYmosAudit = async () => {
   if (!symbol.value) return
@@ -433,40 +353,44 @@ if (route.params.symbol) {
 </script>
 
 <style scoped>
-.dashboard { display: flex; flex-direction: column; gap: 12px; padding-bottom: 24px; }.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
-  width: 100%;
+.dashboard { display: flex; flex-direction: column; gap: 12px; padding-bottom: 24px; }
+.header {
+  margin-bottom: 4px;
 }
 .header-left {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
 }
-.title { font-size: 2rem; font-weight: 800; background: linear-gradient(135deg, #e0f2fe, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0; display: inline-block;}
-.subtitle { color: var(--text-secondary); margin: 4px 0 0 0; }
+.title { font-size: 2rem; font-weight: 800; background: linear-gradient(135deg, #e0f2fe, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0; display: inline-block; white-space: nowrap;}
 
-.ymos-tag {
-  display: inline-flex;
+.header-controls {
+  display: flex;
+  justify-content: flex-start;
   align-items: center;
-  font-size: 0.85rem;
-  font-weight: bold;
-  color: #a78bfa;
-  background: rgba(139, 92, 246, 0.1);
-  border: 1px solid rgba(139, 92, 246, 0.3);
-  padding: 4px 12px;
-  border-radius: 9999px;
-  margin-top: 8px;
+  flex-wrap: nowrap;
+  gap: 16px;
+  width: 100%;
+  overflow-x: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.header-controls::-webkit-scrollbar { 
+  display: none; 
+}
+
+.header-actions-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
   gap: 16px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .search-section-inline { 
@@ -517,15 +441,17 @@ if (route.params.symbol) {
   padding: 8px 16px;
   border-radius: 8px;
   cursor: pointer;
-  font-weight: bold;
-  font-size: 0.9rem;
+  font-weight: 600;
   transition: all 0.2s;
+  white-space: nowrap;
   box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
 }
 .btn-ymos:hover:not(:disabled) {
   background: #6d28d9;
   box-shadow: 0 0 16px rgba(124, 58, 237, 0.6);
 }
+
+
 
 .icon.spin { animation: spin 1s linear infinite; }
 @keyframes spin { 100% { transform: rotate(360deg); } }
@@ -603,23 +529,44 @@ if (route.params.symbol) {
   transform: translateX(30px);
 }
 
-.tabs-container { display: flex; gap: 8px; padding: 8px !important; border-radius: 12px; margin-bottom: 0; flex-wrap: wrap; flex-shrink: 0; }
-.tab-btn {
-  padding: 10px 20px;
+.tabs-container-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px !important;
+  border-radius: 12px;
+  margin: 0;
+  width: fit-content;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.tab-btn-center {
+  padding: 8px 16px;
   background: transparent;
   border: 1px solid transparent;
   color: var(--text-secondary);
   border-radius: 8px;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 500;
+  font-size: 0.95rem;
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
 }
-.tab-btn:hover { background: rgba(255,255,255,0.05); color: #fff; }
-.tab-btn.active { background: rgba(56, 189, 248, 0.15); border-color: rgba(56, 189, 248, 0.3); color: #38bdf8; }
+.tab-btn-center:hover { 
+  background: rgba(255,255,255,0.06); 
+  color: #f8fafc; 
+}
+.tab-btn-center.active { 
+  background: rgba(56, 189, 248, 0.15); 
+  border-color: rgba(56, 189, 248, 0.3); 
+  color: #38bdf8; 
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.1);
+}
+.tab-icon-center { font-size: 1rem; }
 
 .layer-content {
   display: flex; flex-direction: column; gap: 16px; flex: 1;
@@ -629,84 +576,10 @@ if (route.params.symbol) {
   padding: 16px !important;
 }
 
-.grid-2-col {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 16px;
-}
-
-.grid-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
-.stat-card { padding: 20px; display: flex; flex-direction: column; gap: 8px; }
-.stat-label { color: var(--text-secondary); font-size: 0.9rem; font-weight: 500; }
-.stat-value { font-size: 1.8rem; font-weight: 700; }
-.stat-subtext { font-size: 0.85rem; color: var(--text-secondary); }
-.up { color: var(--danger); }
-.down { color: var(--success); }
-
-.chart-panel { padding: 16px; height: 450px; position: relative; }
-.chart { width: 100%; height: 100%; }
-.chart-toggles-floating { 
-  position: absolute; 
-  top: 12px; 
-  left: 20px; 
-  display: flex; 
-  gap: 12px; 
-  z-index: 10; 
-  background: rgba(15, 23, 42, 0.7); 
-  padding: 4px 10px; 
-  border-radius: 6px; 
-  border: 1px solid rgba(255,255,255,0.05);
-  backdrop-filter: blur(4px);
-}
-.toggle-label { font-size: 0.8rem; color: #cbd5e1; display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
-.toggle-label input { accent-color: #38bdf8; cursor: pointer; margin: 0; }
-
-.markdown-body {
-  max-height: 500px;
-  overflow-y: auto;
-  color: #cbd5e1;
-  font-size: 0.85rem;
-  line-height: 1.5;
-}
-.markdown-body h2 {
-  font-size: 1.05rem;
-  font-weight: bold;
-  margin-top: 0.5rem;
-  margin-bottom: 0.25rem;
-  color: #a78bfa;
-}
-.markdown-body h3 {
-  font-size: 0.95rem;
-  font-weight: bold;
-  margin-top: 0.5rem;
-  margin-bottom: 0.25rem;
-}
-.markdown-body p {
-  margin-bottom: 0.25rem;
-}
-.markdown-body ul {
-  list-style-type: disc;
-  padding-left: 1.5rem;
-  margin-bottom: 0.25rem;
-}
-.markdown-body li {
-  margin-bottom: 0.15rem;
-}
 .markdown-body strong {
   color: #fcd34d;
   font-weight: bold;
 }
-
-.section-title { font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-.p-6 { padding: 24px; }
-
-.data-table { width: 100%; border-collapse: collapse; text-align: left; }
-.data-table td { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-.data-table tr:hover td { background: rgba(255,255,255,0.02); }
-
-.news-card { padding: 16px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; transition: border-color 0.2s; }
-.news-card:hover { border-color: rgba(255,255,255,0.2); }
-.news-time { font-size: 0.8rem; color: #38bdf8; font-family: monospace; margin-bottom: 8px; }
-.news-title { font-size: 1rem; font-weight: 600; color: #f2f2f2; line-height: 1.4; }
-.news-content { font-size: 0.95rem; color: #cbd5e1; line-height: 1.6; }
 
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; color: var(--text-secondary); opacity: 0.7; flex: 1; }
 .empty-state-small { padding: 20px; color: var(--text-secondary); text-align: center; font-style: italic; }
@@ -716,4 +589,25 @@ if (route.params.symbol) {
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* Responsive Shrinking (Keeps it on one line but shrinks elements to fit) */
+@media (max-width: 1200px) {
+  .header-controls { gap: 8px; }
+  .tab-btn-center { padding: 6px 10px; font-size: 0.85rem; gap: 6px; }
+  .search-input-inline { width: 120px; font-size: 0.85rem; }
+  .btn-search-inline { padding: 6px 12px; font-size: 0.85rem; }
+  .btn-ymos { padding: 6px 12px; font-size: 0.85rem; }
+}
+
+@media (max-width: 900px) {
+  .header-controls { gap: 4px; }
+  .tab-btn-center { padding: 4px 6px; font-size: 0.75rem; gap: 4px; }
+  .tab-icon-center { font-size: 0.8rem; }
+  .header-actions { gap: 6px; }
+  .search-section-inline { gap: 4px; padding: 2px; }
+  .search-input-inline { width: 80px; padding: 4px 8px; font-size: 0.75rem; }
+  .btn-search-inline { padding: 4px 8px; font-size: 0.75rem; gap: 4px; }
+  .btn-ymos { padding: 4px 8px; font-size: 0.75rem; gap: 4px; }
+  .icon-small { width: 12px; height: 12px; }
+}
 </style>

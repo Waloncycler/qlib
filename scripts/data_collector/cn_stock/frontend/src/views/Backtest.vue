@@ -14,56 +14,44 @@
 
     <div class="content-wrapper" v-if="metrics && !loading">
       
-      <!-- Left side: Metrics & Logic -->
+      <!-- Left side: Form & Metrics -->
       <div class="side-panel">
         
-        <div class="info-card glass-panel">
-          <h3>Parameters</h3>
-          <ul class="param-list">
-            <li><span class="label">Strategy:</span> TimingTopkDropout</li>
-            <li><span class="label">TopK:</span> 2</li>
-            <li><span class="label">Drop N:</span> 1</li>
-            <li><span class="label">Base Risk:</span> 100%</li>
-            <li><span class="label">Base Model:</span> LinearModel</li>
-          </ul>
-        </div>
-        
-        <div class="info-card glass-panel">
-          <h3>Defensive Logic</h3>
-          <div class="logic-rule">
-            <span class="emoji">🛑</span>
-            <div>
-              <strong>Valuation Bubble</strong>
-              <p>PE Median > 60.0 → Clear Positions (0%)</p>
-            </div>
+        <div class="info-card glass-panel form-card">
+          <h3>Single Stock Validator</h3>
+          
+          <div class="form-group">
+            <label>Stock Symbol</label>
+            <input v-model="form.symbol" type="text" placeholder="e.g. SZ002199" class="styled-input" />
           </div>
-          <div class="logic-rule">
-            <span class="emoji">🧊</span>
-            <div>
-              <strong>Extreme Panic</strong>
-              <p>Limit Up < 10 → Clear Positions (0%)</p>
-            </div>
+
+          <div class="form-group">
+            <label>Start Date</label>
+            <input v-model="form.startDate" type="date" class="styled-input" />
           </div>
-          <div class="logic-rule">
-            <span class="emoji">📉</span>
-            <div>
-              <strong>Weak Sentiment</strong>
-              <p>Sentiment < 30.0 → Reduce Risk by 50%</p>
-            </div>
+
+          <div class="form-group">
+            <label>End Date</label>
+            <input v-model="form.endDate" type="date" class="styled-input" />
           </div>
+          
+          <div class="form-group">
+            <label>Strategy</label>
+            <select v-model="form.strategy" class="styled-input" disabled>
+              <option value="ai_timing">AI Timing Model (Linear)</option>
+            </select>
+          </div>
+
+          <button class="run-btn w-full mt-4" @click="runSingleBacktest" :disabled="loading">
+            {{ loading ? 'Running Backtest...' : 'Run Validator' }}
+          </button>
         </div>
 
-        <div class="metrics-grid">
+        <div class="metrics-grid" v-if="metrics">
           <div class="metric-item">
             <div class="m-label">Annualized Return</div>
             <div class="m-value" :class="{'positive': metrics.annualized_return > 0, 'negative': metrics.annualized_return < 0}">
               {{ (metrics.annualized_return * 100).toFixed(2) }}%
-            </div>
-          </div>
-          <div class="metric-item">
-            <div class="m-label">Information Ratio</div>
-            <div class="m-value" :class="{'positive': metrics.information_ratio > 0, 'negative': metrics.information_ratio < 0}">
-              {{ metrics.information_ratio.toFixed(2) }}
             </div>
           </div>
           <div class="metric-item">
@@ -74,23 +62,23 @@
           </div>
         </div>
 
-        <!-- Daily Timing Signals List -->
-        <div class="info-card glass-panel daily-signals-card" style="display: flex; flex-direction: column; max-height: 350px;">
-          <h3>Daily Timing Signals</h3>
+        <!-- Trade Logs -->
+        <div class="info-card glass-panel daily-signals-card" v-if="reversedCurveData.length > 0" style="display: flex; flex-direction: column; max-height: 350px;">
+          <h3>Trading Signals</h3>
           <div class="signals-scroll" style="overflow-y: auto; flex: 1; margin-top: 8px; padding-right: 4px;">
             <table class="signals-table" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
               <thead>
                 <tr style="text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); position: sticky; top: 0; background: rgba(30, 41, 59, 0.95); z-index: 10;">
                   <th style="padding: 6px 0; color: #9ca3af; font-weight: 500;">Date</th>
-                  <th style="padding: 6px 0; color: #9ca3af; font-weight: 500; text-align: right;">Signal</th>
+                  <th style="padding: 6px 0; color: #9ca3af; font-weight: 500; text-align: right;">Action</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="d in reversedCurveData" :key="d.date" style="border-bottom: 1px solid rgba(255,255,255,0.05);">
                   <td style="padding: 8px 0; color: #e5e7eb;">{{ d.date }}</td>
                   <td style="padding: 8px 0; text-align: right; font-weight: 600;">
-                    <span v-if="d.timing_signal === 1.0" style="color: #ef4444;">看多 (BULL)</span>
-                    <span v-else style="color: #10b981;">轻仓 (BEAR)</span>
+                    <span v-if="d.timing_signal === 1.0" style="color: #ef4444;">HOLD</span>
+                    <span v-else style="color: #10b981;">EMPTY</span>
                   </td>
                 </tr>
               </tbody>
@@ -141,6 +129,13 @@ const error = ref(null)
 const metrics = ref(null)
 const curveData = ref(null)
 
+const form = ref({
+  symbol: 'SZ002199',
+  startDate: '2023-01-01',
+  endDate: new Date().toISOString().split('T')[0],
+  strategy: 'ai_timing'
+})
+
 const chartOption = computed(() => {
   if (!curveData.value) return {}
 
@@ -164,14 +159,12 @@ const chartOption = computed(() => {
         
         params.forEach(p => {
           date = p.name;
-          if (p.seriesName === 'Strategy Return') {
+          if (p.seriesName === 'AI Strategy Return') {
             strat = `<span style="color:#3b82f6;font-weight:bold;">${p.value}%</span>`;
-          } else if (p.seriesName === 'Benchmark Return') {
+          } else if (p.seriesName === 'Stock Buy&Hold') {
             bench = `<span style="color:#9ca3af;">${p.value}%</span>`;
-          } else if (p.seriesName === 'VIP Timing Signal') {
-            signal = (p.value === '1.00' || p.value == 1.0) ? '<span style="color:#ef4444;font-weight:bold;">看多 (BULL)</span>' : '<span style="color:#10b981;font-weight:bold;">轻仓 (BEAR)</span>';
-          } else if (p.seriesName === 'Sentiment Score') {
-            sentiment = `<span style="color:#f59e0b;font-weight:bold;">${p.value}</span>`;
+          } else if (p.seriesName === 'Position Signal') {
+            signal = (p.value === '1.00' || p.value == 1.0) ? '<span style="color:#ef4444;font-weight:bold;">HOLD</span>' : '<span style="color:#10b981;font-weight:bold;">EMPTY</span>';
           }
         });
         
@@ -185,10 +178,9 @@ const chartOption = computed(() => {
     },
     legend: {
       data: [
-        { name: 'Strategy Return' },
-        { name: 'Benchmark Return' },
-        { name: 'Sentiment Score' },
-        { name: 'VIP Timing Signal', itemStyle: { color: '#ef4444' } }
+        { name: 'AI Strategy Return' },
+        { name: 'Stock Buy&Hold' },
+        { name: 'Position Signal', itemStyle: { color: '#ef4444' } }
       ],
       textStyle: { color: '#e5e7eb' },
       top: 5
@@ -271,7 +263,7 @@ const chartOption = computed(() => {
     ],
     series: [
       {
-        name: 'Strategy Return',
+        name: 'AI Strategy Return',
         type: 'line',
         data: strategySeries,
         xAxisIndex: 0,
@@ -282,7 +274,7 @@ const chartOption = computed(() => {
         smooth: true
       },
       {
-        name: 'Benchmark Return',
+        name: 'Stock Buy&Hold',
         type: 'line',
         data: benchSeries,
         xAxisIndex: 0,
@@ -293,7 +285,7 @@ const chartOption = computed(() => {
         smooth: true
       },
       {
-        name: 'VIP Timing Signal',
+        name: 'Position Signal',
         type: 'line',
         step: 'start',
         data: timingSeries,
@@ -315,20 +307,6 @@ const chartOption = computed(() => {
           }
         },
         symbol: 'none'
-      },
-      {
-        name: 'Sentiment Score',
-        type: 'bar',
-        data: sentimentSeries,
-        xAxisIndex: 1,
-        yAxisIndex: 2,
-        itemStyle: { 
-          color: (params) => {
-            if (params.value < 30) return '#ef4444'; // Weak sentiment triggering defense
-            if (params.value > 80) return '#10b981';
-            return '#f59e0b';
-          }
-        }
       }
     ]
   }
@@ -339,14 +317,26 @@ const reversedCurveData = computed(() => {
   return [...curveData.value].reverse()
 })
 
-const fetchResults = async () => {
+const runSingleBacktest = async () => {
+  if (!form.value.symbol) {
+    error.value = "Please enter a stock symbol."
+    return
+  }
+
   loading.value = true
   error.value = null
   try {
-    const res = await axios.get('http://localhost:8000/api/backtest/results')
+    const res = await axios.post('/api/backtest/single', {
+      symbol: form.value.symbol,
+      start_date: form.value.startDate,
+      end_date: form.value.endDate
+    })
+    
     if (res.data.status === 'success') {
       metrics.value = res.data.data.metrics
       curveData.value = res.data.data.curve
+    } else {
+      error.value = res.data.message || 'Unknown error occurred.'
     }
   } catch (err) {
     console.error(err)
@@ -357,11 +347,11 @@ const fetchResults = async () => {
 }
 
 const runBacktest = () => {
-  fetchResults()
+  runSingleBacktest()
 }
 
 onMounted(() => {
-  fetchResults()
+  runSingleBacktest()
 })
 </script>
 
@@ -432,6 +422,47 @@ onMounted(() => {
   color: var(--text-primary);
   border-bottom: 1px solid rgba(255,255,255,0.1);
   padding-bottom: 8px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.styled-input {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-primary);
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.styled-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.styled-input:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.w-full {
+  width: 100%;
+}
+.mt-4 {
+  margin-top: 16px;
 }
 
 .param-list {

@@ -12,7 +12,7 @@ from typing import Optional
 import pandas as pd
 import requests
 
-from adapters.base import (
+from .base import (
     BaseSourceAdapter,
     clean_symbol,
     to_qlib_symbol,
@@ -186,7 +186,7 @@ class IwencaiAdapter(BaseSourceAdapter):
             "size": size,
         }
         try:
-            from adapters.base import resilient_request
+            from .base import resilient_request
             r = resilient_request("post", f"{self.base_url}/v1/comprehensive/search", json=payload, headers=headers, timeout=30, max_retries=3)
             if r.status_code == 200:
                 data = r.json()
@@ -224,7 +224,7 @@ class IwencaiAdapter(BaseSourceAdapter):
             "expand_index": "true",
         }
         try:
-            from adapters.base import resilient_request
+            from .base import resilient_request
             r = resilient_request("post", f"{self.base_url}/v1/query2data", json=payload, headers=headers, timeout=30, max_retries=3)
             if r.status_code == 200:
                 data = r.json()

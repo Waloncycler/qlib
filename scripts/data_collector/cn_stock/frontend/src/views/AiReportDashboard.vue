@@ -22,9 +22,7 @@
     <div class="layout-container" v-if="!loading || reports.length > 0">
       <!-- Left Sidebar: Report List -->
       <div class="report-list-container glass-panel">
-        <div class="list-header">
-          <h3>Reports ({{ reports.length }})</h3>
-        </div>
+
         <div class="report-list">
           <div 
             v-for="report in reports" 
@@ -46,13 +44,7 @@
 
       <!-- Right Panel: Report Detail -->
       <div class="report-detail-container glass-panel" v-if="selectedReport">
-        <div class="detail-header">
-          <h2>{{ selectedReport.title }}</h2>
-          <div class="detail-meta">
-            <span class="meta-item"><UserIcon class="meta-icon" /> {{ selectedReport.username }}</span>
-            <span class="meta-item"><ClockIcon class="meta-icon" /> {{ formatDate(selectedReport.created_time) }}</span>
-          </div>
-        </div>
+
         
         <div class="detail-content-scroll">
           <!-- Stock Pool Section (Inside scroll area so it can be scrolled) -->
@@ -124,7 +116,7 @@ import { ref, onMounted, computed } from 'vue'
 import { RefreshCcwIcon, BookOpenIcon, UserIcon, ClockIcon, TrendingUpIcon } from 'lucide-vue-next'
 import { useDataLoader } from '../composables/useDataLoader'
 
-const { fetchReports, loading, triggerBackendRefresh, checkRefreshStatus, error } = useDataLoader()
+const { fetchReports, loading, triggerReportsRefresh, checkReportsRefreshStatus, error } = useDataLoader()
 const reports = ref([])
 const selectedReport = ref(null)
 const backendUpdating = ref(false)
@@ -146,18 +138,18 @@ const handleRefresh = async () => {
   if (backendUpdating.value) return
   backendUpdating.value = true
   
-  const res = await triggerBackendRefresh()
+  const res = await triggerReportsRefresh()
   if (res && (res.status === 'started' || res.status === 'busy')) {
-    pollStatus()
+    startPolling()
   } else {
     backendUpdating.value = false
     loadData()
   }
 }
 
-const pollStatus = () => {
+const startPolling = () => {
   const timer = setInterval(async () => {
-    const status = await checkRefreshStatus()
+    const status = await checkReportsRefreshStatus()
     if (!status || !status.running) {
       clearInterval(timer)
       backendUpdating.value = false
@@ -290,42 +282,36 @@ const formattedContent = computed(() => {
 
 .layout-container {
   display: flex;
+  flex-direction: column;
   gap: 20px;
   flex: 1;
   min-height: 0; /* Important for nested scrolling */
 }
 
-/* Sidebar List */
+/* Top List */
 .report-list-container {
-  width: 320px;
   flex-shrink: 0;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
   overflow: hidden;
+  padding: 10px;
 }
 
-.list-header {
-  padding: 16px;
-  border-bottom: 1px solid var(--border-color);
-}
 
-.list-header h3 {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
 
 .report-list {
   flex: 1;
-  overflow-y: auto;
-  padding: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 10px;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-direction: row;
+  gap: 12px;
 }
 
 .report-list::-webkit-scrollbar {
-  width: 6px;
+  height: 6px;
 }
 
 .report-list::-webkit-scrollbar-thumb {
@@ -334,53 +320,62 @@ const formattedContent = computed(() => {
 }
 
 .report-item {
-  padding: 12px;
+  flex-shrink: 0;
+  width: 200px;
+  padding: 8px 12px;
   border-radius: 8px;
   cursor: pointer;
-  border: 1px solid transparent;
+  border: 1px solid rgba(255, 255, 255, 0.05);
   transition: all 0.2s;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
 }
 
 .report-item:hover {
   background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .report-item.active {
-  background: rgba(59, 130, 246, 0.1);
-  border-color: rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
 }
 
 .report-item-title {
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 6px;
-  font-size: 0.95rem;
+  font-weight: 500;
+  color: #f1f5f9;
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .report-item-date {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
+  font-size: 0.7rem;
+  color: #94a3b8;
+  margin-bottom: 6px;
 }
 
 .report-item-concepts {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
+  overflow: hidden;
 }
 
 .concept-tag {
-  font-size: 0.75rem;
-  padding: 2px 8px;
-  background: rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 4px;
-  color: var(--text-secondary);
+  color: #cbd5e1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 140px;
+  max-width: 90px;
 }
 
 /* Detail Panel */
@@ -391,34 +386,6 @@ const formattedContent = computed(() => {
   overflow: hidden;
 }
 
-.detail-header {
-  padding: 24px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.detail-header h2 {
-  margin: 0 0 12px 0;
-  font-size: 1.6rem;
-  color: var(--text-primary);
-}
-
-.detail-meta {
-  display: flex;
-  gap: 16px;
-}
-
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-}
-
-.meta-icon {
-  width: 16px;
-  height: 16px;
-}
 
 /* Stock Pool Section */
 .stock-pool-section {

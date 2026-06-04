@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-from adapters.base import (
+from .base import (
     BaseSourceAdapter,
     clean_symbol,
     eastmoney_datacenter,

@@ -5,7 +5,7 @@ import logging
 import pandas as pd
 import requests
 
-from adapters.base import (
+from .base import (
     BaseSourceAdapter,
     clean_symbol,
     to_qlib_symbol,

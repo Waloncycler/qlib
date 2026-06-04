@@ -188,7 +188,7 @@ const buildCharts = (data) => {
   const common = {
     backgroundColor: 'transparent',
     tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
-    grid: { left: '8%', right: '5%', bottom: '15%', top: '25%', containLabel: true },
+    grid: { left: '8%', right: '5%', bottom: '15%', top: '25%' },
     xAxis: { type: 'category', data: dates, axisLine: { lineStyle: { color: '#334155' } }, axisLabel: { color: '#64748b', fontSize: 9 } },
     dataZoom: [{ type: 'inside', start: 80, end: 100 }, { type: 'slider', show: true, bottom: 0, textStyle: { color: '#9ba1a6' } }]
   }
@@ -397,7 +397,7 @@ onMounted(() => {
 
 .charts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 600px), 1fr));
   gap: 20px;
 }
 
@@ -484,4 +484,21 @@ onMounted(() => {
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+@media (max-width: 768px) {
+  .dashboard {
+    padding-bottom: 30px;
+  }
+  .stat-card {
+    padding: 12px;
+  }
+  .stat-value {
+    font-size: 1.4rem;
+  }
+  .chart {
+    height: 250px;
+    min-height: 250px;
+  }
+}
 </style>

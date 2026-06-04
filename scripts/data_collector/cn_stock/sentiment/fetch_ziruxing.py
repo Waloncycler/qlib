@@ -14,14 +14,14 @@ from tqdm import tqdm
 
 # 路径修复
 CUR_DIR = Path(__file__).resolve().parent
-sys.path.append(str(CUR_DIR))
-sys.path.append(str(CUR_DIR.parent.parent))
+PROJECT_DIR = CUR_DIR.parent
+sys.path.append(str(PROJECT_DIR))
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("ZiruxingFetcher")
 
 def fetch_history(all_years=False):
-    with open(CUR_DIR / "secret.yaml", "r") as f:
+    with open(PROJECT_DIR / "secret.yaml", "r") as f:
         config = yaml.safe_load(f)
     
     token = config.get("zzshare_token")
@@ -48,7 +48,7 @@ def fetch_history(all_years=False):
         logger.info(f"Fetching Ziruxing data for {year}...")
         
         try:
-            from adapters.base import resilient_request
+            from market_data.adapters.base import resilient_request
             res = resilient_request("get", url, headers=headers, timeout=20)
             if res.status_code == 200:
                 data = res.json().get("data", [])

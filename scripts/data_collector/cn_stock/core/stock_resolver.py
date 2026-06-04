@@ -8,9 +8,10 @@ from loguru import logger
 import concurrent.futures
 
 CUR_DIR = Path(__file__).resolve().parent
-sys.path.append(str(CUR_DIR))
+PROJECT_DIR = CUR_DIR.parent
+sys.path.append(str(PROJECT_DIR))
 
-from adapters import (
+from market_data.adapters import (
     DragonTigerAdapter,
     MarketSentimentAdapter,
     ThsNorthboundAdapter,
@@ -18,12 +19,12 @@ from adapters import (
     clean_symbol,
     to_qlib_symbol
 )
-from collector import CnStockCollector
+from market_data.collector import CnStockCollector
 
 class StockResolver:
     def __init__(self, config_path=None):
-        self.config_path = config_path or str(CUR_DIR / "secret.yaml")
-        self.watchlist_path = str(CUR_DIR / "watchlist.yaml")
+        self.config_path = config_path or str(PROJECT_DIR / "secret.yaml")
+        self.watchlist_path = str(PROJECT_DIR / "watchlist.yaml")
         
         # Load configs
         self.secret = self._load_yaml(self.config_path)
@@ -101,7 +102,7 @@ class StockResolver:
                 "client": "WEB"
             }
             # Need resilient_request here
-            from adapters.base import resilient_request
+            from market_data.adapters.base import resilient_request
             r = resilient_request("get", url, params=params)
             d = r.json() or {}
             result = d.get("result") or {}
@@ -116,7 +117,7 @@ class StockResolver:
         try:
             ms = MarketSentimentAdapter(self.secret)
             # Use resilient_request directly for zt_pool
-            from adapters.base import resilient_request
+            from market_data.adapters.base import resilient_request
             url = "http://push2ex.eastmoney.com/getTopicZTPool"
             params = {"ut": "7eea3edcaed734bea9cbfc24409ed989", "dpt": "wz.ztb"}
             r = resilient_request("get", url, params=params)
@@ -138,7 +139,7 @@ class StockResolver:
 
     def _get_broken_limit_up(self) -> list:
         try:
-            from adapters.base import resilient_request
+            from market_data.adapters.base import resilient_request
             url = "http://push2ex.eastmoney.com/getTopicZBPool"
             params = {"ut": "7eea3edcaed734bea9cbfc24409ed989", "dpt": "wz.ztb"}
             r = resilient_request("get", url, params=params)
@@ -166,7 +167,7 @@ class StockResolver:
                 return True
                 
         logger.info(f"Real-time fetching layer(s) for {symbol}: {layer or 'ALL'}...")
-        save_dir = CUR_DIR.parent.parent.parent / "data/cn_stock/hierarchical"
+        save_dir = CUR_DIR.parent.parent.parent.parent / "data/cn_stock/hierarchical"
         
         collector = CnStockCollector(
             save_dir=str(CUR_DIR),

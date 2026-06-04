@@ -5,12 +5,12 @@
 
 # 1. Morning Check (09:00 AM, Mon-Fri)
 # Validates environment and checks if today is a trading day.
-0 9 * * 1-5 cd /Users/walox/qlib/scripts/data_collector/cn_stock && ../../../.venv/bin/python update_all_data.py --mode morning >> /tmp/qlib_morning.log 2>&1
+0 9 * * 1-5 cd /Users/walox/qlib/scripts/data_collector/cn_stock && ../../../.venv/bin/python tasks/update_daily.py --mode morning >> /tmp/qlib_morning.log 2>&1
 
 # 2. Market Close Fast Fetch (03:05 PM, Mon-Fri)
 # Rapidly fetches market, signals, and capital data right after close.
-5 15 * * 1-5 cd /Users/walox/qlib/scripts/data_collector/cn_stock && ../../../.venv/bin/python update_all_data.py --mode close >> /tmp/qlib_close.log 2>&1
+5 15 * * 1-5 cd /Users/walox/qlib/scripts/data_collector/cn_stock && ../../../.venv/bin/python tasks/update_daily.py --mode close >> /tmp/qlib_close.log 2>&1
 
 # 3. Evening Full Fetch (08:00 PM, Mon-Fri)
 # Fetches all layers including fundamentals, news, topics, and long-running analytics.
-0 20 * * 1-5 cd /Users/walox/qlib/scripts/data_collector/cn_stock && ../../../.venv/bin/python update_all_data.py --mode evening >> /tmp/qlib_evening.log 2>&1
+0 20 * * 1-5 cd /Users/walox/qlib/scripts/data_collector/cn_stock && ../../../.venv/bin/python tasks/update_daily.py --mode evening >> /tmp/qlib_evening.log 2>&1

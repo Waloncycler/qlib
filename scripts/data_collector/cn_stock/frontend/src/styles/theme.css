@@ -24,6 +24,15 @@ body {
   font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
+  /* Fluid typography: scales between 14px on mobile and 16px on desktop */
+  font-size: clamp(14px, 1vw + 10px, 16px);
+}
+
+@media (max-width: 768px) {
+  /* Reduce global border radiuses and shadows on mobile */
+  .glass-panel {
+    border-radius: 12px;
+  }
 }
 
 /* Glassmorphism Panel */

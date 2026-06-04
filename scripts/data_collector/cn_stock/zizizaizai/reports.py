@@ -15,7 +15,7 @@ def get_token():
     if not token:
         # Fallback to local config if running standalone
         import yaml
-        config_path = Path(__file__).parent / "secret.yaml"
+        config_path = Path(__file__).parent.parent / "secret.yaml"
         if config_path.exists():
             with open(config_path, "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
@@ -77,7 +77,7 @@ def fetch_reports():
     print(f"Found {len(items)} reports. Fetching details...")
     
     # Load existing to avoid redundant fetches
-    out_dir = Path(__file__).resolve().parent.parent.parent.parent / "data" / "cn_stock" / "hierarchical" / "signals"
+    out_dir = Path(__file__).resolve().parent.parent.parent.parent.parent / "data" / "cn_stock" / "hierarchical" / "signals"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_file = out_dir / "zizizaizai_reports.json"
     

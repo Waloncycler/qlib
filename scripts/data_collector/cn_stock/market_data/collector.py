@@ -11,11 +11,12 @@ from loguru import logger
 
 # Add paths to sys.path so we can import base data_collector classes and local modules
 CUR_DIR = Path(__file__).resolve().parent
-sys.path.append(str(CUR_DIR))
-sys.path.append(str(CUR_DIR.parent.parent))
+PROJECT_DIR = CUR_DIR.parent
+sys.path.append(str(PROJECT_DIR))
+sys.path.append(str(PROJECT_DIR.parent.parent))
 
 from data_collector.base import BaseCollector, BaseNormalize, BaseRun, Normalize
-from adapters import *
+from .adapters import *
 
 
 class CnStockCollector(BaseCollector):
@@ -36,7 +37,7 @@ class CnStockCollector(BaseCollector):
         config_path: str = None,
     ):
         self.source = source.lower()
-        self.config_path = config_path or str(CUR_DIR / "secret.yaml")
+        self.config_path = config_path or str(PROJECT_DIR / "secret.yaml")
         self.config = self._load_config()
 
         # Instantiate selected adapter
@@ -237,7 +238,7 @@ class CnStockCollector(BaseCollector):
                         final_cols = [c for c in cols_order if c in df_combined.columns] + other_cols
                         df_combined = df_combined[final_cols]
                         
-                        from data_schema import validate_market_sentiment
+                        from core.data_schema import validate_market_sentiment
                         if validate_market_sentiment(df_combined):
                             df_combined.to_csv(csv_path, index=False)
                             logger.info(f"Saved market sentiment data for date {sent_data['date']} to {csv_path}")
@@ -282,15 +283,16 @@ class CnStockCollector(BaseCollector):
                 except Exception as e:
                     logger.error(f"Failed to fetch Industry rankings: {e}")
 
-            # Run market-wide signal sources in parallel
-            with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-                futures = [
-                    executor.submit(process_sentiment),
-                    executor.submit(process_ths_hot),
-                    executor.submit(process_ths_north),
-                    executor.submit(process_em_ind),
-                ]
-                concurrent.futures.wait(futures)
+            # Run market-wide signal sources in parallel only if fetching all
+            if symbol.lower() == "all":
+                with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+                    futures = [
+                        executor.submit(process_sentiment),
+                        executor.submit(process_ths_hot),
+                        executor.submit(process_ths_north),
+                        executor.submit(process_em_ind),
+                    ]
+                    concurrent.futures.wait(futures)
 
             def process_signals_symbol(sym):
                 try:
@@ -461,7 +463,8 @@ class CnStockCollector(BaseCollector):
                     logger.error(f"Failed to fetch Eastmoney stock news for {sym}: {e}")
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-                executor.submit(process_news_general)
+                if symbol.lower() == "all":
+                    executor.submit(process_news_general)
                 list(executor.map(process_news_symbol, symbols))
 
         elif layer == "research":

@@ -9,10 +9,12 @@ from pathlib import Path
 
 # Add current directory to path
 current_dir = Path(__file__).resolve().parent
-workspace_dir = current_dir.parent.parent.parent
-sys.path.append(str(current_dir))
+PROJECT_DIR = current_dir.parent
+workspace_dir = PROJECT_DIR.parent.parent.parent
+sys.path.append(str(PROJECT_DIR))
+sys.path.append(str(PROJECT_DIR.parent.parent))
 
-from trading_calendar import is_trading_day
+from core.trading_calendar import is_trading_day
 
 def main():
     parser = argparse.ArgumentParser(description="Update Data Script")
@@ -29,7 +31,7 @@ def main():
         print("Today is not a trading day. Skipping update.")
         return
         
-    config_path = current_dir / "secret.yaml"
+    config_path = PROJECT_DIR / "secret.yaml"
     
     if not config_path.exists():
         print(f"Error: {config_path} not found.")
@@ -95,13 +97,13 @@ def main():
         
         def run_script(script_name):
             print(f"Starting {script_name}...")
-            subprocess.run([sys.executable, str(current_dir / script_name)], check=True)
+            subprocess.run([sys.executable, str(PROJECT_DIR / script_name)], check=True)
             print(f"Finished {script_name}")
             
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-            future_topics = executor.submit(run_script, "fetch_zizizaizai_topics.py")
-            future_sentiment = executor.submit(run_script, "fetch_ziruxing_sentiment.py")
-            future_reports = executor.submit(run_script, "fetch_zizizaizai_reports.py")
+            future_topics = executor.submit(run_script, "zizizaizai/topics.py")
+            future_sentiment = executor.submit(run_script, "sentiment/fetch_ziruxing.py")
+            future_reports = executor.submit(run_script, "zizizaizai/reports.py")
             concurrent.futures.wait([future_topics, future_sentiment, future_reports])
             # Re-raise exceptions if any
             future_topics.result()
@@ -111,13 +113,13 @@ def main():
         print("\n=====================================")
         print("2.5 Running backfill_sentiment.py to update Eastmoney pools...")
         print("=====================================")
-        run_script("backfill_sentiment.py")
+        run_script("backfill/backfill_sentiment.py")
         
         # Step 3 depends on Topics, so it runs after
         print("\n=====================================")
         print("3. Fetching Zizizaizai K-Lines...")
         print("=====================================")
-        subprocess.run([sys.executable, str(current_dir / "fetch_zizizaizai_klines.py")], check=True)
+        subprocess.run([sys.executable, str(PROJECT_DIR / "zizizaizai/klines.py")], check=True)
     elif args.mode == "morning":
         print("\n=====================================")
         print("Morning mode: Initialization and validation only. Exiting.")
@@ -131,7 +133,7 @@ def main():
     
     # Get dynamic watchlist
     try:
-        from stock_resolver import StockResolver
+        from core.stock_resolver import StockResolver
         resolver = StockResolver(config_path=str(config_path))
         target_symbols = resolver.get_dynamic_watchlist()
     except Exception as e:
@@ -156,7 +158,7 @@ def main():
             for sym in target_symbols:
                 cmd = [
                     sys.executable,
-                    str(current_dir / "collector.py"),
+                    str(PROJECT_DIR / "market_data/collector.py"),
                     "download_layer",
                     "--layer", layer,
                     "--symbol", sym,

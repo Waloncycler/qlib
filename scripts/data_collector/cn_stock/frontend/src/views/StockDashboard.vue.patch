@@ -1,0 +1,306 @@
+--- /Users/walox/qlib/scripts/data_collector/cn_stock/frontend/src/views/StockDashboard.vue
++++ /Users/walox/qlib/scripts/data_collector/cn_stock/frontend/src/views/StockDashboard.vue
+@@ -37,6 +37,13 @@
+           <i class="fa-solid fa-microchip mr-2" :class="{'fa-spin': isAuditing}"></i> 
+           {{ isAuditing ? 'Auditing...' : (isBackgroundFetching ? 'Syncing Data...' : 'Run Deep Risk Audit') }}
+         </button>
++        
++        <button 
++          @click="handleGlobalRefresh" 
++          class="btn-refresh"
++        >
++          <i class="fa-solid fa-cloud-arrow-down mr-2"></i> Global Data Refresh
++        </button>
+       </div>
+     </header>
+     <!-- Floating Toast Notifications -->
+@@ -83,115 +90,29 @@
+       </div>
+     </div>
+ 
+-    <!-- 1. Market Layer -->
+-    <div v-if="hasData && activeTab === 'market'" class="layer-content">
+-      <div class="grid-cards mb-4">
+-        <div class="stat-card glass-panel" v-if="dragonTiger">
+-          <div class="stat-label">LHB Net Buy (龙虎榜净买)</div>
+-          <div class="stat-value" :class="dragonTiger.NET_BUY_AMT > 0 ? 'up' : 'down'">
+-            {{ (dragonTiger.NET_BUY_AMT / 10000).toFixed(2) }} 万
+-          </div>
+-        </div>
+-        <div class="stat-card glass-panel" v-if="lockupData">
+-          <div class="stat-label">Next Lockup Expiry</div>
+-          <div class="stat-value">{{ lockupData.date }}</div>
+-          <div class="stat-subtext">{{ lockupData.ratio }}%</div>
+-        </div>
+-      </div>
+-      <div class="chart-panel glass-panel">
+-        <div class="chart-toggles-floating">
+-          <label class="toggle-label" title="涨跌停"><input type="checkbox" v-model="chartToggles.showLimit" /> 涨跌停</label>
+-          <label class="toggle-label" title="20日新高"><input type="checkbox" v-model="chartToggles.showHigh20" /> 20日新高</label>
+-          <label class="toggle-label" title="异动预警"><input type="checkbox" v-model="chartToggles.showAbnormal" /> 异动预警</label>
+-          <label class="toggle-label" title="异动预测线"><input type="checkbox" v-model="chartToggles.showPrediction" /> 异动预测线</label>
+-        </div>
+-        <v-chart class="chart" :option="klineOption" autoresize />
+-      </div>
+-    </div>
++    <MarketTab v-if="hasData && activeTab === 'market'" 
++      :dragonTiger="dragonTiger"
++      :lockupData="lockupData"
++      :klineOption="klineOption"
++      v-model:chartToggles="chartToggles"
++    />
+ 
+-    <!-- 2. Signals Layer -->
+-    <div v-if="hasData && activeTab === 'signals'" class="layer-content">
+-      <div class="glass-panel p-6">
+-        <h3 class="section-title text-yellow-400"><i class="fa-solid fa-fire mr-2"></i> THS Concept / Hot Reasons</h3>
+-        <table class="data-table mt-4" v-if="thsReasons.length > 0">
+-          <thead>
+-            <tr><th>Concept Name</th><th>Reasoning</th></tr>
+-          </thead>
+-          <tbody>
+-            <tr v-for="(reason, idx) in thsReasons" :key="idx">
+-              <td class="font-bold text-emerald-400 whitespace-nowrap">{{ reason.name }}</td>
+-              <td class="text-slate-300">{{ reason.reason || reason.reason_tags }}</td>
+-            </tr>
+-          </tbody>
+-        </table>
+-        <div v-else class="empty-state-small">No concept reasons found for this symbol.</div>
+-      </div>
+-
+-    </div>
++    <SignalsTab v-if="hasData && activeTab === 'signals'"
++      :thsReasons="thsReasons"
++    />
+ 
+-    <!-- 3. Capital Layer -->
+-    <div v-if="hasData && activeTab === 'capital'" class="layer-content grid-2-col">
+-      <div class="chart-panel glass-panel">
+-        <v-chart class="chart" :option="marginOption" autoresize />
+-      </div>
+-      <div class="chart-panel glass-panel">
+-        <v-chart class="chart" :option="fundFlowOption" autoresize />
+-      </div>
+-    </div>
++    <CapitalTab v-if="hasData && activeTab === 'capital'"
++      :marginOption="marginOption"
++      :fundFlowOption="fundFlowOption"
++    />
+ 
+-    <!-- 4. Fundamentals Layer -->
+-    <div v-if="hasData && activeTab === 'fundamentals'" class="layer-content">
+-      <div class="glass-panel p-6">
+-        <h3 class="section-title text-purple-400"><i class="fa-solid fa-building mr-2"></i> Core Financial Ratios</h3>
+-        <div class="table-scroll mt-4" v-if="financeData.length > 0">
+-          <table class="data-table">
+-            <thead>
+-              <tr>
+-                <th>Report Date</th>
+-                <th>EPS (摊薄)</th>
+-                <th>ROE% (净资产收益率)</th>
+-                <th>Gross Margin% (毛利率)</th>
+-                <th>Net Profit (净利润)</th>
+-              </tr>
+-            </thead>
+-            <tbody>
+-              <tr v-for="(fin, idx) in financeData" :key="idx">
+-                <td class="font-mono text-sky-400">{{ fin.date || fin.report_date || fin.updated_date }}</td>
+-                <td>{{ fin.eps || (fin.jinglirun && fin.zongguben ? (fin.jinglirun / fin.zongguben).toFixed(2) : '--') }}</td>
+-                <td>{{ fin.roe ? parseFloat(fin.roe).toFixed(2) : (fin.jinglirun && fin.jingzichan ? (fin.jinglirun / fin.jingzichan * 100).toFixed(2) : '--') }}</td>
+-                <td>{{ fin.gross_margin ? parseFloat(fin.gross_margin).toFixed(2) : '--' }}</td>
+-                <td class="text-emerald-400 font-bold">{{ fin.net_profit ? Number(fin.net_profit).toLocaleString() : (fin.jinglirun ? Number(fin.jinglirun).toLocaleString() : '--') }}</td>
+-              </tr>
+-            </tbody>
+-          </table>
+-        </div>
+-        <div v-else class="empty-state-small">No fundamental financial data found.</div>
+-      </div>
+-    </div>
++    <FundamentalsTab v-if="hasData && activeTab === 'fundamentals'"
++      :financeData="financeData"
++    />
+ 
+-    <!-- 5. News Layer -->
+-    <div v-if="hasData && activeTab === 'news'" class="layer-content grid-2-col">
+-      <div class="glass-panel p-6 flex flex-col h-[600px]">
+-        <h3 class="section-title text-amber-500 mb-4"><i class="fa-solid fa-bolt mr-2"></i> CLS Telegraph (财联社电报)</h3>
+-        <div class="overflow-y-auto custom-scrollbar flex-1 space-y-4 pr-2">
+-          <div v-for="(news, idx) in clsTelegraphs" :key="idx" class="news-card">
+-            <p class="news-time"><i class="fa-regular fa-clock mr-1"></i>{{ news.time || news.ctime }}</p>
+-            <p class="news-content">{{ news.content }}</p>
+-          </div>
+-          <div v-if="!clsTelegraphs.length" class="empty-state-small">No recent telegraphs.</div>
+-        </div>
+-      </div>
+-      <div class="glass-panel p-6 flex flex-col h-[600px]">
+-        <h3 class="section-title text-rose-500 mb-4"><i class="fa-solid fa-newspaper mr-2"></i> Company News ({{ symbol }})</h3>
+-        <div class="overflow-y-auto custom-scrollbar flex-1 space-y-4 pr-2">
+-          <div v-for="(news, idx) in eastmoneyNews" :key="idx" class="news-card">
+-            <h4 class="news-title">{{ news.title }}</h4>
+-            <p class="news-time mt-2"><i class="fa-regular fa-calendar mr-1"></i>{{ formatTime(news.time || news.publish_time || news.date) }}</p>
+-          </div>
+-          <div v-if="!eastmoneyNews.length" class="empty-state-small">No company news found.</div>
+-        </div>
+-      </div>
+-    </div>
++    <NewsTab v-if="hasData && activeTab === 'news'"
++      :symbol="symbol"
++      :clsTelegraphs="clsTelegraphs"
++      :eastmoneyNews="eastmoneyNews"
++    />
+     
+     <div v-if="!hasData && !loading && !error" class="empty-state glass-panel">
+       <TrendingUpIcon class="empty-icon" />
+@@ -207,6 +128,12 @@
+ import { useChartFactory } from '../composables/useChartFactory'
+ import { marked } from 'marked'
+ import axios from 'axios'
++
++import MarketTab from '../components/tabs/MarketTab.vue'
++import SignalsTab from '../components/tabs/SignalsTab.vue'
++import CapitalTab from '../components/tabs/CapitalTab.vue'
++import FundamentalsTab from '../components/tabs/FundamentalsTab.vue'
++import NewsTab from '../components/tabs/NewsTab.vue'
+ 
+ const route = useRoute()
+ const router = useRouter()
+@@ -274,15 +201,15 @@
+ const clsTelegraphs = ref([])
+ const eastmoneyNews = ref([])
+ 
+-const formatTime = (t) => {
+-  if (!t) return ''
+-  if (typeof t === 'number' && t > 100000000000) {
+-    const d = new Date(t)
+-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+-  }
+-  return t
+-}
+-
++const handleGlobalRefresh = async () => {
++  try {
++    const res = await axios.post('/api/refresh')
++    showSuccess(res.data?.message || 'Global refresh started')
++  } catch (err) {
++    error.value = `Refresh trigger failed: ${err.message}`
++  }
++}
++
+ const runYmosAudit = async () => {
+   if (!symbol.value) return
+   isAuditing.value = true
+@@ -528,6 +455,22 @@
+   box-shadow: 0 0 16px rgba(124, 58, 237, 0.6);
+ }
+ 
++.btn-refresh {
++  display: flex;
++  align-items: center;
++  gap: 8px;
++  background: #0ea5e9;
++  color: white;
++  border: none;
++  padding: 8px 16px;
++  border-radius: 8px;
++  cursor: pointer;
++  font-weight: bold;
++  font-size: 0.9rem;
++  transition: all 0.2s;
++}
++.btn-refresh:hover:not(:disabled) {
++  background: #0284c7;
++}
++
+ .icon.spin { animation: spin 1s linear infinite; }
+ @keyframes spin { 100% { transform: rotate(360deg); } }
+ 
+@@ -628,88 +571,11 @@
+ .layer-content {
+   display: flex; flex-direction: column; gap: 16px; flex: 1;
+ }
+-
+-.ymos-result-panel {
+-  padding: 16px !important;
+-}
+-
+-.grid-2-col {
+-  display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 16px;
+-}
+-
+-.grid-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+-.stat-card { padding: 20px; display: flex; flex-direction: column; gap: 8px; }
+-.stat-label { color: var(--text-secondary); font-size: 0.9rem; font-weight: 500; }
+-.stat-value { font-size: 1.8rem; font-weight: 700; }
+-.stat-subtext { font-size: 0.85rem; color: var(--text-secondary); }
+-.up { color: var(--danger); }
+-.down { color: var(--success); }
+-
+-.chart-panel { padding: 16px; height: 450px; position: relative; }
+-.chart { width: 100%; height: 100%; }
+-.chart-toggles-floating { 
+-  position: absolute; 
+-  top: 12px; 
+-  left: 20px; 
+-  display: flex; 
+-  gap: 12px; 
+-  z-index: 10; 
+-  background: rgba(15, 23, 42, 0.7); 
+-  padding: 4px 10px; 
+-  border-radius: 6px; 
+-  border: 1px solid rgba(255,255,255,0.05);
+-  backdrop-filter: blur(4px);
+-}
+-.toggle-label { font-size: 0.8rem; color: #cbd5e1; display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
+-.toggle-label input { accent-color: #38bdf8; cursor: pointer; margin: 0; }
+-
+-.markdown-body {
+-  max-height: 500px;
+-  overflow-y: auto;
+-  color: #cbd5e1;
+-  font-size: 0.85rem;
+-  line-height: 1.5;
+-}
+-.markdown-body h2 {
+-  font-size: 1.05rem;
+-  font-weight: bold;
+-  margin-top: 0.5rem;
+-  margin-bottom: 0.25rem;
+-  color: #a78bfa;
+-}
+-.markdown-body h3 {
+-  font-size: 0.95rem;
+-  font-weight: bold;
+-  margin-top: 0.5rem;
+-  margin-bottom: 0.25rem;
+-}
+-.markdown-body p {
+-  margin-bottom: 0.25rem;
+-}
+-.markdown-body ul {
+-  list-style-type: disc;
+-  padding-left: 1.5rem;
+-  margin-bottom: 0.25rem;
+-}
+-.markdown-body li {
+-  margin-bottom: 0.15rem;
+-}
+-.markdown-body strong {
+-  color: #fcd34d;
+-  font-weight: bold;
+-}
+-
+-.section-title { font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+-.p-6 { padding: 24px; }
+-
+-.data-table { width: 100%; border-collapse: collapse; text-align: left; }
+-.data-table td { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+-.data-table tr:hover td { background: rgba(255,255,255,0.02); }
+-
+-.news-card { padding: 16px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; transition: border-color 0.2s; }
+-.news-card:hover { border-color: rgba(255,255,255,0.2); }
+-.news-time { font-size: 0.8rem; color: #38bdf8; font-family: monospace; margin-bottom: 8px; }
+-.news-title { font-size: 1rem; font-weight: 600; color: #f2f2f2; line-height: 1.4; }
+-.news-content { font-size: 0.95rem; color: #cbd5e1; line-height: 1.6; }
+ 
+ .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; color: var(--text-secondary); opacity: 0.7; flex: 1; }
+ .empty-state-small { padding: 20px; color: var(--text-secondary); text-align: center; font-style: italic; }

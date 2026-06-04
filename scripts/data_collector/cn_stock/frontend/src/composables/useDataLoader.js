@@ -137,5 +137,25 @@ export function useDataLoader() {
     }
   }
 
-  return { loading, error, fetchCsv, fetchJson, fetchTopics, fetchReports, triggerRealtimeFetch, triggerBackendRefresh, checkRefreshStatus, triggerRiskAudit }
+  const triggerReportsRefresh = async () => {
+    try {
+      const res = await api.post('/refresh/reports')
+      return res.data
+    } catch (err) {
+      console.error('Failed to trigger reports refresh:', err)
+      return { status: 'error', message: err.message }
+    }
+  }
+
+  const checkReportsRefreshStatus = async () => {
+    try {
+      const res = await api.get('/refresh/reports/status')
+      return res.data
+    } catch (err) {
+      console.error('Failed to check reports refresh status:', err)
+      return { running: false, last_result: 'error' }
+    }
+  }
+
+  return { loading, error, fetchCsv, fetchJson, fetchTopics, fetchReports, triggerRealtimeFetch, triggerBackendRefresh, checkRefreshStatus, triggerRiskAudit, triggerReportsRefresh, checkReportsRefreshStatus }
 }

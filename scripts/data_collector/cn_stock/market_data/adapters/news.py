@@ -9,7 +9,7 @@ from datetime import datetime
 import pandas as pd
 import requests
 
-from adapters.base import (
+from .base import (
     BaseSourceAdapter,
     to_qlib_symbol,
     UA,
@@ -35,7 +35,7 @@ class EastmoneyStockNewsAdapter(BaseSourceAdapter):
         return pd.DataFrame()
 
     def fetch_stock_news(self, symbol: str, page_size: int = 30) -> pd.DataFrame:
-        from adapters.base import clean_symbol
+        from .base import clean_symbol
         code = clean_symbol(symbol)
         cb = "jQuery_news"
         url = "https://search-api-web.eastmoney.com/search/jsonp"
