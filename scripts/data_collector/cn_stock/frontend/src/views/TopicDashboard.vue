@@ -55,11 +55,30 @@
         </div>
         
         <template v-else>
-          <div class="chart-panel glass-panel">
-            <h3 class="section-title">Market Trend & Active Stocks</h3>
-            <v-chart v-if="Object.keys(topicKlineOption).length > 0" class="chart" :option="topicKlineOption" @datazoom="handleDataZoom" autoresize />
-            <div v-else class="empty-state-small" style="height: 300px; display: flex; align-items: center; justify-content: center;">
-              <p>No historical K-line data available for this topic from upstream API.</p>
+          <div class="chart-panel glass-panel" style="position: relative; transition: height 0.3s;" :style="{ height: selectedStock ? '600px' : '350px' }">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 12px 16px 0 16px; position: absolute; top: 0; left: 0; right: 0; z-index: 10;">
+              <h3 class="section-title" style="margin-bottom: 0;">Market Trend & Active Stocks</h3>
+              
+              <div style="display: flex; gap: 8px;" v-if="selectedStock && Object.keys(topicKlineOption).length > 0 && !stockLoading">
+                <button class="btn-refresh" @click="toggleStockSelection(selectedStock)" style="padding: 4px 12px; font-size: 0.85rem; background: rgba(15, 23, 42, 0.8);">
+                  <EyeOffIcon class="icon-tiny" /> Hide Stock
+                </button>
+                <button class="btn-refresh" @click="goToStockExplorer(selectedStock)" style="padding: 4px 12px; font-size: 0.85rem; background: rgba(15, 23, 42, 0.8);">
+                  <ExternalLinkIcon class="icon-tiny" /> Open Explorer
+                </button>
+              </div>
+            </div>
+
+            <div v-if="stockLoading" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; color: #9ba1a6; background: rgba(15, 23, 42, 0.6); z-index: 20; border-radius: 12px;">
+               <RefreshCwIcon class="icon spin" />
+               <p>Fetching multi-grid data for {{ selectedStock }}...</p>
+            </div>
+            
+            <div style="height: 100%; padding-top: 40px; box-sizing: border-box;">
+              <v-chart v-if="Object.keys(topicKlineOption).length > 0" class="chart" :option="topicKlineOption" @datazoom="handleDataZoom" autoresize style="height: 100%; width: 100%;" />
+              <div v-else class="empty-state-small" style="height: 100%; display: flex; align-items: center; justify-content: center;">
+                <p>No historical K-line data available for this topic from upstream API.</p>
+              </div>
             </div>
           </div>
 
@@ -139,11 +158,14 @@
 <script setup>
 import { ref, computed, onMounted, watch, shallowRef, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { RefreshCwIcon, AlertTriangleIcon, HashIcon, ExternalLinkIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-vue-next'
+import { RefreshCwIcon, AlertTriangleIcon, HashIcon, ExternalLinkIcon, ChevronLeftIcon, ChevronRightIcon, EyeOffIcon } from 'lucide-vue-next'
 import { useDataLoader } from '../composables/useDataLoader'
+import { useChartFactory } from '../composables/useChartFactory'
+import axios from 'axios'
+import * as echarts from 'echarts/core'
 
 const router = useRouter()
-const { loading, error, fetchTopics, triggerBackendRefresh, checkRefreshStatus } = useDataLoader()
+const { loading, error, fetchTopics, triggerBackendRefresh, checkRefreshStatus, fetchCsv } = useDataLoader()
 
 const backendUpdating = ref(false)
 
@@ -175,7 +197,11 @@ const topicsList = ref([])
 const klinesMap = shallowRef({})
 const selectedTopic = ref(null)
 const selectedStock = ref(null)
+const stockLoading = ref(false)
 const topicKlineOption = shallowRef({})
+
+const stockKlineOption = shallowRef({})
+const { createKlineOption } = useChartFactory()
 
 const listContainer = ref(null)
 const canScrollLeft = ref(false)
@@ -252,9 +278,62 @@ watch(customDays, (val) => {
 
 const activeStocksLeaderboard = ref([])
 
-const toggleStockSelection = (stockName) => {
-  selectedStock.value = selectedStock.value === stockName ? null : stockName
+const toggleStockSelection = async (stockName) => {
+  if (selectedStock.value === stockName) {
+    selectedStock.value = null
+    stockKlineOption.value = {}
+  } else {
+    selectedStock.value = stockName
+    await loadStockKline(stockName)
+  }
   updateChartOption()
+}
+
+const loadStockKline = async (stockName) => {
+  stockKlineOption.value = {}
+  stockLoading.value = true
+  try {
+    const res = await axios.get(`/api/resolve_symbol/${encodeURIComponent(stockName)}`)
+    if (res.data && res.data.symbol) {
+      const symbol = res.data.symbol.toUpperCase()
+      const klineData = await fetchCsv('market', `${symbol}_tencent_sina_kline.csv`)
+      
+      if (klineData && klineData.length) {
+        const tid = String(selectedTopic.value.id)
+        const topicKData = klinesMap.value[tid] || []
+        const topicDates = topicKData.map(d => d.trade_date)
+        
+        let alignedKlineData = klineData
+        if (topicDates.length > 0) {
+          const klineMap = {}
+          klineData.forEach(d => { klineMap[d.date || d.trade_date] = d })
+          
+          let lastValidRow = null
+          alignedKlineData = topicDates.map(tdate => {
+            if (klineMap[tdate]) {
+              lastValidRow = { ...klineMap[tdate], date: tdate, trade_date: tdate }
+              return lastValidRow
+            } else {
+              if (lastValidRow) {
+                return { ...lastValidRow, date: tdate, trade_date: tdate, volume: 0 }
+              } else {
+                // If missing before first data point, return a 0 row
+                return { date: tdate, trade_date: tdate, open: 0, close: 0, high: 0, low: 0, volume: 0 }
+              }
+            }
+          })
+        }
+
+        // Toggles default to showing all indicators to match Stock Data Explorer
+        const toggles = { showLimit: true, showHigh20: true, showAbnormal: true, showPrediction: true }
+        stockKlineOption.value = createKlineOption(`${stockName} (${symbol})`, alignedKlineData, toggles)
+      }
+    }
+  } catch (err) {
+    console.error("Failed to load individual stock kline:", err)
+  } finally {
+    stockLoading.value = false
+  }
 }
 
 const buildLeaderboard = () => {
@@ -390,14 +469,19 @@ const updateChartOption = () => {
     ]
   }
 
-  topicKlineOption.value = {
+  let option = {
     backgroundColor: 'transparent',
-    tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
-    legend: { data: [{name: 'Topic Index'}, {name: 'Limit Up', itemStyle: {color: '#ef4444'}}, {name: 'Limit Down', itemStyle: {color: '#10b981'}}], textStyle: { color: '#9ba1a6' } },
-    grid: { left: '3%', right: '3%', bottom: '15%', top: '10%' },
-    xAxis: { type: 'category', data: dates, axisLine: { lineStyle: { color: '#334155' } }, axisLabel: { color: '#9ba1a6' } },
-    yAxis: { type: 'value', scale: true, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }, axisLabel: { color: '#9ba1a6' } },
+    tooltip: { trigger: 'axis', axisPointer: { type: 'cross' }, showContent: false },
+    legend: { 
+      data: [{name: 'Topic Index'}, {name: 'Limit Up', itemStyle: {color: '#ef4444'}}, {name: 'Limit Down', itemStyle: {color: '#10b981'}}], 
+      textStyle: { color: '#9ba1a6' },
+      top: 0 
+    },
+    grid: [{ left: '2%', right: '2%', bottom: '15%', top: 30 }],
+    xAxis: [{ type: 'category', data: dates, axisLine: { lineStyle: { color: '#334155' } }, axisLabel: { color: '#9ba1a6' } }],
+    yAxis: [{ type: 'value', scale: true, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }, axisLabel: { color: '#9ba1a6' } }],
     dataZoom: dzConfig,
+    axisPointer: { link: [{ xAxisIndex: 'all' }] },
     series: [
       {
         name: 'Topic Index', type: 'candlestick', data: values,
@@ -413,6 +497,54 @@ const updateChartOption = () => {
       }
     ]
   }
+
+  if (hasSelected && Object.keys(stockKlineOption.value).length > 0) {
+    const stockOpt = stockKlineOption.value
+    
+    // Top grid for Topic Index
+    option.grid[0].height = '35%'
+    option.grid[0].bottom = 'auto'
+    option.xAxis[0].axisLabel = { show: false }
+    option.xAxis[0].axisTick = { show: false }
+    
+    // Bottom grids for Stock Kline and Volume
+    option.grid.push(
+      { left: '2%', right: '2%', top: '45%', height: '35%' }, 
+      { left: '2%', right: '2%', top: '82%', height: '10%' }
+    )
+    
+    option.xAxis.push(
+      { type: 'category', gridIndex: 1, data: dates, boundaryGap: false, axisLine: { lineStyle: { color: '#334155' } }, axisLabel: { show: false }, axisTick: { show: false } },
+      { type: 'category', gridIndex: 2, data: dates, boundaryGap: false, axisLine: { lineStyle: { color: '#334155' } }, axisLabel: { color: '#9ba1a6' } }
+    )
+    
+    if (stockOpt.yAxis && stockOpt.yAxis.length > 1) {
+      option.yAxis.push(
+        { ...stockOpt.yAxis[0], gridIndex: 1 },
+        { ...stockOpt.yAxis[1], gridIndex: 2 }
+      )
+    }
+    
+    if (stockOpt.series) {
+      const stockSeries = stockOpt.series.map(s => {
+        const newXIndex = (s.xAxisIndex || 0) + 1
+        const newYIndex = (s.yAxisIndex || 0) + 1
+        return { ...s, xAxisIndex: newXIndex, yAxisIndex: newYIndex }
+      })
+      option.series = [...option.series, ...stockSeries]
+    }
+    
+    if (stockOpt.legend && stockOpt.legend.data) {
+      option.legend.data = [...option.legend.data, ...stockOpt.legend.data]
+    }
+    
+    dzConfig.forEach(z => {
+      z.xAxisIndex = [0, 1, 2]
+    })
+    option.dataZoom = dzConfig
+  }
+
+  topicKlineOption.value = option
 }
 
 const loadData = async () => {
@@ -455,14 +587,14 @@ onMounted(() => {
 .list-container-horizontal { flex: 1; display: flex; overflow-x: auto; gap: 10px; padding-bottom: 4px; align-items: center; scrollbar-width: none; scroll-behavior: smooth; }
 .list-container-horizontal::-webkit-scrollbar { display: none; }
 
-.topic-item-horizontal { display: flex; flex-direction: column; padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s; min-width: 160px; max-width: 220px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; }
+.topic-item-horizontal { display: flex; flex-direction: column; padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s; min-width: 160px; max-width: 320px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; }
 .topic-item-horizontal:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.15); transform: translateY(-1px); }
 .topic-item-horizontal.active { background: rgba(59, 130, 246, 0.15); border-color: var(--accent-color); box-shadow: 0 0 10px rgba(59, 130, 246, 0.1); }
 
 .topic-name-row { display: flex; justify-content: space-between; margin-bottom: 6px; align-items: center; gap: 8px; }
-.topic-name { font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.stock-badge { font-size: 0.75rem; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; flex-shrink: 0; }
-.topic-meta { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-secondary); }
+.topic-name { font-weight: 600; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stock-badge { font-size: 0.7rem; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; flex-shrink: 0; }
+.topic-meta { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-secondary); }
 .top-badge { color: var(--danger); font-weight: bold; background: rgba(239, 68, 68, 0.1); padding: 0 6px; border-radius: 4px; margin-left: auto; }
 
 .main-content { flex: 1; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; padding-right: 8px; }
