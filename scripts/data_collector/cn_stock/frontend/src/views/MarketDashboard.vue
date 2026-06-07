@@ -98,11 +98,7 @@
         <h3 class="chart-title">8. Institutional LHB Flow</h3>
         <v-chart class="chart" :option="opts.c8" group="market" autoresize />
       </div>
-      <!-- 9 -->
-      <div class="chart-panel glass-panel">
-        <h3 class="chart-title">9. VIP Market Timing Signal</h3>
-        <v-chart class="chart" :option="opts.c9" group="market" autoresize />
-      </div>
+
       <!-- 10 -->
       <div class="chart-panel glass-panel">
         <h3 class="chart-title">10. Extreme Signals (Tiandi/Ditian)</h3>
@@ -152,7 +148,7 @@ const displayMode = ref('charts')
 // Store all options in a shallow object
 const opts = shallowRef({
   c1: {}, c2: {}, c3: {}, c4: {}, c5: {}, c6: {}, 
-  c7: {}, c8: {}, c9: {}, c10: {}
+  c7: {}, c8: {}, c10: {}
 })
 
 const summaryStats = computed(() => {
@@ -281,14 +277,6 @@ const buildCharts = (data) => {
     series: [
       { name: 'NetBuy(10k)', type: 'bar', data: data.map(d => d.dt_net_buy_wan / 10000), color: '#10b981' },
       { name: 'Stocks', type: 'line', yAxisIndex: 1, data: data.map(d => d.dt_stock_count), color: '#38bdf8' }
-    ]
-  })
-
-  newOpts.c9 = merge({
-    legend: { data: ['Timing Signal'], textStyle: { color: '#94a3b8' } },
-    yAxis: { type: 'value', axisLabel: { formatter: v => v > 0 ? 'BULL' : v < 0 ? 'BEAR' : 'NEUTRAL' } },
-    series: [
-      { name: 'Timing Signal', type: 'line', step: 'start', data: data.map(d => d.timing_signal_type ?? d.zizi_market_timing ?? 0), color: '#facc15', lineStyle: { width: 3 } }
     ]
   })
 

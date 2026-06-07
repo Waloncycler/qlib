@@ -114,6 +114,11 @@ def main():
         print("2.5 Running backfill_sentiment.py to update Eastmoney pools...")
         print("=====================================")
         run_script("backfill/backfill_sentiment.py")
+
+        print("\n=====================================")
+        print("2.6 Running backfill_enhanced.py to fetch Zizi Timing and Hardcore Data...")
+        print("=====================================")
+        run_script("backfill/backfill_enhanced.py")
         
         # Step 3 depends on Topics, so it runs after
         print("\n=====================================")

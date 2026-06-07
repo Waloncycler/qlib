@@ -26,10 +26,10 @@ from tqdm import tqdm
 # 路径修复
 CUR_DIR = Path(__file__).resolve().parent
 sys.path.append(str(CUR_DIR))
-sys.path.append(str(CUR_DIR.parent.parent))
+sys.path.append(str(CUR_DIR.parent))
 
-from adapters.signals import EastmoneyIndustryAdapter, DragonTigerAdapter
-from adapters.legacy import ZizizaizaiAdapter, ZzshareAdapter
+from market_data.adapters.signals import EastmoneyIndustryAdapter, DragonTigerAdapter
+from market_data.adapters.legacy import ZizizaizaiAdapter, ZzshareAdapter
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("EnhancedBackfill")
@@ -40,11 +40,11 @@ TOTAL_STOCKS = 5350
 # ────────────────────────────────────────────────────────────────────────────
 
 def run_enhanced_backfill():
-    save_dir = CUR_DIR / "../../../data/cn_stock/hierarchical/signals"
+    save_dir = CUR_DIR.parent.parent.parent.parent / "data/cn_stock/hierarchical/signals"
     save_dir.mkdir(parents=True, exist_ok=True)
     csv_path = save_dir / "market_sentiment_enhanced.csv"
     
-    with open(CUR_DIR / "secret.yaml", "r") as f:
+    with open(CUR_DIR.parent / "secret.yaml", "r") as f:
         config = yaml.safe_load(f)
 
     # 初始化适配器
@@ -190,6 +190,7 @@ def run_enhanced_backfill():
         # A.2 ZIZIZAIZAI 择时
         zi = zizi_lookup.get(date_str, {})
         row_data["zizi_market_timing"] = zi.get("market_timing", np.nan)
+        row_data["timing_signal_type"] = zi.get("timing_signal_type", np.nan)
         
         # A.3 Ziruxing 核心字段
         if zi_hard:

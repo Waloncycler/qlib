@@ -165,7 +165,7 @@ class ZizizaizaiAdapter(BaseSourceAdapter):
         url = f"{self.base_url}/v3/sentiment/timing"
         params = {"date1": start_date, "date2": end_date}
         try:
-            res = requests.get(url, headers=headers, params=params, timeout=10)
+            res = requests.get(url, headers=headers, params=params, timeout=30)
             if res.status_code == 200:
                 data = res.json()
                 if data.get("code") == 20000 or data.get("code") == 200:
