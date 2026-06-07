@@ -88,6 +88,7 @@
       :lockupData="lockupData"
       :klineOption="klineOption"
       v-model:chartToggles="chartToggles"
+      :symbol="symbol"
     />
 
     <!-- 2. Signals Layer -->

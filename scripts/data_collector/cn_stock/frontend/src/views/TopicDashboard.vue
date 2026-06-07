@@ -165,7 +165,7 @@ import axios from 'axios'
 import * as echarts from 'echarts/core'
 
 const router = useRouter()
-const { loading, error, fetchTopics, triggerBackendRefresh, checkRefreshStatus, fetchCsv } = useDataLoader()
+const { loading, error, fetchTopics, triggerTopicsRefresh, checkTopicsRefreshStatus, fetchCsv, triggerRealtimeFetch } = useDataLoader()
 
 const backendUpdating = ref(false)
 
@@ -173,7 +173,7 @@ const handleRefresh = async () => {
   if (backendUpdating.value) return
   backendUpdating.value = true
   
-  const res = await triggerBackendRefresh()
+  const res = await triggerTopicsRefresh()
   if (res && (res.status === 'started' || res.status === 'busy')) {
     pollStatus()
   } else {
@@ -184,7 +184,7 @@ const handleRefresh = async () => {
 
 const pollStatus = () => {
   const timer = setInterval(async () => {
-    const status = await checkRefreshStatus()
+    const status = await checkTopicsRefreshStatus()
     if (!status || !status.running) {
       clearInterval(timer)
       backendUpdating.value = false
@@ -296,6 +296,10 @@ const loadStockKline = async (stockName) => {
     const res = await axios.get(`/api/resolve_symbol/${encodeURIComponent(stockName)}`)
     if (res.data && res.data.symbol) {
       const symbol = res.data.symbol.toUpperCase()
+      
+      // Trigger real-time fetch to ensure K-line data is completely up to date
+      await triggerRealtimeFetch(symbol, 'market')
+      
       const klineData = await fetchCsv('market', `${symbol}_tencent_sina_kline.csv`)
       
       if (klineData && klineData.length) {

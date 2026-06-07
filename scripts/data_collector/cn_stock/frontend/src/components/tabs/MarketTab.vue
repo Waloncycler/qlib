@@ -27,20 +27,36 @@
         <label class="toggle-label" title="异动预测线">
           <input type="checkbox" v-model="localChartToggles.showPrediction" @change="emitUpdate" /> 异动预测线
         </label>
+        <div class="toggle-label ml-2" v-if="loadingIntraday">
+          <i class="fa-solid fa-circle-notch fa-spin text-sky-400"></i> Loading Intraday...
+        </div>
       </div>
-      <v-chart class="chart" :option="klineOption" autoresize />
+      <v-chart class="chart" :option="klineOption" autoresize @click="onChartClick" />
+    </div>
+
+    <!-- Intraday Panel -->
+    <div v-if="intradayOption && Object.keys(intradayOption).length" class="chart-panel glass-panel mt-4 relative">
+      <button class="close-btn" @click="intradayOption = null"><i class="fa-solid fa-xmark"></i></button>
+      <v-chart class="chart" :option="intradayOption" autoresize />
+    </div>
+    <div v-else-if="intradayOption && Object.keys(intradayOption).length === 0 && !loadingIntraday" class="glass-panel p-4 mt-4 text-center text-gray-400">
+      No intraday data available for {{ intradayDate }}
+      <button class="ml-4 text-rose-400 hover:text-rose-300" @click="intradayOption = null">Close</button>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, watch } from 'vue'
+import axios from 'axios'
+import { useChartFactory } from '../../composables/useChartFactory'
 
 const props = defineProps({
   dragonTiger: Object,
   lockupData: Object,
   klineOption: Object,
-  chartToggles: Object
+  chartToggles: Object,
+  symbol: String
 })
 
 const emit = defineEmits(['update:chartToggles'])
@@ -53,6 +69,40 @@ watch(() => props.chartToggles, (newVal) => {
 
 const emitUpdate = () => {
   emit('update:chartToggles', localChartToggles.value)
+}
+
+const { createIntradayOption } = useChartFactory()
+const intradayOption = ref(null)
+const intradayDate = ref('')
+const loadingIntraday = ref(false)
+
+const onChartClick = async (params) => {
+  if (params.componentType === 'series' && params.seriesName === 'KLine') {
+    const date = params.name // xAxis value
+    if (date) {
+      await fetchIntraday(date)
+    }
+  }
+}
+
+const fetchIntraday = async (date) => {
+  if (!props.symbol) return
+  intradayDate.value = date
+  loadingIntraday.value = true
+  intradayOption.value = null
+  try {
+    const res = await axios.get(`/api/stock/${props.symbol}/intraday/${date}`)
+    if (res.data && res.data.status === 'success' && res.data.data.length > 0) {
+      intradayOption.value = createIntradayOption(`Intraday Curve ${date}`, res.data.data)
+    } else {
+      intradayOption.value = {}
+    }
+  } catch (err) {
+    console.error('Failed to fetch intraday', err)
+    intradayOption.value = {}
+  } finally {
+    loadingIntraday.value = false
+  }
 }
 </script>
 
@@ -82,6 +132,8 @@ const emitUpdate = () => {
 }
 .toggle-label { font-size: 0.8rem; color: #cbd5e1; display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
 .toggle-label input { accent-color: #38bdf8; cursor: pointer; margin: 0; }
+.close-btn { position: absolute; top: 12px; right: 16px; background: transparent; border: none; color: #94a3b8; cursor: pointer; font-size: 1.2rem; z-index: 10; transition: color 0.2s; }
+.close-btn:hover { color: #f87171; }
 
 @media (max-width: 768px) {
   .chart-panel {

@@ -307,5 +307,88 @@ export function useChartFactory() {
     }
   }
 
-  return { createKlineOption, createLineOption, createBarOption }
+  const createIntradayOption = (title, data) => {
+    if (!data || !data.length) return {}
+    
+    const basePrice = data[0].price
+    
+    return {
+      ...commonTheme,
+      title: { text: title, textStyle: { color: '#f2f2f2', fontSize: 14 } },
+      tooltip: { 
+        ...commonTheme.tooltip, 
+        trigger: 'axis',
+        axisPointer: { type: 'cross', lineStyle: { color: '#8b5cf6', type: 'dashed' } },
+        formatter: function (params) {
+          let html = `${params[0].name}<br/>`
+          params.forEach(p => {
+            let val = p.value
+            let color = p.color
+            if (p.seriesName === 'Price') {
+              let pct = ((val - basePrice) / basePrice * 100).toFixed(2)
+              html += `<span style="color:${color}">Price: ${val.toFixed(2)} (${pct}%)</span><br/>`
+            } else if (p.seriesName === 'Volume') {
+              html += `<span style="color:${color}">Volume: ${val}</span><br/>`
+            }
+          })
+          return html
+        }
+      },
+      grid: [
+        { left: '8%', right: '5%', top: 40, height: '55%' },
+        { left: '8%', right: '5%', top: '70%', height: '20%' }
+      ],
+      xAxis: [
+        { type: 'category', data: data.map(d => d.time), axisLine: { lineStyle: { color: '#555' } }, axisLabel: { color: '#9ba1a6' } },
+        { type: 'category', gridIndex: 1, data: data.map(d => d.time), axisLabel: { show: false }, axisTick: { show: false }, axisLine: { lineStyle: { color: '#555' } } }
+      ],
+      yAxis: [
+        { 
+          type: 'value', 
+          scale: true, 
+          splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }, 
+          axisLabel: { 
+            color: (value) => {
+              if (value > basePrice) return '#f7525f'
+              if (value < basePrice) return '#2ebd85'
+              return '#9ba1a6'
+            }
+          } 
+        },
+        { type: 'value', gridIndex: 1, splitNumber: 2, axisLabel: { show: false }, axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false } }
+      ],
+      axisPointer: { link: [{ xAxisIndex: 'all' }] },
+      series: [
+        {
+          name: 'Price',
+          type: 'line',
+          data: data.map(d => d.price),
+          smooth: false,
+          symbol: 'none',
+          lineStyle: { width: 1.5, color: '#38bdf8' },
+          areaStyle: {
+            color: {
+              type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+              colorStops: [{ offset: 0, color: 'rgba(56, 189, 248, 0.3)' }, { offset: 1, color: 'rgba(56, 189, 248, 0)' }]
+            }
+          }
+        },
+        {
+          name: 'Volume',
+          type: 'bar',
+          xAxisIndex: 1,
+          yAxisIndex: 1,
+          data: data.map((d, i) => {
+            let color = '#9ba1a6'
+            if (i > 0) {
+              color = d.price >= data[i-1].price ? '#f7525f' : '#2ebd85'
+            }
+            return { value: d.volume, itemStyle: { color } }
+          })
+        }
+      ]
+    }
+  }
+
+  return { createKlineOption, createLineOption, createBarOption, createIntradayOption }
 }

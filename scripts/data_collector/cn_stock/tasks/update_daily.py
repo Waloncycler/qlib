@@ -18,8 +18,8 @@ from core.trading_calendar import is_trading_day
 
 def main():
     parser = argparse.ArgumentParser(description="Update Data Script")
-    parser.add_argument("--mode", type=str, choices=["morning", "close", "evening", "all"], default="all",
-                        help="Schedule mode: morning (check calendar), close (fetch fast layers), evening (fetch all)")
+    parser.add_argument("--mode", type=str, choices=["morning", "close", "evening", "all", "topics"], default="all",
+                        help="Schedule mode: morning (check calendar), close (fetch fast layers), evening (fetch all), topics (topics and klines only)")
     parser.add_argument("--force", action="store_true", help="Force update even if not a trading day")
     args = parser.parse_args()
     
@@ -120,6 +120,14 @@ def main():
         print("3. Fetching Zizizaizai K-Lines...")
         print("=====================================")
         subprocess.run([sys.executable, str(PROJECT_DIR / "zizizaizai/klines.py")], check=True)
+    elif args.mode == "topics":
+        print("\n=====================================")
+        print("Running topics mode: Topics & K-lines...")
+        print("=====================================")
+        subprocess.run([sys.executable, str(PROJECT_DIR / "zizizaizai/topics.py")], check=True)
+        subprocess.run([sys.executable, str(PROJECT_DIR / "zizizaizai/klines.py")], check=True)
+        print("Topics and K-lines updated. Exiting.")
+        return
     elif args.mode == "morning":
         print("\n=====================================")
         print("Morning mode: Initialization and validation only. Exiting.")

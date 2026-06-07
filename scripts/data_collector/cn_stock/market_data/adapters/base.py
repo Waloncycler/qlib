@@ -61,6 +61,7 @@ def resilient_request(
     max_retries: int = 3,
     backoff_base: float = 1.5,
     timeout: int = 8,
+    verify: bool = False,
     **kwargs,
 ) -> requests.Response:
     """Unified HTTP request with exponential backoff retry.
@@ -87,6 +88,10 @@ def resilient_request(
     kwargs.setdefault("timeout", timeout)
     if "headers" not in kwargs:
         kwargs["headers"] = {"User-Agent": UA}
+    kwargs.setdefault("verify", verify)
+
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     last_exc = None
     for attempt in range(1, max_retries + 1):
