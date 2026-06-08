@@ -29,6 +29,8 @@ def fetch_intraday_data(symbol: str, date: str) -> list:
     if data and data.get("code") == 0 and data.get("data") and tencent_code in data["data"]:
         tencent_data = data["data"][tencent_code].get("data", {})
         returned_date = tencent_data.get("date", "")
+        qt = data["data"][tencent_code].get("qt", {}).get(tencent_code, [])
+        pre_close = float(qt[4]) if len(qt) > 4 else None
         
         if returned_date == date_str:
             minute_data = tencent_data.get("data", [])
@@ -43,7 +45,8 @@ def fetch_intraday_data(symbol: str, date: str) -> list:
                     parsed.append({
                         "time": f"{parts[0][:2]}:{parts[0][2:]}",
                         "price": float(parts[1]),
-                        "volume": vol
+                        "volume": vol,
+                        "pre_close": pre_close
                     })
             return parsed
             

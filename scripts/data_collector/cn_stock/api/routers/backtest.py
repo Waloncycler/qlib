@@ -35,8 +35,22 @@ DATA_DIR = Path(__file__).resolve().parents[5] / "data" / "cn_stock" / "hierarch
 
 @router.get("/api/backtest/pool/dates")
 def get_available_pool_dates():
-    """Returns a list of dates that have available strategy pool data (AI reports)."""
+    """Returns a list of dates that have available strategy pool data."""
     dates = set()
+    
+    # 1. Try to get dates from market sentiment (best indicator of trading days with data)
+    sentiment_path = DATA_DIR / "signals" / "market_sentiment.csv"
+    if sentiment_path.exists():
+        try:
+            import pandas as pd
+            df = pd.read_csv(sentiment_path)
+            if 'date' in df.columns:
+                for d in df['date'].dropna():
+                    dates.add(str(d).split(' ')[0])
+        except Exception as e:
+            logger.error(f"Error reading dates from sentiment: {e}")
+
+    # 2. Try to get dates from AI reports
     reports_path = DATA_DIR / "signals" / "zizizaizai_reports.json"
     if reports_path.exists():
         try:
@@ -47,7 +61,6 @@ def get_available_pool_dates():
                     d = report["created_time"].split(" ")[0]
                     dates.add(d)
                 elif "title" in report:
-                    # try extract YYYYMMDD from title
                     import re
                     match = re.search(r"20\d{6}", report["title"])
                     if match:
@@ -102,33 +115,59 @@ def get_strategy_pool(date: str = Query(..., description="Date in YYYY-MM-DD for
         except Exception as e:
             logger.error(f"Error reading reports: {e}")
 
-    # 2. Process Market Topics (Latest Snapshot)
+    # 2. Process Market Topics (Filtered by date)
     topics_path = DATA_DIR / "signals" / "zizizaizai_topics.json"
     if topics_path.exists():
         try:
             with open(topics_path, "r", encoding="utf-8") as f:
                 topics = json.load(f)
             
+            # Formats to look for in topic name: (260608), (20260608), 260608, 20260608
+            date_short = date.replace("-", "")[2:] # 260608
+            date_long = date.replace("-", "") # 20260608
+            
             grouped_topics = {}
             for topic in topics:
                 concept_name = topic.get("name", "Unknown Topic")
+                
+                # Check if this topic belongs to the target date
+                # We show topics that either have the date in name OR are marked as top topics (latest)
+                # But to be precise for historical view, we prioritize name match
+                is_date_match = date_short in concept_name or date_long in concept_name
+                
+                # If we are looking at the latest date in the system, we can show "is_top" topics too
+                # But for now, let's stick to date match or recent topics
+                if not is_date_match:
+                    continue
+
                 rows = topic.get("rows", [])
                 
                 stocks = []
                 for row in rows:
                     stock_name = row.get("个股", "")
                     if stock_name:
+                        # Try to find symbol/code from other sources or just keep name
                         stocks.append({"name": stock_name, "code": "", "symbol": ""})
                 
                 if stocks:
                     grouped_topics[concept_name] = stocks
             
+            # If no date-specific topics found, maybe it's the latest date and we should show 'is_top' topics
+            if not grouped_topics:
+                for topic in topics:
+                    if topic.get("is_top") == 1:
+                        concept_name = topic.get("name", "Unknown Topic")
+                        rows = topic.get("rows", [])
+                        stocks = [{"name": r.get("个股", ""), "code": "", "symbol": ""} for r in rows if r.get("个股")]
+                        if stocks:
+                            grouped_topics[concept_name] = stocks
+
             # Convert grouped topics to array format
             for concept, stocks in grouped_topics.items():
                 result["sources"]["market_topics"].append({
                     "concept": concept,
                     "is_new": False,
-                    "core_stocks": stocks, # Treat all as core for topics
+                    "core_stocks": stocks,
                     "other_stocks": []
                 })
         except Exception as e:

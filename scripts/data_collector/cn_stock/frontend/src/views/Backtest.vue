@@ -1,153 +1,74 @@
 <template>
   <div class="backtest-container">
-    <div class="header">
-      <h1 class="title">Strategy Backtest (Market Timing)</h1>
-      <button class="run-btn" @click="runBacktest" :disabled="loading">
-        {{ loading ? 'Loading...' : 'Refresh Results' }}
-      </button>
+    <div class="top-control-bar glass-panel">
+      <div class="controls-left">
+        <div class="control-item">
+          <label>Trading Day</label>
+          <select v-model="poolDate" class="mini-input" @change="fetchPool">
+            <option v-for="d in validDates" :key="d" :value="d">{{ d }}</option>
+          </select>
+        </div>
+        <button class="icon-btn" @click="showPool = !showPool" :title="showPool ? 'Hide Pool' : 'Show Pool'">
+          {{ showPool ? '📂 Hide Pool' : '📁 Show Pool' }}
+        </button>
+      </div>
+
+      <div class="controls-right">
+        <button class="mini-btn" @click="runBacktest" :disabled="loading">
+          {{ loading ? '...' : 'Refresh' }}
+        </button>
+      </div>
+    </div>
+
+    <transition name="slide">
+      <div v-if="showPool" class="top-pool-section glass-panel">
+        <div class="pool-content">
+          <!-- AI Reports Row -->
+          <div class="pool-row">
+            <div class="row-label">AI</div>
+            <div class="horizontal-scroll">
+              <div v-for="(theme, idx) in poolData?.sources?.ai_reports" :key="'ai-'+idx" 
+                   class="theme-chip" :class="{'active-chip': selectedTheme?.concept === theme.concept && isComparisonMode}"
+                   @click="selectTheme(theme)">
+                {{ theme.concept }}
+                <span v-if="theme.is_new" class="new-dot"></span>
+              </div>
+            </div>
+          </div>
+          <!-- Market Topics Row -->
+          <div class="pool-row">
+            <div class="row-label">Topics</div>
+            <div class="horizontal-scroll">
+              <div v-for="(theme, idx) in poolData?.sources?.market_topics" :key="'top-'+idx" 
+                   class="theme-chip" :class="{'active-chip': selectedTheme?.concept === theme.concept && isComparisonMode}"
+                   @click="selectTheme(theme)">
+                {{ theme.concept }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <div class="content-wrapper" v-if="!loading">
+      
+      <!-- Chart Area (Full Width) -->
+      <div class="chart-container glass-panel" style="position: relative;">
+        <div v-if="comparisonLoading" class="comparison-overlay">
+          <div class="spinner"></div>
+          <p>Comparing {{ selectedTheme?.concept }}...</p>
+        </div>
+        <button v-if="isComparisonMode" @click="isComparisonMode = false" class="close-comparison-btn">
+          ✕ Return to Backtest
+        </button>
+        <v-chart class="chart" :option="chartOption" autoresize />
+      </div>
+
     </div>
 
     <!-- Error State -->
     <div v-if="error" class="error-panel">
       <p>{{ error }}</p>
-    </div>
-
-    <div class="content-wrapper" v-if="!loading">
-      
-      <!-- Left side: Form & Metrics -->
-      <div class="side-panel">
-        
-        <!-- Strategy Stock Pool Card -->
-        <div class="info-card glass-panel pool-card" style="display: flex; flex-direction: column; max-height: 800px; flex: 1;">
-          <h3>Strategy Stock Pool</h3>
-          
-          <div class="form-group">
-            <label style="font-size: 0.8rem; color: #9ca3af; margin-bottom: 4px; display: block;">Select Trading Day</label>
-            <select v-model="poolDate" class="styled-input" @change="fetchPool">
-              <option v-for="d in validDates" :key="d" :value="d">{{ d }}</option>
-            </select>
-          </div>
-
-          <div v-if="poolLoading" class="loading-text" style="color: #9ca3af; font-size: 0.9rem; margin-top: 10px;">Loading pool data...</div>
-          
-          <div v-else-if="!poolData" class="empty-text" style="color: #6b7280; font-size: 0.9rem; margin-top: 10px;">Select a date to view stock pool.</div>
-          
-          <div v-else class="pool-scroll" style="overflow-y: auto; flex: 1; padding-right: 4px;">
-            <!-- AI Reports -->
-            <div class="pool-source">
-              <div class="source-header" @click="toggleSource('ai')" style="cursor: pointer; display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 6px; font-weight: 500; transition: background 0.2s;">
-                <span style="color: #a78bfa;">🤖 AI Reports ({{ poolData.sources.ai_reports?.length || 0 }})</span>
-                <span class="icon" style="color: #9ca3af; font-size: 0.8rem; align-self: center;">{{ openSource === 'ai' ? '▼' : '▶' }}</span>
-              </div>
-              <div class="source-body" v-show="openSource === 'ai'" style="padding: 10px 4px;">
-                <div v-for="(theme, idx) in poolData.sources.ai_reports" :key="'ai-'+idx" class="theme-block" style="margin-bottom: 12px;">
-                  <div class="theme-name" style="font-size: 0.95rem; font-weight: 600; color: #e5e7eb; margin-bottom: 6px;">
-                    {{ theme.concept }}
-                    <span v-if="theme.is_new" style="background: rgba(239, 68, 68, 0.2); color: #ef4444; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">NEW</span>
-                  </div>
-                  <div class="stock-tags" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px;">
-                    <span v-for="stock in theme.core_stocks" :key="stock.code || stock.name" @click="goToStock(stock.symbol)" style="cursor: pointer; background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ stock.name }}</span>
-                    <span v-for="stock in theme.other_stocks" :key="stock.code || stock.name" @click="goToStock(stock.symbol)" style="cursor: pointer; background: rgba(255, 255, 255, 0.05); color: #9ca3af; border: 1px solid rgba(255, 255, 255, 0.1); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ stock.name }}</span>
-                  </div>
-                </div>
-                <div v-if="!poolData.sources.ai_reports?.length" style="color: #6b7280; font-size: 0.85rem; padding: 4px;">No themes found for this date.</div>
-              </div>
-            </div>
-
-            <!-- Market Topics -->
-            <div class="pool-source" style="margin-top: 12px;">
-              <div class="source-header" @click="toggleSource('topics')" style="cursor: pointer; display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 6px; font-weight: 500; transition: background 0.2s;">
-                <span style="color: #60a5fa;">📊 Market Topics ({{ poolData.sources.market_topics?.length || 0 }})</span>
-                <span class="icon" style="color: #9ca3af; font-size: 0.8rem; align-self: center;">{{ openSource === 'topics' ? '▼' : '▶' }}</span>
-              </div>
-              <div class="source-body" v-show="openSource === 'topics'" style="padding: 10px 4px;">
-                <div v-for="(theme, idx) in poolData.sources.market_topics" :key="'top-'+idx" class="theme-block" style="margin-bottom: 12px;">
-                  <div class="theme-name" style="font-size: 0.95rem; font-weight: 600; color: #e5e7eb; margin-bottom: 6px;">{{ theme.concept }}</div>
-                  <div class="stock-tags" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px;">
-                    <span v-for="stock in theme.core_stocks" :key="stock.name" @click="goToStock(stock.symbol)" style="cursor: pointer; background: rgba(59, 130, 246, 0.1); color: #cbd5e1; border: 1px solid rgba(59, 130, 246, 0.2); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ stock.name }}</span>
-                  </div>
-                </div>
-                <div v-if="!poolData.sources.market_topics?.length" style="color: #6b7280; font-size: 0.85rem; padding: 4px;">No topics found.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="info-card glass-panel form-card">
-          <h3>Single Stock Validator</h3>
-          
-          <div class="form-group">
-            <label>Stock Symbol</label>
-            <input v-model="form.symbol" type="text" placeholder="e.g. SZ002199" class="styled-input" />
-          </div>
-
-          <div class="form-group">
-            <label>Start Date</label>
-            <input v-model="form.startDate" type="date" class="styled-input" />
-          </div>
-
-          <div class="form-group">
-            <label>End Date</label>
-            <input v-model="form.endDate" type="date" class="styled-input" />
-          </div>
-          
-          <div class="form-group">
-            <label>Strategy</label>
-            <select v-model="form.strategy" class="styled-input" disabled>
-              <option value="ai_timing">AI Timing Model (Linear)</option>
-            </select>
-          </div>
-
-          <button class="run-btn w-full mt-4" @click="runSingleBacktest" :disabled="loading">
-            {{ loading ? 'Running Backtest...' : 'Run Validator' }}
-          </button>
-        </div>
-
-        <div class="metrics-grid" v-if="metrics">
-          <div class="metric-item">
-            <div class="m-label">Annualized Return</div>
-            <div class="m-value" :class="{'positive': metrics.annualized_return > 0, 'negative': metrics.annualized_return < 0}">
-              {{ (metrics.annualized_return * 100).toFixed(2) }}%
-            </div>
-          </div>
-          <div class="metric-item">
-            <div class="m-label">Max Drawdown</div>
-            <div class="m-value negative">
-              {{ (metrics.max_drawdown * 100).toFixed(2) }}%
-            </div>
-          </div>
-        </div>
-
-        <!-- Trade Logs -->
-        <div class="info-card glass-panel daily-signals-card" v-if="reversedCurveData.length > 0" style="display: flex; flex-direction: column; max-height: 350px;">
-          <h3>Trading Signals</h3>
-          <div class="signals-scroll" style="overflow-y: auto; flex: 1; margin-top: 8px; padding-right: 4px;">
-            <table class="signals-table" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
-              <thead>
-                <tr style="text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); position: sticky; top: 0; background: rgba(30, 41, 59, 0.95); z-index: 10;">
-                  <th style="padding: 6px 0; color: #9ca3af; font-weight: 500;">Date</th>
-                  <th style="padding: 6px 0; color: #9ca3af; font-weight: 500; text-align: right;">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="d in reversedCurveData" :key="d.date" style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                  <td style="padding: 8px 0; color: #e5e7eb;">{{ d.date }}</td>
-                  <td style="padding: 8px 0; text-align: right; font-weight: 600;">
-                    <span v-if="d.timing_signal === 1.0" style="color: #ef4444;">HOLD</span>
-                    <span v-else style="color: #10b981;">EMPTY</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- Right side: Dual Chart -->
-      <div class="chart-container glass-panel">
-        <v-chart class="chart" :option="chartOption" autoresize />
-      </div>
-
     </div>
   </div>
 </template>
@@ -195,6 +116,55 @@ const poolData = ref(null)
 const poolLoading = ref(false)
 const openSource = ref('ai')
 
+// Comparison Mode State
+const selectedTheme = ref(null)
+const themeStocksData = ref({}) // symbol -> { name, data }
+const isComparisonMode = ref(false)
+const comparisonLoading = ref(false)
+const showPool = ref(true)
+
+const selectTheme = async (theme) => {
+  selectedTheme.value = theme
+  isComparisonMode.value = true
+  comparisonLoading.value = true
+  themeStocksData.value = {}
+  
+  const stocks = [
+    ...(theme.core_stocks || []),
+    ...(theme.other_stocks || [])
+  ].slice(0, 15) // Limit to 15 stocks to avoid overcrowding
+  
+  const date = poolDate.value
+  const promises = stocks.map(async (s) => {
+    let symbol = s.symbol
+    if (!symbol && s.name) {
+      try {
+        const res = await axios.get(`/api/resolve_symbol/${s.name}`)
+        symbol = res.data.symbol
+      } catch (e) {
+        console.warn(`Failed to resolve symbol for ${s.name}`)
+      }
+    }
+    
+    if (symbol) {
+      try {
+        const res = await axios.get(`/api/stock/${symbol}/intraday/${date}`)
+        if (res.data.status === 'success' && res.data.data && res.data.data.length > 0) {
+          themeStocksData.value[symbol] = {
+            name: s.name,
+            data: res.data.data
+          }
+        }
+      } catch (err) {
+        console.error(`Failed to fetch intraday for ${symbol}`, err)
+      }
+    }
+  })
+  
+  await Promise.all(promises)
+  comparisonLoading.value = false
+}
+
 const toggleSource = (src) => {
   if (openSource.value === src) {
     openSource.value = null
@@ -207,6 +177,10 @@ const goToStock = (symbol) => {
   if (symbol) {
     router.push(`/stock/${symbol}`)
   }
+}
+
+const isST = (name) => {
+  return name && (name.toUpperCase().includes('ST'))
 }
 
 const fetchValidDates = async () => {
@@ -242,7 +216,113 @@ const form = ref({
   strategy: 'ai_timing'
 })
 
+const getComparisonOption = () => {
+  const allData = themeStocksData.value
+  const series = []
+  const symbols = Object.keys(allData)
+  
+  if (symbols.length === 0) return {
+    title: { text: 'Loading comparison data...', textStyle: { color: '#9ca3af' }, left: 'center', top: 'center' }
+  }
+
+  // Find a common time axis (union of all times)
+  const allTimes = new Set()
+  symbols.forEach(s => {
+    allData[s].data.forEach(d => allTimes.add(d.time))
+  })
+  const sortedTimes = Array.from(allTimes).sort()
+  
+  symbols.forEach(s => {
+    const stock = allData[s]
+    const dataPoints = stock.data
+    if (dataPoints.length === 0) return
+
+    // Use pre_close if available from API, otherwise fallback to first price of the day
+    const basePrice = dataPoints[0].pre_close || dataPoints[0].price
+    const relativeData = sortedTimes.map(t => {
+      const point = dataPoints.find(p => p.time === t)
+      if (point) {
+        return ((point.price - basePrice) / basePrice * 100).toFixed(2)
+      }
+      return null
+    })
+    
+    series.push({
+      name: stock.name,
+      type: 'line',
+      data: relativeData,
+      showSymbol: false,
+      smooth: true,
+      lineStyle: { width: 2 }
+    })
+  })
+  
+  return {
+    title: {
+      text: `${selectedTheme.value.concept} - Intra-day Comparison (${poolDate.value})`,
+      textStyle: { color: '#e5e7eb', fontSize: 16 },
+      left: 'center',
+      top: 5
+    },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(15, 23, 42, 0.9)',
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+      textStyle: { color: '#f8fafc' },
+      formatter: (params) => {
+        if (!params || params.length === 0) return ''
+        let res = `<div style="font-weight:bold;margin-bottom:4px;color:#9ca3af;">${params[0].name}</div>`
+        // Filter out null/undefined/NaN values and sort descending
+        const validParams = params.filter(p => p.value !== null && p.value !== undefined && !isNaN(p.value))
+        const sortedParams = validParams.sort((a, b) => Number(b.value) - Number(a.value))
+        
+        sortedParams.forEach(p => {
+          const val = Number(p.value)
+          const color = val >= 0 ? '#ef4444' : '#10b981'
+          const displayVal = val > 0 ? `+${val.toFixed(2)}` : val.toFixed(2)
+          res += `<div style="display:flex;justify-content:space-between;gap:20px;">
+            <span>${p.marker} ${p.seriesName}</span>
+            <span style="font-weight:bold;color:${color};">${displayVal}%</span>
+          </div>`
+        })
+        return res
+      }
+    },
+    legend: {
+      data: symbols.map(s => allData[s].name),
+      textStyle: { color: '#e5e7eb' },
+      bottom: 25,
+      type: 'scroll'
+    },
+    grid: {
+      top: '12%',
+      bottom: '15%',
+      left: '5%',
+      right: '5%'
+    },
+    xAxis: {
+      type: 'category',
+      data: sortedTimes,
+      axisLabel: { color: '#9ca3af' },
+      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { color: '#9ca3af', formatter: '{value}%' },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)', type: 'dashed' } }
+    },
+    dataZoom: [
+      { type: 'inside', start: 0, end: 100 },
+      { show: true, type: 'slider', bottom: 5, start: 0, end: 100, height: 15 }
+    ],
+    series: series
+  }
+}
+
 const chartOption = computed(() => {
+  if (isComparisonMode.value) {
+    return getComparisonOption()
+  }
   if (!curveData.value) return {}
 
   const dates = curveData.value.map(d => d.date)
@@ -429,6 +509,7 @@ const runSingleBacktest = async () => {
     return
   }
 
+  isComparisonMode.value = false
   loading.value = true
   error.value = null
   try {
@@ -481,198 +562,223 @@ onMounted(() => {
 
 <style scoped>
 .backtest-container {
-  padding: 24px;
-  height: calc(100vh - 48px);
+  padding: 12px;
+  height: calc(100vh - 24px);
   display: flex;
   flex-direction: column;
   color: var(--text-primary);
+  gap: 12px;
 }
 
-.header {
+.top-control-bar {
+  padding: 8px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
-  flex-shrink: 0;
-}
-
-.title {
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 0;
-  background: linear-gradient(to right, #60a5fa, #a78bfa);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.run-btn {
-  background: var(--accent-color);
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.run-btn:hover:not(:disabled) {
-  background: #2563eb;
-}
-
-.content-wrapper {
-  display: flex;
-  gap: 24px;
-  flex: 1;
-  min-height: 0;
-}
-
-.side-panel {
-  width: 450px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  overflow-y: auto;
-}
-
-.info-card {
-  padding: 20px;
-  border-radius: 12px;
-}
-
-.info-card h3 {
-  margin: 0 0 16px 0;
-  font-size: 1.1rem;
-  color: var(--text-primary);
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-  padding-bottom: 8px;
-}
-
-.form-group {
-  margin-bottom: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.form-group label {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
-.styled-input {
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(255,255,255,0.1);
-  color: var(--text-primary);
-  padding: 10px 12px;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  outline: none;
-  transition: all 0.2s;
-}
-
-.styled-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-.styled-input:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.w-full {
-  width: 100%;
-}
-.mt-4 {
-  margin-top: 16px;
-}
-
-.param-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.param-list li {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.95rem;
-  color: var(--text-secondary);
-}
-
-.param-list .label {
-  font-weight: 500;
-  color: #9ca3af;
-}
-
-.logic-rule {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-  align-items: flex-start;
-}
-
-.logic-rule:last-child {
-  margin-bottom: 0;
-}
-
-.logic-rule .emoji {
-  font-size: 1.2rem;
-  background: rgba(255,255,255,0.05);
-  padding: 6px;
   border-radius: 8px;
 }
 
-.logic-rule strong {
-  display: block;
-  font-size: 0.95rem;
-  color: var(--text-primary);
-  margin-bottom: 4px;
+.controls-left, .controls-right {
+  display: flex;
+  gap: 16px;
+  align-items: center;
 }
 
-.logic-rule p {
-  margin: 0;
+.control-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 0.85rem;
   color: #9ca3af;
 }
 
-.metrics-grid {
+.mini-input {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #f8fafc;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.icon-btn, .mini-btn {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.icon-btn:hover, .mini-btn:hover {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+.top-pool-section {
+  padding: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.pool-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.pool-row:last-child {
+  margin-bottom: 0;
+}
+
+.row-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #9ca3af;
+  width: 60px;
+  text-transform: uppercase;
+}
+
+.horizontal-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  flex: 1;
+}
+
+.horizontal-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.horizontal-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+}
+
+.theme-chip {
+  background: rgba(255,255,255,0.05);
+  color: #e5e7eb;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.1);
+  transition: all 0.2s;
+  position: relative;
+}
+
+.theme-chip:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.active-chip {
+  background: rgba(59, 130, 246, 0.3) !important;
+  color: #60a5fa !important;
+  border-color: #3b82f6 !important;
+}
+
+.new-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 6px;
+  height: 6px;
+  background: #ef4444;
+  border-radius: 50%;
+}
+
+.content-wrapper {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+.side-panel-right {
+  width: 240px;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.metric-item {
-  background: rgba(255,255,255,0.05);
-  padding: 16px;
-  border-radius: 12px;
+.info-card h4 {
+  margin: 0 0 8px 0;
+  font-size: 0.85rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+}
+
+.form-group-mini {
   display: flex;
-  justify-content: space-between;
+  gap: 4px;
+}
+
+.mini-run-btn {
+  background: #3b82f6;
+  border: none;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.metrics-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.mini-metric {
+  background: rgba(255,255,255,0.05);
+  padding: 8px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
   align-items: center;
 }
 
-.m-label {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  font-weight: 500;
+.mini-metric .l { font-size: 0.7rem; color: #9ca3af; }
+.mini-metric .v { font-size: 1rem; font-weight: 700; }
+
+.signals-scroll {
+  max-height: 300px;
+  overflow-y: auto;
+  font-size: 0.75rem;
 }
 
-.m-value {
-  font-size: 1.2rem;
-  font-weight: 700;
+.signals-table {
+  width: 100%;
 }
 
-.positive { color: #10b981; }
-.negative { color: #ef4444; }
+.signals-table td {
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.hold { color: #ef4444; font-weight: 700; }
+.empty { color: #10b981; font-weight: 700; }
+
+.slide-enter-active, .slide-leave-active {
+  transition: all 0.3s ease;
+  max-height: 200px;
+}
+.slide-enter-from, .slide-leave-to {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-top: 0;
+}
 
 .chart-container {
   flex: 1;
-  padding: 20px;
+  padding: 12px;
   border-radius: 12px;
   min-width: 0;
 }
@@ -680,5 +786,130 @@ onMounted(() => {
 .chart {
   height: 100%;
   width: 100%;
+}
+
+.stock-tag {
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.core-tag {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.other-tag {
+  background: rgba(255, 255, 255, 0.05);
+  color: #9ca3af;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.topic-tag {
+  background: rgba(59, 130, 246, 0.1);
+  color: #cbd5e1;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.st-stock {
+  border-color: rgba(245, 158, 11, 0.5) !important;
+  background: rgba(245, 158, 11, 0.1) !important;
+  color: #f59e0b !important;
+}
+
+.st-badge {
+  background: #f59e0b;
+  color: #000;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 3px;
+  border-radius: 3px;
+  line-height: 1;
+}
+
+.clickable-theme {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e5e7eb;
+  margin-bottom: 6px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: inline-block;
+}
+
+.clickable-theme:hover {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.active-theme {
+  background: rgba(59, 130, 246, 0.3);
+  color: #3b82f6;
+  border-left: 3px solid #3b82f6;
+}
+
+.close-comparison-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  z-index: 100;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #9ca3af;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.close-comparison-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.comparison-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  color: #e5e7eb;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(59, 130, 246, 0.3);
+  border-radius: 50%;
+  border-top-color: #3b82f6;
+  animation: spin 1s ease-in-out infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>
