@@ -32,7 +32,7 @@ cd "$PROJECT_ROOT/scripts/data_collector/cn_stock"
 export MLFLOW_ALLOW_FILE_STORE=true
 
 # 在后台启动 API，使用项目的 python 环境
-"$PROJECT_ROOT/.venv/bin/python" api/server.py &
+"$PROJECT_ROOT/.venv/bin/python" -m api.server &
 API_PID=$!
 
 # ==========================================

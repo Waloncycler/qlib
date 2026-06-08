@@ -171,6 +171,27 @@ class TencentSinaAdapter(BaseSourceAdapter):
                     df["symbol"] = to_qlib_symbol(symbol)
                     df["date"] = pd.to_datetime(df["date"])
                     df = df.sort_values("date").reset_index(drop=True)
+                    
+                    # Append real-time data for today if missing
+                    if interval == "1d" and not df.empty and df.iloc[-1]["date"].date() < pd.Timestamp.now().date():
+                        quotes = self.fetch_tencent_quotes([symbol])
+                        code_no_prefix = clean_symbol(symbol)
+                        if code_no_prefix in quotes:
+                            q = quotes[code_no_prefix]
+                            if q["open"] > 0:
+                                today = pd.Timestamp.now().normalize()
+                                new_row = {
+                                    "date": today,
+                                    "open": q["open"],
+                                    "high": q["high"],
+                                    "low": q["low"],
+                                    "close": q["price"],
+                                    "volume": q["volume_lots"] * 100,
+                                    "factor": 1.0,
+                                    "symbol": to_qlib_symbol(symbol)
+                                }
+                                df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+
                     df["ma5"] = df["close"].rolling(5).mean()
                     df["ma20"] = df["close"].rolling(20).mean()
                     df = df[(df["date"] >= start_datetime) & (df["date"] <= end_datetime)]
@@ -217,6 +238,7 @@ class TencentSinaAdapter(BaseSourceAdapter):
                     "limit_down": float(vals[48]) if vals[48] else 0.0,
                     "vol_ratio": float(vals[49]) if vals[49] else 0.0,
                     "pe_static": float(vals[52]) if vals[52] else 0.0,
+                    "volume_lots": float(vals[36]) if len(vals) > 36 and vals[36] else 0.0,
                 }
             return result
         except Exception as e:

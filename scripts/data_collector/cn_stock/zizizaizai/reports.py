@@ -186,6 +186,8 @@ def fetch_reports():
                     "other_stocks": other_stocks
                 })
                 
+        # Sort so that new concepts are at the front
+        pool.sort(key=lambda x: not x.get("is_new", False))
         return pool
 
     # Convert map to sorted list by ID desc (latest first)

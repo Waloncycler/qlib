@@ -64,7 +64,12 @@ def get_reports():
     report_file = DATA_DIR / "signals/zizizaizai_reports.json"
     if report_file.exists():
         with open(report_file, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+            # Ensure NEW concepts are prioritized at the top
+            for report in data:
+                if "stock_pool" in report and isinstance(report["stock_pool"], list):
+                    report["stock_pool"].sort(key=lambda x: not x.get("is_new", False))
+            return data
     return []
 
 @router.get("/api/data/{layer}/{filename}")

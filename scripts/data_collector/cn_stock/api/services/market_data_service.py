@@ -48,8 +48,8 @@ def fetch_intraday_data(symbol: str, date: str) -> list:
             return parsed
             
     # 2. Fallback to Sina 5-minute historical K-line data for past dates
-    # datalen=1000 5-min candles is about 20 trading days of history
-    sina_url = f"https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData?symbol={tencent_code}&scale=5&datalen=1000"
+    # datalen=5000 5-min candles is about 100 trading days of history
+    sina_url = f"https://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData?symbol={tencent_code}&scale=5&datalen=5000"
     sina_res = requests.get(sina_url, headers=headers, timeout=5, verify=False)
     if sina_res.status_code == 200:
         sina_data = sina_res.json()
