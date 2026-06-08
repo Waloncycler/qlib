@@ -36,7 +36,10 @@ def get_backtest_metrics_and_curve():
             continue
             
     if report_normal is None or port_analysis is None:
-        raise ValueError("No backtest results found. Please run backtest first.")
+        return {
+            "metrics": {"annualized_return": 0.0, "information_ratio": 0.0, "max_drawdown": 0.0},
+            "curve": []
+        }
         
     # Parse analysis
     def safe_float(val, default=0.0):

@@ -12,11 +12,67 @@
       <p>{{ error }}</p>
     </div>
 
-    <div class="content-wrapper" v-if="metrics && !loading">
+    <div class="content-wrapper" v-if="!loading">
       
       <!-- Left side: Form & Metrics -->
       <div class="side-panel">
         
+        <!-- Strategy Stock Pool Card -->
+        <div class="info-card glass-panel pool-card" style="display: flex; flex-direction: column; max-height: 800px; flex: 1;">
+          <h3>Strategy Stock Pool</h3>
+          
+          <div class="form-group">
+            <label style="font-size: 0.8rem; color: #9ca3af; margin-bottom: 4px; display: block;">Select Trading Day</label>
+            <select v-model="poolDate" class="styled-input" @change="fetchPool">
+              <option v-for="d in validDates" :key="d" :value="d">{{ d }}</option>
+            </select>
+          </div>
+
+          <div v-if="poolLoading" class="loading-text" style="color: #9ca3af; font-size: 0.9rem; margin-top: 10px;">Loading pool data...</div>
+          
+          <div v-else-if="!poolData" class="empty-text" style="color: #6b7280; font-size: 0.9rem; margin-top: 10px;">Select a date to view stock pool.</div>
+          
+          <div v-else class="pool-scroll" style="overflow-y: auto; flex: 1; padding-right: 4px;">
+            <!-- AI Reports -->
+            <div class="pool-source">
+              <div class="source-header" @click="toggleSource('ai')" style="cursor: pointer; display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 6px; font-weight: 500; transition: background 0.2s;">
+                <span style="color: #a78bfa;">🤖 AI Reports ({{ poolData.sources.ai_reports?.length || 0 }})</span>
+                <span class="icon" style="color: #9ca3af; font-size: 0.8rem; align-self: center;">{{ openSource === 'ai' ? '▼' : '▶' }}</span>
+              </div>
+              <div class="source-body" v-show="openSource === 'ai'" style="padding: 10px 4px;">
+                <div v-for="(theme, idx) in poolData.sources.ai_reports" :key="'ai-'+idx" class="theme-block" style="margin-bottom: 12px;">
+                  <div class="theme-name" style="font-size: 0.95rem; font-weight: 600; color: #e5e7eb; margin-bottom: 6px;">
+                    {{ theme.concept }}
+                    <span v-if="theme.is_new" style="background: rgba(239, 68, 68, 0.2); color: #ef4444; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">NEW</span>
+                  </div>
+                  <div class="stock-tags" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px;">
+                    <span v-for="stock in theme.core_stocks" :key="stock.code || stock.name" @click="goToStock(stock.symbol)" style="cursor: pointer; background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ stock.name }}</span>
+                    <span v-for="stock in theme.other_stocks" :key="stock.code || stock.name" @click="goToStock(stock.symbol)" style="cursor: pointer; background: rgba(255, 255, 255, 0.05); color: #9ca3af; border: 1px solid rgba(255, 255, 255, 0.1); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ stock.name }}</span>
+                  </div>
+                </div>
+                <div v-if="!poolData.sources.ai_reports?.length" style="color: #6b7280; font-size: 0.85rem; padding: 4px;">No themes found for this date.</div>
+              </div>
+            </div>
+
+            <!-- Market Topics -->
+            <div class="pool-source" style="margin-top: 12px;">
+              <div class="source-header" @click="toggleSource('topics')" style="cursor: pointer; display: flex; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 6px; font-weight: 500; transition: background 0.2s;">
+                <span style="color: #60a5fa;">📊 Market Topics ({{ poolData.sources.market_topics?.length || 0 }})</span>
+                <span class="icon" style="color: #9ca3af; font-size: 0.8rem; align-self: center;">{{ openSource === 'topics' ? '▼' : '▶' }}</span>
+              </div>
+              <div class="source-body" v-show="openSource === 'topics'" style="padding: 10px 4px;">
+                <div v-for="(theme, idx) in poolData.sources.market_topics" :key="'top-'+idx" class="theme-block" style="margin-bottom: 12px;">
+                  <div class="theme-name" style="font-size: 0.95rem; font-weight: 600; color: #e5e7eb; margin-bottom: 6px;">{{ theme.concept }}</div>
+                  <div class="stock-tags" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px;">
+                    <span v-for="stock in theme.core_stocks" :key="stock.name" @click="goToStock(stock.symbol)" style="cursor: pointer; background: rgba(59, 130, 246, 0.1); color: #cbd5e1; border: 1px solid rgba(59, 130, 246, 0.2); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ stock.name }}</span>
+                  </div>
+                </div>
+                <div v-if="!poolData.sources.market_topics?.length" style="color: #6b7280; font-size: 0.85rem; padding: 4px;">No topics found.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="info-card glass-panel form-card">
           <h3>Single Stock Validator</h3>
           
@@ -98,7 +154,10 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
+
+const router = useRouter()
 import VChart, { THEME_KEY } from 'vue-echarts'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
@@ -129,8 +188,55 @@ const error = ref(null)
 const metrics = ref(null)
 const curveData = ref(null)
 
+// Pool State
+const poolDate = ref('')
+const validDates = ref([])
+const poolData = ref(null)
+const poolLoading = ref(false)
+const openSource = ref('ai')
+
+const toggleSource = (src) => {
+  if (openSource.value === src) {
+    openSource.value = null
+  } else {
+    openSource.value = src
+  }
+}
+
+const goToStock = (symbol) => {
+  if (symbol) {
+    router.push(`/stock/${symbol}`)
+  }
+}
+
+const fetchValidDates = async () => {
+  try {
+    const res = await axios.get('/api/backtest/pool/dates')
+    validDates.value = res.data.dates
+    if (validDates.value.length > 0) {
+      poolDate.value = validDates.value[0]
+      fetchPool()
+    }
+  } catch (err) {
+    console.error("Failed to fetch valid dates:", err)
+  }
+}
+
+const fetchPool = async () => {
+  if (!poolDate.value) return
+  poolLoading.value = true
+  try {
+    const res = await axios.get(`/api/backtest/pool?date=${poolDate.value}`)
+    poolData.value = res.data
+  } catch (err) {
+    console.error("Failed to fetch pool data:", err)
+  } finally {
+    poolLoading.value = false
+  }
+}
+
 const form = ref({
-  symbol: 'SZ002199',
+  symbol: 'SH600519',
   startDate: '2023-01-01',
   endDate: new Date().toISOString().split('T')[0],
   strategy: 'ai_timing'
@@ -346,12 +452,30 @@ const runSingleBacktest = async () => {
   }
 }
 
+const fetchResults = async () => {
+  loading.value = true
+  error.value = null
+  try {
+    const res = await axios.get('/api/backtest/results')
+    if (res.data.status === 'success') {
+      metrics.value = res.data.data.metrics
+      curveData.value = res.data.data.curve
+    }
+  } catch (err) {
+    console.error("Failed to fetch backtest results:", err)
+    // Don't show full error panel for initial results fetch to avoid blocking pool
+  } finally {
+    loading.value = false
+  }
+}
+
 const runBacktest = () => {
   runSingleBacktest()
 }
 
 onMounted(() => {
-  runSingleBacktest()
+  fetchResults()
+  fetchValidDates()
 })
 </script>
 
@@ -404,7 +528,7 @@ onMounted(() => {
 }
 
 .side-panel {
-  width: 320px;
+  width: 450px;
   display: flex;
   flex-direction: column;
   gap: 20px;
