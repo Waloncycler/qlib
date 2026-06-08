@@ -16,7 +16,7 @@ sys.path.append(str(PROJECT_DIR))
 sys.path.append(str(PROJECT_DIR.parent.parent))
 
 from data_collector.base import BaseCollector, BaseNormalize, BaseRun, Normalize
-from .adapters import *
+from market_data.adapters import *
 
 
 class CnStockCollector(BaseCollector):
