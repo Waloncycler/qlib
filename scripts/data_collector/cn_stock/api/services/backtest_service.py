@@ -21,17 +21,21 @@ def get_backtest_metrics_and_curve():
         _qlib_initialized = True
         
     exp = R.get_exp(experiment_name="custom_workflow")
-    recorder = exp.list_recorders()
+    recorders = exp.list_recorders()
     
     # iterate from newest to oldest
     report_normal = None
     port_analysis = None
     
-    for rec_id, rec in recorder.items():
+    # Safely iterate through recorders
+    rec_ids = sorted(recorders.keys(), reverse=True)
+    for rec_id in rec_ids:
+        rec = recorders[rec_id]
         try:
             report_normal = rec.load_object("portfolio_analysis/report_normal_1day.pkl")
             port_analysis = rec.load_object("portfolio_analysis/port_analysis_1day.pkl")
-            break
+            if report_normal is not None and port_analysis is not None:
+                break
         except Exception:
             continue
             

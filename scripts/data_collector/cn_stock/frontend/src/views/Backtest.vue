@@ -8,6 +8,17 @@
             <option v-for="d in validDates" :key="d" :value="d">{{ d }}</option>
           </select>
         </div>
+        <div class="control-item window-control">
+          <label>Window:</label>
+          <div class="dual-range">
+            <span class="range-hint">Pre</span>
+            <input type="range" v-model="rangePre" min="0" max="5" step="1" class="mini-slider" />
+            <span class="range-val">{{ rangePre }}</span>
+            <span class="range-hint" style="margin-left: 8px;">Post</span>
+            <input type="range" v-model="rangePost" min="0" max="5" step="1" class="mini-slider" :disabled="isLatestDate" />
+            <span class="range-val">{{ isLatestDate ? 0 : rangePost }}</span>
+          </div>
+        </div>
         <button class="icon-btn" @click="showPool = !showPool" :title="showPool ? 'Hide Pool' : 'Show Pool'">
           {{ showPool ? '📂 Hide Pool' : '📁 Show Pool' }}
         </button>
@@ -50,7 +61,7 @@
       </div>
     </transition>
 
-    <div class="content-wrapper" v-if="!loading">
+    <div class="content-wrapper" v-show="!loading">
       
       <!-- Chart Area (Full Width) -->
       <div class="chart-container glass-panel" style="position: relative;">
@@ -61,9 +72,15 @@
         <button v-if="isComparisonMode" @click="isComparisonMode = false" class="close-comparison-btn">
           ✕ Return to Backtest
         </button>
-        <v-chart class="chart" :option="chartOption" autoresize />
+        <v-chart class="chart" :option="chartOption" :update-options="{ notMerge: true }" autoresize />
       </div>
 
+    </div>
+
+    <!-- Global Loading State -->
+    <div v-if="loading" class="global-loading-panel">
+      <div class="spinner"></div>
+      <p>Loading Backtest Results...</p>
     </div>
 
     <!-- Error State -->
@@ -122,6 +139,9 @@ const themeStocksData = ref({}) // symbol -> { name, data }
 const isComparisonMode = ref(false)
 const comparisonLoading = ref(false)
 const showPool = ref(true)
+const rangePre = ref(1)
+const rangePost = ref(1)
+const isLatestDate = ref(false)
 
 const selectTheme = async (theme) => {
   selectedTheme.value = theme
@@ -135,6 +155,51 @@ const selectTheme = async (theme) => {
   ].slice(0, 15) // Limit to 15 stocks to avoid overcrowding
   
   const date = poolDate.value
+  const pre = parseInt(rangePre.value) || 0
+  const post = isLatestDate.value ? 0 : (parseInt(rangePost.value) || 0)
+
+  let targetDates = [date]
+  if (pre > 0 || post > 0) {
+    try {
+      const res = await axios.get(`/api/market/trading_days?date=${date}&pre_n=${pre}&post_n=${post}`)
+      if (res.data.status === 'success') {
+        targetDates = res.data.data
+        isLatestDate.value = res.data.is_latest
+      }
+    } catch (e) {
+      console.warn("Failed to fetch trading days", e)
+    }
+  }
+
+  // Define standard 5-minute intervals for a trading day (uniform width)
+  const generateDayGrid = (d) => {
+    const grid = []
+    // Morning: 09:30 to 11:30
+    for (let h = 9; h <= 11; h++) {
+      for (let m = 0; m < 60; m += 1) {
+        if (h === 9 && m < 30) continue
+        if (h === 11 && m > 30) continue
+        const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
+        grid.push(`${d} ${timeStr}`)
+      }
+    }
+    // Afternoon: 13:01 to 15:00
+    for (let h = 13; h <= 15; h++) {
+      for (let m = 0; m < 60; m += 1) {
+        if (h === 13 && m < 1) continue
+        if (h === 15 && m > 0) continue
+        const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
+        grid.push(`${d} ${timeStr}`)
+      }
+    }
+    return grid
+  }
+
+  const allTargetTimes = []
+  targetDates.forEach(d => {
+    allTargetTimes.push(...generateDayGrid(d))
+  })
+
   const promises = stocks.map(async (s) => {
     let symbol = s.symbol
     if (!symbol && s.name) {
@@ -148,15 +213,31 @@ const selectTheme = async (theme) => {
     
     if (symbol) {
       try {
-        const res = await axios.get(`/api/stock/${symbol}/intraday/${date}`)
-        if (res.data.status === 'success' && res.data.data && res.data.data.length > 0) {
+        const stockAllData = []
+        for (const d of targetDates) {
+          const res = await axios.get(`/api/stock/${symbol}/intraday/${d}`)
+          if (res.data.status === 'success' && res.data.data) {
+            // Filter and downsample/map to 5-min if needed
+            // But for now, we just collect and we will map to the grid in getComparisonOption
+            const formatted = res.data.data
+              .filter(item => item.time <= '15:00')
+              .map(item => ({
+                ...item,
+                time: `${d} ${item.time}`
+              }))
+            stockAllData.push(...formatted)
+          }
+        }
+        
+        if (stockAllData.length > 0) {
           themeStocksData.value[symbol] = {
             name: s.name,
-            data: res.data.data
+            data: stockAllData,
+            grid: allTargetTimes // Attach the grid to keep it consistent
           }
         }
       } catch (err) {
-        console.error(`Failed to fetch intraday for ${symbol}`, err)
+        console.error(`Failed to fetch data for ${symbol}`, err)
       }
     }
   })
@@ -221,45 +302,8 @@ const getComparisonOption = () => {
   const series = []
   const symbols = Object.keys(allData)
   
-  if (symbols.length === 0) return {
-    title: { text: 'Loading comparison data...', textStyle: { color: '#9ca3af' }, left: 'center', top: 'center' }
-  }
-
-  // Find a common time axis (union of all times)
-  const allTimes = new Set()
-  symbols.forEach(s => {
-    allData[s].data.forEach(d => allTimes.add(d.time))
-  })
-  const sortedTimes = Array.from(allTimes).sort()
-  
-  symbols.forEach(s => {
-    const stock = allData[s]
-    const dataPoints = stock.data
-    if (dataPoints.length === 0) return
-
-    // Use pre_close if available from API, otherwise fallback to first price of the day
-    const basePrice = dataPoints[0].pre_close || dataPoints[0].price
-    const relativeData = sortedTimes.map(t => {
-      const point = dataPoints.find(p => p.time === t)
-      if (point) {
-        return ((point.price - basePrice) / basePrice * 100).toFixed(2)
-      }
-      return null
-    })
-    
-    series.push({
-      name: stock.name,
-      type: 'line',
-      data: relativeData,
-      showSymbol: false,
-      smooth: true,
-      lineStyle: { width: 2 }
-    })
-  })
-  
-  return {
-    title: {
-      text: `${selectedTheme.value.concept} - Intra-day Comparison (${poolDate.value})`,
+  const baseOption = {
+    title: { 
       textStyle: { color: '#e5e7eb', fontSize: 16 },
       left: 'center',
       top: 5
@@ -268,11 +312,126 @@ const getComparisonOption = () => {
       trigger: 'axis',
       backgroundColor: 'rgba(15, 23, 42, 0.9)',
       borderColor: 'rgba(255, 255, 255, 0.1)',
-      textStyle: { color: '#f8fafc' },
+      textStyle: { color: '#f8fafc' }
+    },
+    legend: {
+      textStyle: { color: '#e5e7eb' },
+      bottom: 25,
+      type: 'scroll'
+    },
+    grid: {
+      top: '12%',
+      bottom: '15%',
+      left: '5%',
+      right: '5%'
+    },
+    xAxis: {
+      type: 'category',
+      axisLabel: { color: '#9ca3af' },
+      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
+      data: []
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { color: '#9ca3af', formatter: '{value}%' },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)', type: 'dashed' } }
+    },
+    dataZoom: [
+      { type: 'inside', start: 0, end: 100 },
+      { show: true, type: 'slider', bottom: 5, start: 0, end: 100, height: 15 }
+    ],
+    series: []
+  }
+
+  if (symbols.length === 0) {
+    return {
+      ...baseOption,
+      title: { 
+        ...baseOption.title,
+        text: comparisonLoading.value ? 'Fetching data...' : 'No intraday data found for this theme', 
+        textStyle: { color: comparisonLoading.value ? '#9ca3af' : '#ef4444', fontSize: 14 }, 
+        top: 'center' 
+      },
+      legend: { show: false }
+    }
+  }
+
+  // Use the grid from the first stock (all stocks share the same grid)
+  const sortedTimes = allData[symbols[0]].grid || []
+  baseOption.xAxis.data = sortedTimes
+  
+  const pre = parseInt(rangePre.value) || 0
+  const post = isLatestDate.value ? 0 : (parseInt(rangePost.value) || 0)
+
+  baseOption.xAxis.axisLabel.interval = (index, value) => {
+    if (pre > 0 || post > 0) {
+      return value.includes(' 09:30')
+    }
+    return index % 60 === 0
+  }
+  baseOption.xAxis.axisLabel.formatter = (value) => {
+    const parts = value.split(' ')
+    if (pre > 0 || post > 0) {
+      return parts[0]
+    }
+    return parts[1] || parts[0]
+  }
+
+  // Boundary markers for each day (at 15:00)
+  const markLines = []
+  sortedTimes.forEach((t, idx) => {
+    if (t.endsWith(' 15:00') && idx < sortedTimes.length - 1) {
+      markLines.push({
+        xAxis: idx,
+        lineStyle: { color: 'rgba(255, 255, 255, 0.3)', type: 'dashed', width: 1 },
+        label: { show: false }
+      })
+    }
+  })
+
+  symbols.forEach(s => {
+    const stock = allData[s]
+    const dataPoints = stock.data
+    if (!dataPoints || dataPoints.length === 0) return
+
+    const basePrice = dataPoints[0].pre_close || dataPoints[0].price
+    if (!basePrice) return
+    
+    const relativeData = sortedTimes.map(t => {
+      const point = dataPoints.find(p => p.time === t)
+      if (point) {
+        return ((point.price - basePrice) / basePrice * 100).toFixed(2)
+      }
+      return null
+    })
+    
+    if (relativeData.some(v => v !== null)) {
+      series.push({
+        name: stock.name,
+        type: 'line',
+        data: relativeData,
+        showSymbol: false,
+        smooth: true,
+        connectNulls: true,
+        lineStyle: { width: 2 },
+        markLine: markLines.length > 0 ? {
+          symbol: ['none', 'none'],
+          data: markLines
+        } : undefined
+      })
+    }
+  })
+  
+  const title = selectedTheme.value?.concept || 'Theme'
+
+  return {
+    ...baseOption,
+    title: { ...baseOption.title, text: title },
+    tooltip: {
+      ...baseOption.tooltip,
       formatter: (params) => {
         if (!params || params.length === 0) return ''
         let res = `<div style="font-weight:bold;margin-bottom:4px;color:#9ca3af;">${params[0].name}</div>`
-        // Filter out null/undefined/NaN values and sort descending
         const validParams = params.filter(p => p.value !== null && p.value !== undefined && !isNaN(p.value))
         const sortedParams = validParams.sort((a, b) => Number(b.value) - Number(a.value))
         
@@ -288,33 +447,7 @@ const getComparisonOption = () => {
         return res
       }
     },
-    legend: {
-      data: symbols.map(s => allData[s].name),
-      textStyle: { color: '#e5e7eb' },
-      bottom: 25,
-      type: 'scroll'
-    },
-    grid: {
-      top: '12%',
-      bottom: '15%',
-      left: '5%',
-      right: '5%'
-    },
-    xAxis: {
-      type: 'category',
-      data: sortedTimes,
-      axisLabel: { color: '#9ca3af' },
-      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
-    },
-    yAxis: {
-      type: 'value',
-      axisLabel: { color: '#9ca3af', formatter: '{value}%' },
-      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)', type: 'dashed' } }
-    },
-    dataZoom: [
-      { type: 'inside', start: 0, end: 100 },
-      { show: true, type: 'slider', bottom: 5, start: 0, end: 100, height: 15 }
-    ],
+    legend: { ...baseOption.legend, data: series.map(s => s.name) },
     series: series
   }
 }
@@ -323,25 +456,79 @@ const chartOption = computed(() => {
   if (isComparisonMode.value) {
     return getComparisonOption()
   }
-  if (!curveData.value) return {}
+
+  // Define default series names to ensure legend matches
+  const seriesNames = [
+    'AI Strategy Return',
+    'Stock Buy&Hold',
+    'Position Signal'
+  ]
+
+  const baseBacktestOption = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross' }
+    },
+    legend: {
+      data: seriesNames,
+      textStyle: { color: '#e5e7eb' },
+      top: 5
+    },
+    axisPointer: {
+      link: { xAxisIndex: 'all' }
+    },
+    grid: [
+      { left: '5%', right: '4%', top: '10%', height: '50%' },
+      { left: '5%', right: '4%', top: '68%', height: '22%' }
+    ],
+    xAxis: [
+      { type: 'category', boundaryGap: false, gridIndex: 0, axisLabel: { show: false }, axisTick: { show: false }, data: [] },
+      { type: 'category', boundaryGap: false, gridIndex: 1, axisLabel: { color: '#9ca3af' }, data: [] }
+    ],
+    yAxis: [
+      { type: 'value', gridIndex: 0, axisLabel: { color: '#9ca3af', formatter: '{value} %' }, splitLine: { lineStyle: { color: '#374151', type: 'dashed' } } },
+      { type: 'value', gridIndex: 0, min: 0, max: 6, show: false, splitLine: { show: false } },
+      { type: 'value', gridIndex: 1, name: 'Sentiment', nameTextStyle: { color: '#9ca3af' }, axisLabel: { color: '#9ca3af' }, splitLine: { lineStyle: { color: '#374151', type: 'dashed' } }, min: 0, max: 100 }
+    ],
+    dataZoom: [
+      { type: 'inside', xAxisIndex: [0, 1], start: 0, end: 100 },
+      { show: true, xAxisIndex: [0, 1], type: 'slider', bottom: '2%', start: 0, end: 100 }
+    ],
+    series: []
+  }
+
+  if (!curveData.value || curveData.value.length === 0) {
+    return {
+      ...baseBacktestOption,
+      title: { text: loading.value ? 'Running backtest...' : 'No backtest data', left: 'center', top: 'center', textStyle: { color: '#9ca3af' } },
+      series: seriesNames.map(name => ({ 
+        name, 
+        type: 'line', 
+        xAxisIndex: name === 'Position Signal' ? 0 : 0,
+        yAxisIndex: name === 'Position Signal' ? 1 : 0,
+        data: [] 
+      }))
+    }
+  }
 
   const dates = curveData.value.map(d => d.date)
   const strategySeries = curveData.value.map(d => (d.strategy * 100).toFixed(2))
   const benchSeries = curveData.value.map(d => (d.benchmark * 100).toFixed(2))
-  const sentimentSeries = curveData.value.map(d => d.sentiment_score.toFixed(1))
   const timingSeries = curveData.value.map(d => d.timing_signal !== undefined ? d.timing_signal : 0.0)
 
+  baseBacktestOption.xAxis[0].data = dates
+  baseBacktestOption.xAxis[1].data = dates
+
   return {
+    ...baseBacktestOption,
     tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'cross' },
+      ...baseBacktestOption.tooltip,
       formatter: function(params) {
         let res = '';
         let date = '';
         let strat = '';
         let bench = '';
         let signal = '';
-        let sentiment = '';
         
         params.forEach(p => {
           date = p.name;
@@ -358,95 +545,9 @@ const chartOption = computed(() => {
         if (strat) res += `Strategy Return: ${strat}<br/>`;
         if (bench) res += `Benchmark Return: ${bench}<br/>`;
         if (signal) res += `Timing Signal: ${signal}<br/>`;
-        if (sentiment) res += `Sentiment Score: ${sentiment}<br/>`;
         return res;
       }
     },
-    legend: {
-      data: [
-        { name: 'AI Strategy Return' },
-        { name: 'Stock Buy&Hold' },
-        { name: 'Position Signal', itemStyle: { color: '#ef4444' } }
-      ],
-      textStyle: { color: '#e5e7eb' },
-      top: 5
-    },
-    axisPointer: {
-      link: { xAxisIndex: 'all' }
-    },
-    grid: [
-      {
-        left: '5%',
-        right: '4%',
-        top: '10%',
-        height: '50%'
-      },
-      {
-        left: '5%',
-        right: '4%',
-        top: '68%',
-        height: '22%'
-      }
-    ],
-    xAxis: [
-      {
-        type: 'category',
-        boundaryGap: false,
-        data: dates,
-        gridIndex: 0,
-        axisLabel: { show: false },
-        axisTick: { show: false }
-      },
-      {
-        type: 'category',
-        boundaryGap: false,
-        data: dates,
-        gridIndex: 1,
-        axisLabel: { color: '#9ca3af' }
-      }
-    ],
-    yAxis: [
-      {
-        type: 'value',
-        gridIndex: 0,
-        axisLabel: { color: '#9ca3af', formatter: '{value} %' },
-        splitLine: { lineStyle: { color: '#374151', type: 'dashed' } }
-      },
-      {
-        type: 'value',
-        gridIndex: 0,
-        min: 0,
-        max: 6,
-        show: false,
-        splitLine: { show: false }
-      },
-      {
-        type: 'value',
-        gridIndex: 1,
-        name: 'Sentiment',
-        nameTextStyle: { color: '#9ca3af' },
-        axisLabel: { color: '#9ca3af' },
-        splitLine: { lineStyle: { color: '#374151', type: 'dashed' } },
-        min: 0,
-        max: 100
-      }
-    ],
-    dataZoom: [
-      {
-        type: 'inside',
-        xAxisIndex: [0, 1],
-        start: 0,
-        end: 100
-      },
-      {
-        show: true,
-        xAxisIndex: [0, 1],
-        type: 'slider',
-        bottom: '2%',
-        start: 0,
-        end: 100
-      }
-    ],
     series: [
       {
         name: 'AI Strategy Return',
@@ -481,15 +582,8 @@ const chartOption = computed(() => {
         areaStyle: {
           opacity: 0.35,
           color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: '#ef4444' },
-              { offset: 1, color: 'rgba(239, 68, 68, 0.05)' }
-            ]
+            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [{ offset: 0, color: '#ef4444' }, { offset: 1, color: 'rgba(239, 68, 68, 0.05)' }]
           }
         },
         symbol: 'none'
@@ -592,6 +686,47 @@ onMounted(() => {
   color: #9ca3af;
 }
 
+.window-control {
+  margin-left: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dual-range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.range-hint {
+  font-size: 0.75rem;
+  color: #64748b;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.range-val {
+  font-size: 0.85rem;
+  color: #60a5fa;
+  font-weight: 700;
+  min-width: 12px;
+  text-align: center;
+}
+
+.mini-slider {
+  width: 60px;
+  accent-color: #3b82f6;
+  cursor: pointer;
+  height: 4px;
+}
+
+.mini-slider:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 .mini-input {
   background: rgba(15, 23, 42, 0.6);
   border: 1px solid rgba(255,255,255,0.1);
@@ -621,6 +756,38 @@ onMounted(() => {
   padding: 12px;
   border-radius: 12px;
   overflow: hidden;
+}
+
+.pool-settings {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  display: flex;
+  align-items: center;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.setting-label {
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+.range-slider {
+  width: 150px;
+  accent-color: #3b82f6;
+  cursor: pointer;
+}
+
+.range-value {
+  font-size: 0.85rem;
+  color: #60a5fa;
+  font-weight: 600;
+  min-width: 100px;
 }
 
 .pool-row {
@@ -774,6 +941,17 @@ onMounted(() => {
   padding-top: 0;
   padding-bottom: 0;
   margin-top: 0;
+}
+
+.global-loading-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 12px;
+  gap: 16px;
 }
 
 .chart-container {

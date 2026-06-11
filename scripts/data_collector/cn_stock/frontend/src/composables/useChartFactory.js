@@ -80,10 +80,9 @@ export function useChartFactory() {
             coord: [item.date || item.trade_date, item.high],
             symbolOffset: [0, currentTopOffset],
             value: '涨',
-            symbol: 'roundRect',
-            symbolSize: [18, 18],
-            itemStyle: { color: '#ec4899' },
-            label: { show: true, color: '#fff', fontSize: 10, formatter: '涨' }
+            symbol: 'circle',
+            symbolSize: 0,
+            label: { show: true, color: '#fff', fontSize: 10, formatter: '涨', backgroundColor: '#ec4899', padding: [2, 4], borderRadius: 3 }
           })
           currentTopOffset -= 20
           style = {
@@ -96,10 +95,9 @@ export function useChartFactory() {
             coord: [item.date || item.trade_date, item.low],
             symbolOffset: [0, 15],
             value: '跌',
-            symbol: 'roundRect',
-            symbolSize: [18, 18],
-            itemStyle: { color: '#0ea5e9' },
-            label: { show: true, color: '#fff', fontSize: 10, formatter: '跌' }
+            symbol: 'circle',
+            symbolSize: 0,
+            label: { show: true, color: '#fff', fontSize: 10, formatter: '跌', backgroundColor: '#0ea5e9', padding: [2, 4], borderRadius: 3 }
           })
           style = {
             color: '#0ea5e9', color0: '#0ea5e9', borderColor: '#0ea5e9', borderColor0: '#0ea5e9',
@@ -114,10 +112,9 @@ export function useChartFactory() {
           coord: [item.date || item.trade_date, item.high],
           symbolOffset: [0, currentTopOffset],
           value: '警',
-          symbol: 'roundRect',
-          symbolSize: [18, 18],
-          itemStyle: { color: '#ef4444' },
-          label: { show: true, color: '#fff', fontSize: 10, formatter: '警' }
+          symbol: 'circle',
+          symbolSize: 0,
+          label: { show: true, color: '#fff', fontSize: 10, formatter: '警', backgroundColor: '#ef4444', padding: [2, 4], borderRadius: 3 }
         })
         currentTopOffset -= 20
       } else if (showAbnormal && isYellow) {
@@ -125,10 +122,9 @@ export function useChartFactory() {
           coord: [item.date || item.trade_date, item.high],
           symbolOffset: [0, currentTopOffset],
           value: '异',
-          symbol: 'roundRect',
-          symbolSize: [18, 18],
-          itemStyle: { color: '#eab308' },
-          label: { show: true, color: '#000', fontSize: 10, formatter: '异' }
+          symbol: 'circle',
+          symbolSize: 0,
+          label: { show: true, color: '#000', fontSize: 10, formatter: '异', backgroundColor: '#eab308', padding: [2, 4], borderRadius: 3 }
         })
         currentTopOffset -= 20
       }
@@ -139,9 +135,8 @@ export function useChartFactory() {
           symbolOffset: [0, currentTopOffset],
           value: 'H',
           symbol: 'circle',
-          symbolSize: [18, 18],
-          itemStyle: { color: '#8b5cf6', opacity: 0.9 },
-          label: { show: true, color: '#fff', fontSize: 10, formatter: 'H' }
+          symbolSize: 0,
+          label: { show: true, color: '#fff', fontSize: 10, formatter: 'H', backgroundColor: 'rgba(139, 92, 246, 0.9)', padding: [2, 4], borderRadius: 10 }
         })
         currentTopOffset -= 20
       }
@@ -310,7 +305,7 @@ export function useChartFactory() {
   const createIntradayOption = (title, data) => {
     if (!data || !data.length) return {}
     
-    const basePrice = data[0].price
+    const basePrice = data[0].pre_close || data[0].price
     
     return {
       ...commonTheme,

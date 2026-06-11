@@ -6,6 +6,11 @@
         <p class="subtitle">Trending themes and their K-line trajectories.</p>
       </div>
       <div class="actions">
+        <div class="search-box">
+          <SearchIcon class="search-icon" />
+          <input type="text" v-model="searchQuery" placeholder="Search stock or topic..." class="search-input" />
+          <button v-if="searchQuery" class="clear-btn" @click="searchQuery = ''"><XIcon class="icon-tiny" /></button>
+        </div>
         <button class="btn-refresh" @click="handleRefresh" :disabled="loading || backendUpdating">
           <RefreshCwIcon class="icon" :class="{ 'spin': loading || backendUpdating }" />
           {{ backendUpdating ? 'Updating Backend...' : 'Refresh' }}
@@ -25,8 +30,11 @@
           <ChevronLeftIcon class="icon-small" />
         </button>
         <div class="list-container-horizontal" ref="listContainer" @scroll="checkScroll">
+          <div v-if="filteredTopics.length === 0" class="empty-state-small" style="width: 100%; color: #9ba1a6; padding: 12px 0;">
+             No topics match "{{ searchQuery }}"
+          </div>
           <div 
-            v-for="topic in topicsList" 
+            v-for="topic in filteredTopics" 
             :key="topic.id"
             class="topic-item-horizontal"
             :class="{ active: selectedTopic?.id === topic.id }"
@@ -158,7 +166,7 @@
 <script setup>
 import { ref, computed, onMounted, watch, shallowRef, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { RefreshCwIcon, AlertTriangleIcon, HashIcon, ExternalLinkIcon, ChevronLeftIcon, ChevronRightIcon, EyeOffIcon } from 'lucide-vue-next'
+import { RefreshCwIcon, AlertTriangleIcon, HashIcon, ExternalLinkIcon, ChevronLeftIcon, ChevronRightIcon, EyeOffIcon, SearchIcon, XIcon } from 'lucide-vue-next'
 import { useDataLoader } from '../composables/useDataLoader'
 import { useChartFactory } from '../composables/useChartFactory'
 import axios from 'axios'
@@ -194,6 +202,18 @@ const pollStatus = () => {
 }
 
 const topicsList = ref([])
+const searchQuery = ref('')
+const filteredTopics = computed(() => {
+  if (!searchQuery.value.trim()) return topicsList.value
+  
+  const query = searchQuery.value.trim().toLowerCase()
+  return topicsList.value.filter(topic => {
+    if (topic.name && topic.name.toLowerCase().includes(query)) return true
+    if (topic.rows && Array.isArray(topic.rows) && topic.rows.some(row => row && row['个股'] && String(row['个股']).toLowerCase().includes(query))) return true
+    return false
+  })
+})
+
 const klinesMap = shallowRef({})
 const selectedTopic = ref(null)
 const selectedStock = ref(null)
@@ -221,10 +241,21 @@ const scrollList = (direction) => {
   setTimeout(checkScroll, 400)
 }
 
-watch(topicsList, () => {
+watch(filteredTopics, (newVal) => {
   nextTick(() => {
     checkScroll()
   })
+  
+  // If the currently selected topic is filtered out, select the first one available
+  if (newVal.length > 0) {
+    if (!selectedTopic.value || !newVal.find(t => t.id === selectedTopic.value.id)) {
+      selectTopic(newVal[0])
+    }
+  } else {
+    selectedTopic.value = null
+    selectedStock.value = null
+    topicKlineOption.value = {}
+  }
 })
 
 const leaderboardDays = ref(90)
@@ -392,6 +423,18 @@ const selectTopic = (topic) => {
   }
   buildLeaderboard()
   updateChartOption()
+
+  // Auto-select stock if searching
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.trim().toLowerCase()
+    const matchedRow = topic.rows?.find(r => r['个股'] && r['个股'].toLowerCase().includes(query))
+    if (matchedRow) {
+      // Small timeout to allow UI update before loading heavy charts
+      setTimeout(() => {
+        toggleStockSelection(matchedRow['个股'])
+      }, 50)
+    }
+  }
 }
 
 const formatDate = (dateStr) => {
@@ -559,8 +602,8 @@ const loadData = async () => {
       return new Date(b.updated_time) - new Date(a.updated_time)
     })
     klinesMap.value = data.klines
-    if (topicsList.value.length > 0 && !selectedTopic.value) {
-      selectTopic(topicsList.value[0])
+    if (filteredTopics.value.length > 0 && !selectedTopic.value) {
+      selectTopic(filteredTopics.value[0])
     }
   }
 }
@@ -575,7 +618,15 @@ onMounted(() => {
 .header { display: flex; justify-content: space-between; align-items: flex-start; }
 .title { font-size: 1.8rem; margin-bottom: 4px; background: linear-gradient(to right, #fff, #9ba1a6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 .subtitle { color: var(--text-secondary); margin: 0; }
-.btn-refresh { display: flex; align-items: center; gap: 8px; background: rgba(59, 130, 246, 0.15); color: var(--accent-color); border: 1px solid rgba(59, 130, 246, 0.3); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+.actions { display: flex; align-items: center; gap: 16px; }
+.search-box { position: relative; display: flex; align-items: center; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 4px 12px; transition: border-color 0.2s; height: 38px; box-sizing: border-box; }
+.search-box:focus-within { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+.search-icon { width: 16px; height: 16px; color: #9ca3af; margin-right: 8px; flex-shrink: 0; }
+.search-input { background: transparent; border: none; color: #f8fafc; font-size: 0.9rem; outline: none; width: 200px; padding: 0; }
+.search-input::placeholder { color: #64748b; }
+.clear-btn { background: transparent; border: none; color: #9ca3af; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 2px; margin-left: 4px; border-radius: 50%; transition: all 0.2s; }
+.clear-btn:hover { color: #f8fafc; background: rgba(255,255,255,0.1); }
+.btn-refresh { display: flex; align-items: center; gap: 8px; background: rgba(59, 130, 246, 0.15); color: var(--accent-color); border: 1px solid rgba(59, 130, 246, 0.3); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; height: 38px; box-sizing: border-box; }
 .btn-refresh:hover:not(:disabled) { background: rgba(59, 130, 246, 0.25); box-shadow: 0 0 12px var(--accent-glow); }
 .icon.spin { animation: spin 1s linear infinite; }
 @keyframes spin { 100% { transform: rotate(360deg); } }

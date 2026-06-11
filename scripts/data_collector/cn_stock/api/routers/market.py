@@ -95,6 +95,75 @@ def get_intraday_data(symbol: str, date: str):
         logger.error(f"Error fetching intraday for {symbol}: {e}")
         return {"status": "success", "data": []}
 
+@router.get("/api/stock/{symbol}/daily")
+def get_daily_data(symbol: str, datalen: int = 30):
+    """Fetches historical daily K-line data."""
+    try:
+        from api.services.market_data_service import fetch_daily_data
+        parsed = fetch_daily_data(symbol, datalen)
+        return {"status": "success", "data": parsed}
+    except Exception as e:
+        logger.error(f"Error fetching daily for {symbol}: {e}")
+        return {"status": "success", "data": []}
+
+@router.get("/api/market/trading_days")
+def get_trading_days(date: str, n: int = 5, pre_n: int = None, post_n: int = None):
+    """Returns trading days before and after the given date."""
+    # Use n as default if pre_n or post_n are not provided
+    p_n = pre_n if pre_n is not None else n
+    f_n = post_n if post_n is not None else n
+    
+    try:
+        # Use the same logic as backtest.py to get all valid dates
+        dates = set()
+        sentiment_path = DATA_DIR / "signals/market_sentiment.csv"
+        if sentiment_path.exists():
+            import pandas as pd
+            df = pd.read_csv(sentiment_path)
+            if 'date' in df.columns:
+                for d in df['date'].dropna():
+                    dates.add(str(d).split(' ')[0])
+        
+        reports_path = DATA_DIR / "signals/zizizaizai_reports.json"
+        if reports_path.exists():
+            with open(reports_path, "r", encoding="utf-8") as f:
+                reports = json.load(f)
+            for report in reports:
+                if "created_time" in report:
+                    dates.add(report["created_time"].split(" ")[0])
+                elif "title" in report:
+                    import re
+                    match = re.search(r"20\d{6}", report["title"])
+                    if match:
+                        d_raw = match.group(0)
+                        dates.add(f"{d_raw[:4]}-{d_raw[4:6]}-{d_raw[6:8]}")
+        
+        all_dates = sorted(list(dates))
+        
+        if not all_dates:
+            return {"status": "error", "message": "No trading days found"}
+            
+        if date not in all_dates:
+            available_dates = [d for d in all_dates if d < date]
+            if not available_dates:
+                date = all_dates[0]
+            else:
+                date = available_dates[-1]
+            
+        idx = all_dates.index(date)
+        start_idx = max(0, idx - p_n)
+        end_idx = min(len(all_dates), idx + f_n + 1)
+        
+        return {
+            "status": "success", 
+            "data": all_dates[start_idx:end_idx],
+            "current_index": idx - start_idx,
+            "is_latest": idx == len(all_dates) - 1
+        }
+    except Exception as e:
+        logger.error(f"Error getting trading days: {e}")
+        return {"status": "error", "message": str(e)}
+
 @router.get("/api/resolve_symbol/{query}")
 def resolve_symbol(query: str):
     query = query.strip()
