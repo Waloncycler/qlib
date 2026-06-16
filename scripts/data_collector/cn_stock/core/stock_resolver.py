@@ -184,14 +184,25 @@ class StockResolver:
                 logger.info(f"{cache_key} data was fetched recently. Using cache (TTL={ttl}s).")
                 return True
 
-        # If market is closed and data files already exist on disk, skip network fetch
+        # If market is closed and data files already exist on disk AND are fresh, skip network fetch
         save_dir = CUR_DIR.parent.parent.parent.parent / "data/cn_stock/hierarchical"
         if not self._is_trading_hours():
             check_file = save_dir / "market" / f"{symbol}_tencent_sina_kline.csv"
+            if layer == "news":
+                check_file = save_dir / "news" / f"{symbol}_eastmoney_news.json"
+            elif layer == "signals":
+                check_file = save_dir / "signals" / f"{symbol}_dragon_tiger.json"
+            elif layer == "capital":
+                check_file = save_dir / "capital" / f"{symbol}_fund_flow_120d.csv"
+            elif layer == "fundamentals":
+                check_file = save_dir / "fundamentals" / f"{symbol}_mootdx_finance.csv"
+
             if check_file.exists():
-                logger.info(f"Market closed & data on disk for {symbol}. Skipping network fetch.")
-                self._resolve_cache[cache_key] = now
-                return True
+                # If file is less than 12 hours old, it's safe to skip fetching after market close
+                if time.time() - check_file.stat().st_mtime < 12 * 3600:
+                    logger.info(f"Market closed & data on disk for {symbol}_{layer} is fresh. Skipping network fetch.")
+                    self._resolve_cache[cache_key] = now
+                    return True
                 
         logger.info(f"Real-time fetching layer(s) for {symbol}: {layer or 'ALL'}...")
         

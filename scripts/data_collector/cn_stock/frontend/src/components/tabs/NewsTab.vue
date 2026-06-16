@@ -1,16 +1,6 @@
 <template>
   <div class="layer-content grid-2-col">
     <div class="glass-panel p-6 flex flex-col h-[600px]">
-      <h3 class="section-title text-amber-500 mb-4"><i class="fa-solid fa-bolt mr-2"></i> CLS Telegraph (财联社电报)</h3>
-      <div class="overflow-y-auto custom-scrollbar flex-1 space-y-4 pr-2">
-        <div v-for="(news, idx) in clsTelegraphs" :key="idx" class="news-card">
-          <p class="news-time"><i class="fa-regular fa-clock mr-1"></i>{{ news.time || news.ctime }}</p>
-          <p class="news-content">{{ news.content }}</p>
-        </div>
-        <div v-if="!clsTelegraphs.length" class="empty-state-small">No recent telegraphs.</div>
-      </div>
-    </div>
-    <div class="glass-panel p-6 flex flex-col h-[600px]">
       <h3 class="section-title text-rose-500 mb-4"><i class="fa-solid fa-newspaper mr-2"></i> Company News ({{ symbol }})</h3>
       <div class="overflow-y-auto custom-scrollbar flex-1 space-y-4 pr-2">
         <div v-for="(news, idx) in eastmoneyNews" :key="idx" class="news-card">
@@ -18,6 +8,16 @@
           <p class="news-time mt-2"><i class="fa-regular fa-calendar mr-1"></i>{{ formatTime(news.time || news.publish_time || news.date) }}</p>
         </div>
         <div v-if="!eastmoneyNews.length" class="empty-state-small">No company news found.</div>
+      </div>
+    </div>
+    <div class="glass-panel p-6 flex flex-col h-[600px]">
+      <h3 class="section-title text-amber-500 mb-4"><i class="fa-solid fa-bolt mr-2"></i> CLS Telegraph (财联社电报)</h3>
+      <div class="overflow-y-auto custom-scrollbar flex-1 space-y-4 pr-2">
+        <div v-for="(news, idx) in clsTelegraphs" :key="idx" class="news-card">
+          <p class="news-time"><i class="fa-regular fa-clock mr-1"></i>{{ formatTime(news.date || news.time || news.ctime) }}</p>
+          <p class="news-content">{{ news.summary || news.content }}</p>
+        </div>
+        <div v-if="!clsTelegraphs.length" class="empty-state-small">No recent telegraphs.</div>
       </div>
     </div>
   </div>
