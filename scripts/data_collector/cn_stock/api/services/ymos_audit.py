@@ -13,9 +13,16 @@ def generate_risk_audit(symbol: str) -> str:
     if not api_key:
         raise ValueError("DeepSeek API key missing in secret.yaml")
     
-    # 0. Ensure data is completely resolved and written to disk before auditing
-    logger.info(f"Ensuring data layers are resolved for {symbol} before audit...")
-    resolver.resolve_single_stock(symbol)
+    # 0. Only fetch data if critical files don't exist yet on disk.
+    #    The frontend already triggers a full sync before the audit button is enabled,
+    #    so re-fetching here is redundant and wastes 30-60s on Eastmoney timeouts.
+    news_file = DATA_DIR / "news" / f"{symbol}_eastmoney_news.json"
+    kline_file = DATA_DIR / "market" / f"{symbol}_tencent_sina_kline.csv"
+    if not news_file.exists() or not kline_file.exists():
+        logger.info(f"Critical data missing for {symbol}, triggering fetch...")
+        resolver.resolve_single_stock(symbol)
+    else:
+        logger.info(f"Data already on disk for {symbol}, skipping redundant fetch.")
     
     # 0.5 Fetch Stock Name (For cross-referencing Topics)
     stock_name = ""

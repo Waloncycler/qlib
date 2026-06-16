@@ -11,8 +11,7 @@ from pathlib import Path
 current_dir = Path(__file__).resolve().parent
 PROJECT_DIR = current_dir.parent
 workspace_dir = PROJECT_DIR.parent.parent.parent
-sys.path.append(str(PROJECT_DIR))
-sys.path.append(str(PROJECT_DIR.parent.parent))
+sys.path.insert(0, str(PROJECT_DIR))
 
 from core.trading_calendar import is_trading_day
 

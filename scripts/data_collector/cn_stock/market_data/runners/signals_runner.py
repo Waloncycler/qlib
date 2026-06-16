@@ -33,42 +33,55 @@ class SignalsRunner:
             self._run_market_wide(save_path)
             
         def process_signals_symbol(sym):
-            try:
-                concepts = self.baidu_concept.get_concept_blocks(sym)
-                if concepts:
-                    with open(save_path / f"{sym}_baidu_concepts.json", "w", encoding="utf-8") as f:
-                        json.dump(concepts, f, ensure_ascii=False, indent=4)
-                    logger.info(f"Saved Baidu Concepts for {sym}")
-            except Exception as e:
-                logger.error(f"Failed to fetch Baidu Concepts for {sym}: {e}")
+            def fetch_baidu_concepts():
+                try:
+                    concepts = self.baidu_concept.get_concept_blocks(sym)
+                    if concepts:
+                        with open(save_path / f"{sym}_baidu_concepts.json", "w", encoding="utf-8") as f:
+                            json.dump(concepts, f, ensure_ascii=False, indent=4)
+                        logger.info(f"Saved Baidu Concepts for {sym}")
+                except Exception as e:
+                    logger.error(f"Failed to fetch Baidu Concepts for {sym}: {e}")
 
-            try:
-                df_ff = self.em_flow.fetch_minute_flow(sym)
-                if not df_ff.empty:
-                    df_ff.to_csv(save_path / f"{sym}_eastmoney_minute_flow.csv", index=False)
-                    logger.info(f"Saved Eastmoney minute fund flow for {sym}")
-            except Exception as e:
-                logger.error(f"Failed to fetch Eastmoney minute fund flow for {sym}: {e}")
+            def fetch_em_minute_flow():
+                try:
+                    df_ff = self.em_flow.fetch_minute_flow(sym)
+                    if not df_ff.empty:
+                        df_ff.to_csv(save_path / f"{sym}_eastmoney_minute_flow.csv", index=False)
+                        logger.info(f"Saved Eastmoney minute fund flow for {sym}")
+                except Exception as e:
+                    logger.debug(f"Eastmoney minute flow skipped for {sym}: {e}")
 
-            try:
-                today_str = pd.Timestamp.now().strftime("%Y-%m-%d")
-                dt_info = self.dragon_tiger.get_stock_dragon_tiger(sym, today_str)
-                if dt_info:
-                    with open(save_path / f"{sym}_dragon_tiger.json", "w", encoding="utf-8") as f:
-                        json.dump(dt_info, f, ensure_ascii=False, indent=4)
-                    logger.info(f"Saved Dragon Tiger for {sym}")
-            except Exception as e:
-                logger.error(f"Failed to fetch Dragon Tiger for {sym}: {e}")
+            def fetch_dragon_tiger():
+                try:
+                    today_str = pd.Timestamp.now().strftime("%Y-%m-%d")
+                    dt_info = self.dragon_tiger.get_stock_dragon_tiger(sym, today_str)
+                    if dt_info:
+                        with open(save_path / f"{sym}_dragon_tiger.json", "w", encoding="utf-8") as f:
+                            json.dump(dt_info, f, ensure_ascii=False, indent=4)
+                        logger.info(f"Saved Dragon Tiger for {sym}")
+                except Exception as e:
+                    logger.error(f"Failed to fetch Dragon Tiger for {sym}: {e}")
 
-            try:
-                today_str = pd.Timestamp.now().strftime("%Y-%m-%d")
-                lock_info = self.lockup.get_lockup_expiry(sym, today_str)
-                if lock_info:
-                    with open(save_path / f"{sym}_lockup_expiry.json", "w", encoding="utf-8") as f:
-                        json.dump(lock_info, f, ensure_ascii=False, indent=4)
-                    logger.info(f"Saved Lockup Expiry for {sym}")
-            except Exception as e:
-                logger.error(f"Failed to fetch Lockup Expiry for {sym}: {e}")
+            def fetch_lockup():
+                try:
+                    today_str = pd.Timestamp.now().strftime("%Y-%m-%d")
+                    lock_info = self.lockup.get_lockup_expiry(sym, today_str)
+                    if lock_info:
+                        with open(save_path / f"{sym}_lockup_expiry.json", "w", encoding="utf-8") as f:
+                            json.dump(lock_info, f, ensure_ascii=False, indent=4)
+                        logger.info(f"Saved Lockup Expiry for {sym}")
+                except Exception as e:
+                    logger.error(f"Failed to fetch Lockup Expiry for {sym}: {e}")
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=4) as inner_executor:
+                futures = [
+                    inner_executor.submit(fetch_baidu_concepts),
+                    inner_executor.submit(fetch_em_minute_flow),
+                    inner_executor.submit(fetch_dragon_tiger),
+                    inner_executor.submit(fetch_lockup),
+                ]
+                concurrent.futures.wait(futures, timeout=30)
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
             list(executor.map(process_signals_symbol, symbols))

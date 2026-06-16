@@ -153,21 +153,47 @@ class StockResolver:
             logger.warning(f"Broken limit up aggregation failed: {e}")
             return []
 
+    @staticmethod
+    def _is_trading_hours() -> bool:
+        """Check if current time is within A-share trading session (09:15 - 15:30 on weekdays)."""
+        from datetime import datetime
+        now = datetime.now()
+        if now.weekday() >= 5:  # Saturday/Sunday
+            return False
+        hour_min = now.hour * 100 + now.minute
+        return 915 <= hour_min <= 1530
+
+    def _get_cache_ttl(self) -> int:
+        """Return cache TTL in seconds based on market hours."""
+        if self._is_trading_hours():
+            return 180   # 3 minutes during trading
+        else:
+            return 21600  # 6 hours after market close
+
     def resolve_single_stock(self, symbol: str, layer: str = None):
         """Fetch all or specific layers for a single stock synchronously. Used by frontend API."""
         symbol = to_qlib_symbol(clean_symbol(symbol))
         
-        # Check cache (5 min TTL)
+        # Time-aware cache: short during trading hours, long after hours
         cache_key = f"{symbol}_{layer}" if layer else symbol
         now = time.time()
+        ttl = self._get_cache_ttl()
         if cache_key in self._resolve_cache:
             last_time = self._resolve_cache[cache_key]
-            if now - last_time < 300:
-                logger.info(f"{cache_key} data was fetched recently. Using cache.")
+            if now - last_time < ttl:
+                logger.info(f"{cache_key} data was fetched recently. Using cache (TTL={ttl}s).")
+                return True
+
+        # If market is closed and data files already exist on disk, skip network fetch
+        save_dir = CUR_DIR.parent.parent.parent.parent / "data/cn_stock/hierarchical"
+        if not self._is_trading_hours():
+            check_file = save_dir / "market" / f"{symbol}_tencent_sina_kline.csv"
+            if check_file.exists():
+                logger.info(f"Market closed & data on disk for {symbol}. Skipping network fetch.")
+                self._resolve_cache[cache_key] = now
                 return True
                 
         logger.info(f"Real-time fetching layer(s) for {symbol}: {layer or 'ALL'}...")
-        save_dir = CUR_DIR.parent.parent.parent.parent / "data/cn_stock/hierarchical"
         
         collector = CnStockCollector(
             save_dir=str(CUR_DIR),

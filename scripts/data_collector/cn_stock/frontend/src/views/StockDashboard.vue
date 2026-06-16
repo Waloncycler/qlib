@@ -287,16 +287,20 @@ const handleSearch = async () => {
     hasData.value = true
   }
   
-  // 2. LAZY LOAD the rest of the layers in the background
+  // 2. LAZY LOAD each layer independently — no layer blocks another
   isBackgroundFetching.value = true
-  Promise.all([
-    triggerRealtimeFetch(s, 'signals'),
-    triggerRealtimeFetch(s, 'capital'),
-    triggerRealtimeFetch(s, 'fundamentals'),
-    triggerRealtimeFetch(s, 'news')
-  ]).then(async () => {
-    showSuccess(`Background data synchronized for ${s}`)
-    
+  let pendingLayers = 4
+
+  const onLayerDone = () => {
+    pendingLayers--
+    if (pendingLayers <= 0) {
+      isBackgroundFetching.value = false
+      showSuccess(`All data layers synchronized for ${s}`)
+    }
+  }
+
+  // --- Signals Layer (independent) ---
+  triggerRealtimeFetch(s, 'signals').then(async () => {
     const dtJson = await fetchJson('signals', `${s}_dragon_tiger.json`)
     if (dtJson && dtJson.length) dragonTiger.value = dtJson[0]
     
@@ -308,7 +312,10 @@ const handleSearch = async () => {
       const rawCode = s.replace(/[A-Za-z]/g, '')
       thsReasons.value = allThs.filter(r => r.code && String(r.code).includes(rawCode))
     }
+  }).catch(err => console.error("Signals layer error:", err)).finally(onLayerDone)
 
+  // --- Capital Layer (independent) ---
+  triggerRealtimeFetch(s, 'capital').then(async () => {
     const marginData = await fetchCsv('capital', `${s}_margin_trading.csv`)
     if (marginData && marginData.length) {
       const dates = marginData.map(d => String(d.date))
@@ -330,22 +337,24 @@ const handleSearch = async () => {
     } else {
       fundFlowOption.value = createBarOption('120-Day Capital Inflow Trend', [], [])
     }
+  }).catch(err => console.error("Capital layer error:", err)).finally(onLayerDone)
 
+  // --- Fundamentals Layer (independent) ---
+  triggerRealtimeFetch(s, 'fundamentals').then(async () => {
     const finData = await fetchCsv('fundamentals', `${s}_mootdx_finance.csv`)
     if (finData && finData.length) {
       financeData.value = finData.slice(0, 15)
     }
+  }).catch(err => console.error("Fundamentals layer error:", err)).finally(onLayerDone)
 
+  // --- News Layer (independent) ---
+  triggerRealtimeFetch(s, 'news').then(async () => {
     const cls = await fetchJson('news', 'cls_telegraph.json')
     if (cls && cls.length) clsTelegraphs.value = cls
     
     const emNews = await fetchJson('news', `${s}_eastmoney_news.json`)
     if (emNews && emNews.length) eastmoneyNews.value = emNews
-  }).catch(err => {
-    console.error("Error fetching background layers", err)
-  }).finally(() => {
-    isBackgroundFetching.value = false
-  })
+  }).catch(err => console.error("News layer error:", err)).finally(onLayerDone)
 }
 
 if (route.params.symbol) {

@@ -55,6 +55,56 @@ def to_tencent_symbol(symbol: str) -> str:
     return f"{prefix}{code}"
 
 
+# --- Circuit Breaker for persistently failing hosts ---
+import threading
+_circuit_breaker_lock = threading.Lock()
+_circuit_breaker = {}  # host -> {"failures": int, "last_fail": float, "open": bool}
+_CB_FAIL_THRESHOLD = 3   # failures before opening circuit
+_CB_RESET_SECONDS = 300  # auto-reset after 5 minutes
+
+
+def _cb_check(url: str) -> bool:
+    """Returns True if the circuit is open (should skip this request)."""
+    from urllib.parse import urlparse
+    host = urlparse(url).hostname or ""
+    with _circuit_breaker_lock:
+        entry = _circuit_breaker.get(host)
+        if not entry:
+            return False
+        if entry["open"]:
+            import time
+            if time.time() - entry["last_fail"] > _CB_RESET_SECONDS:
+                # Reset circuit
+                _circuit_breaker[host] = {"failures": 0, "last_fail": 0, "open": False}
+                return False
+            return True
+    return False
+
+
+def _cb_record_failure(url: str):
+    """Record a failure for circuit breaker tracking."""
+    import time
+    from urllib.parse import urlparse
+    host = urlparse(url).hostname or ""
+    with _circuit_breaker_lock:
+        entry = _circuit_breaker.setdefault(host, {"failures": 0, "last_fail": 0, "open": False})
+        entry["failures"] += 1
+        entry["last_fail"] = time.time()
+        if entry["failures"] >= _CB_FAIL_THRESHOLD:
+            entry["open"] = True
+            logger.warning(f"Circuit breaker OPEN for {host} after {entry['failures']} failures. "
+                           f"Skipping requests for {_CB_RESET_SECONDS}s.")
+
+
+def _cb_record_success(url: str):
+    """Record a success — reset failure counter."""
+    from urllib.parse import urlparse
+    host = urlparse(url).hostname or ""
+    with _circuit_breaker_lock:
+        if host in _circuit_breaker:
+            _circuit_breaker[host] = {"failures": 0, "last_fail": 0, "open": False}
+
+
 def resilient_request(
     method: str,
     url: str,
@@ -64,26 +114,17 @@ def resilient_request(
     verify: bool = False,
     **kwargs,
 ) -> requests.Response:
-    """Unified HTTP request with exponential backoff retry.
+    """Unified HTTP request with exponential backoff retry and circuit breaker.
 
-    Automatically retries on ConnectionError, Timeout, SSLError,
-    and RemoteDisconnected errors.
-
-    Args:
-        method: HTTP method ('get' or 'post').
-        max_retries: Maximum number of retry attempts.
-        backoff_base: Base for exponential backoff (seconds).
-        timeout: Request timeout in seconds.
-        **kwargs: Passed directly to requests.request().
-
-    Returns:
-        requests.Response object.
-
-    Raises:
-        requests.RequestException: If all retries are exhausted.
+    If a host has failed repeatedly, requests are instantly skipped
+    to avoid wasting time on doomed retries.
     """
     import time
     from requests.exceptions import ConnectionError, Timeout, ChunkedEncodingError
+
+    # Circuit breaker: skip if host is known-broken
+    if _cb_check(url):
+        raise ConnectionError(f"Circuit breaker open — skipping request to {url}")
 
     kwargs.setdefault("timeout", timeout)
     if "headers" not in kwargs:
@@ -97,6 +138,7 @@ def resilient_request(
     for attempt in range(1, max_retries + 1):
         try:
             resp = requests.request(method, url, **kwargs)
+            _cb_record_success(url)
             return resp
         except (ConnectionError, Timeout, ChunkedEncodingError, OSError) as e:
             last_exc = e
@@ -115,6 +157,7 @@ def resilient_request(
             # Non-retryable errors (e.g. invalid JSON, programming errors)
             raise
 
+    _cb_record_failure(url)
     raise last_exc
 
 

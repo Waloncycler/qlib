@@ -73,7 +73,7 @@ def fetch_history(all_years=False):
     df_final = pd.concat(all_data).drop_duplicates(subset=["date"]).sort_values("date")
     
     # 2. 整合进 market_sentiment.csv
-    save_dir = CUR_DIR / "../../../data/cn_stock/hierarchical/signals"
+    save_dir = Path("/Users/walox/qlib/data/cn_stock/hierarchical/signals")
     save_dir.mkdir(parents=True, exist_ok=True)
     target_csv = save_dir / "market_sentiment.csv"
     

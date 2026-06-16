@@ -109,9 +109,11 @@ def main():
         if data and data.get("code") == 20000:
             with lock:
                 klines_data[t_id] = data["data"]
-                # Save incrementally to avoid losing data on crash
-                with open(out_file, "w", encoding="utf-8") as f:
+                # Save incrementally to avoid losing data on crash (Atomic Write)
+                tmp_file = str(out_file) + ".tmp"
+                with open(tmp_file, "w", encoding="utf-8") as f:
                     json.dump(klines_data, f, ensure_ascii=False)
+                os.replace(tmp_file, out_file)
             print(f"  Got {len(data['data'])} daily records for {t_name}.")
         else:
             print(f"  Failed to fetch klines for {t_id}")
