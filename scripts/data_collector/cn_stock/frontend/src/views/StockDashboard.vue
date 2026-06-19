@@ -591,6 +591,14 @@ if (route.params.symbol) {
 
 .ymos-result-panel {
   padding: 16px !important;
+  margin-bottom: 8px !important;
+}
+
+.markdown-body p:last-child,
+.markdown-body ul:last-child,
+.markdown-body ol:last-child,
+.markdown-body li:last-child {
+  margin-bottom: 0;
 }
 
 .markdown-body strong {
