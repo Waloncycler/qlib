@@ -1,48 +1,60 @@
 <template>
   <div class="layer-content">
-    <div class="grid-cards mb-4">
-      <div class="stat-card glass-panel" v-if="dragonTiger">
-        <div class="stat-label">LHB Net Buy (龙虎榜净买)</div>
-        <div class="stat-value" :class="dragonTiger.NET_BUY_AMT > 0 ? 'up' : 'down'">
-          {{ (dragonTiger.NET_BUY_AMT / 10000).toFixed(2) }} 万
-        </div>
-      </div>
-      <div class="stat-card glass-panel" v-if="lockupData">
-        <div class="stat-label">Next Lockup Expiry</div>
-        <div class="stat-value">{{ lockupData.date }}</div>
-        <div class="stat-subtext">{{ lockupData.ratio }}%</div>
-      </div>
-    </div>
-    <div class="chart-panel glass-panel">
-      <div class="chart-toggles-floating">
-        <label class="toggle-label" title="涨跌停">
-          <input type="checkbox" v-model="localChartToggles.showLimit" @change="emitUpdate" /> 涨跌停
-        </label>
-        <label class="toggle-label" title="20日新高">
-          <input type="checkbox" v-model="localChartToggles.showHigh20" @change="emitUpdate" /> 20日新高
-        </label>
-        <label class="toggle-label" title="异动预警">
-          <input type="checkbox" v-model="localChartToggles.showAbnormal" @change="emitUpdate" /> 异动预警
-        </label>
-        <label class="toggle-label" title="异动预测线">
-          <input type="checkbox" v-model="localChartToggles.showPrediction" @change="emitUpdate" /> 异动预测线
-        </label>
-        <div class="toggle-label ml-2" v-if="loadingIntraday">
-          <i class="fa-solid fa-circle-notch fa-spin text-sky-400"></i> Loading Intraday...
-        </div>
-      </div>
-      <v-chart class="chart" :option="klineOption" autoresize @click="onChartClick" />
+    <div v-if="isLoading" class="glass-panel p-8 flex flex-col items-center justify-center h-[500px]">
+      <i class="fa-solid fa-circle-notch fa-spin text-4xl text-sky-400 mb-4"></i>
+      <p class="text-gray-400">Loading market data...</p>
     </div>
 
-    <!-- Intraday Panel -->
-    <div v-if="intradayOption && Object.keys(intradayOption).length" class="chart-panel glass-panel mt-4 relative">
-      <button class="close-btn" @click="intradayOption = null"><i class="fa-solid fa-xmark"></i></button>
-      <v-chart class="chart" :option="intradayOption" autoresize />
+    <div v-else-if="errorMessage" class="glass-panel p-8 flex flex-col items-center justify-center h-[500px] border-red-500/30">
+      <i class="fa-solid fa-triangle-exclamation text-4xl text-red-400 mb-4"></i>
+      <p class="text-red-300">{{ errorMessage }}</p>
     </div>
-    <div v-else-if="intradayOption && Object.keys(intradayOption).length === 0 && !loadingIntraday" class="glass-panel p-4 mt-4 text-center text-gray-400">
-      No intraday data available for {{ intradayDate }}
-      <button class="ml-4 text-rose-400 hover:text-rose-300" @click="intradayOption = null">Close</button>
-    </div>
+
+    <template v-else>
+      <div class="grid-cards mb-4">
+        <div class="stat-card glass-panel" v-if="dragonTiger">
+          <div class="stat-label">LHB Net Buy (龙虎榜净买)</div>
+          <div class="stat-value" :class="dragonTiger.NET_BUY_AMT > 0 ? 'up' : 'down'">
+            {{ (dragonTiger.NET_BUY_AMT / 10000).toFixed(2) }} 万
+          </div>
+        </div>
+        <div class="stat-card glass-panel" v-if="lockupData">
+          <div class="stat-label">Next Lockup Expiry</div>
+          <div class="stat-value">{{ lockupData.date }}</div>
+          <div class="stat-subtext">{{ lockupData.ratio }}%</div>
+        </div>
+      </div>
+      <div class="chart-panel glass-panel">
+        <div class="chart-toggles-floating">
+          <label class="toggle-label" title="涨跌停">
+            <input type="checkbox" v-model="localChartToggles.showLimit" @change="emitUpdate" /> 涨跌停
+          </label>
+          <label class="toggle-label" title="20日新高">
+            <input type="checkbox" v-model="localChartToggles.showHigh20" @change="emitUpdate" /> 20日新高
+          </label>
+          <label class="toggle-label" title="异动预警">
+            <input type="checkbox" v-model="localChartToggles.showAbnormal" @change="emitUpdate" /> 异动预警
+          </label>
+          <label class="toggle-label" title="异动预测线">
+            <input type="checkbox" v-model="localChartToggles.showPrediction" @change="emitUpdate" /> 异动预测线
+          </label>
+          <div class="toggle-label ml-2" v-if="loadingIntraday">
+            <i class="fa-solid fa-circle-notch fa-spin text-sky-400"></i> Loading Intraday...
+          </div>
+        </div>
+        <v-chart class="chart" :option="klineOption" autoresize @click="onChartClick" />
+      </div>
+
+      <!-- Intraday Panel -->
+      <div v-if="intradayOption && Object.keys(intradayOption).length" class="chart-panel glass-panel mt-4 relative">
+        <button class="close-btn" @click="intradayOption = null"><i class="fa-solid fa-xmark"></i></button>
+        <v-chart class="chart" :option="intradayOption" autoresize />
+      </div>
+      <div v-else-if="intradayOption && Object.keys(intradayOption).length === 0 && !loadingIntraday" class="glass-panel p-4 mt-4 text-center text-gray-400">
+        No intraday data available for {{ intradayDate }}
+        <button class="ml-4 text-rose-400 hover:text-rose-300" @click="intradayOption = null">Close</button>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -52,6 +64,14 @@ import axios from 'axios'
 import { useChartFactory } from '../../composables/useChartFactory'
 
 const props = defineProps({
+  isLoading: {
+    type: Boolean,
+    default: false
+  },
+  errorMessage: {
+    type: String,
+    default: ''
+  },
   dragonTiger: Object,
   lockupData: Object,
   klineOption: Object,

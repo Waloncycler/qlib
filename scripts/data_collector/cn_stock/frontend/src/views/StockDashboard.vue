@@ -84,6 +84,8 @@
 
     <!-- 1. Market Layer -->
     <MarketTab v-if="hasData && activeTab === 'market'" 
+      :isLoading="layerLoading.market"
+      :errorMessage="layerErrors.market"
       :dragonTiger="dragonTiger"
       :lockupData="lockupData"
       :klineOption="klineOption"
@@ -93,22 +95,30 @@
 
     <!-- 2. Signals Layer -->
     <SignalsTab v-if="hasData && activeTab === 'signals'"
+      :isLoading="layerLoading.signals"
+      :errorMessage="layerErrors.signals"
       :thsReasons="thsReasons"
     />
 
     <!-- 3. Capital Layer -->
     <CapitalTab v-if="hasData && activeTab === 'capital'"
+      :isLoading="layerLoading.capital"
+      :errorMessage="layerErrors.capital"
       :marginOption="marginOption"
       :fundFlowOption="fundFlowOption"
     />
 
     <!-- 4. Fundamentals Layer -->
     <FundamentalsTab v-if="hasData && activeTab === 'fundamentals'"
+      :isLoading="layerLoading.fundamentals"
+      :errorMessage="layerErrors.fundamentals"
       :financeData="financeData"
     />
 
     <!-- 5. News Layer -->
     <NewsTab v-if="hasData && activeTab === 'news'"
+      :isLoading="layerLoading.news"
+      :errorMessage="layerErrors.news"
       :symbol="symbol"
       :clsTelegraphs="clsTelegraphs"
       :eastmoneyNews="eastmoneyNews"
@@ -139,12 +149,14 @@ import NewsTab from '../components/tabs/NewsTab.vue'
 
 const route = useRoute()
 const router = useRouter()
-const { loading, error, fetchCsv, fetchJson, triggerRealtimeFetch, triggerRiskAudit, fetchNlpSummaries } = useDataLoader()
+const { loading, error, layerLoading, layerErrors, fetchCsv, fetchJson, triggerRealtimeFetch, triggerRiskAudit, fetchNlpSummaries } = useDataLoader()
 const symbol = ref(route.params.symbol || 'SH600519')
 const successMsg = ref('')
 const hasData = ref(false)
 const activeTab = ref('market')
-const isBackgroundFetching = ref(false)
+const isBackgroundFetching = computed(() => {
+  return layerLoading.market || layerLoading.signals || layerLoading.capital || layerLoading.fundamentals || layerLoading.news
+})
 const { createKlineOption, createLineOption, createBarOption } = useChartFactory()
 
 let toastTimer = null
@@ -161,6 +173,12 @@ const showSuccess = (msg) => {
   if (toastTimer) clearTimeout(toastTimer)
   toastTimer = setTimeout(() => { successMsg.value = '' }, 3000)
 }
+
+watch(isBackgroundFetching, (newVal, oldVal) => {
+  if (oldVal === true && newVal === false && hasData.value) {
+    showSuccess(`All data layers synchronized for ${symbol.value}`)
+  }
+})
 
 // Market Layer
 const klineOption = shallowRef({})
@@ -291,16 +309,7 @@ const handleSearch = async () => {
   }
   
   // 2. LAZY LOAD each layer independently — no layer blocks another
-  isBackgroundFetching.value = true
-  let pendingLayers = 4
 
-  const onLayerDone = () => {
-    pendingLayers--
-    if (pendingLayers <= 0) {
-      isBackgroundFetching.value = false
-      showSuccess(`All data layers synchronized for ${s}`)
-    }
-  }
 
   // --- Signals Layer (independent) ---
   triggerRealtimeFetch(s, 'signals').then(async () => {
@@ -315,7 +324,7 @@ const handleSearch = async () => {
       const rawCode = s.replace(/[A-Za-z]/g, '')
       thsReasons.value = allThs.filter(r => r.code && String(r.code).includes(rawCode))
     }
-  }).catch(err => console.error("Signals layer error:", err)).finally(onLayerDone)
+  }).catch(err => console.error("Signals layer error:", err))
 
   // --- Capital Layer (independent) ---
   triggerRealtimeFetch(s, 'capital').then(async () => {
@@ -340,7 +349,7 @@ const handleSearch = async () => {
     } else {
       fundFlowOption.value = createBarOption('120-Day Capital Inflow Trend', [], [])
     }
-  }).catch(err => console.error("Capital layer error:", err)).finally(onLayerDone)
+  }).catch(err => console.error("Capital layer error:", err))
 
   // --- Fundamentals Layer (independent) ---
   triggerRealtimeFetch(s, 'fundamentals').then(async () => {
@@ -348,7 +357,7 @@ const handleSearch = async () => {
     if (finData && finData.length) {
       financeData.value = finData.slice(0, 15)
     }
-  }).catch(err => console.error("Fundamentals layer error:", err)).finally(onLayerDone)
+  }).catch(err => console.error("Fundamentals layer error:", err))
 
   // --- News Layer (independent) ---
   triggerRealtimeFetch(s, 'news').then(async () => {
@@ -361,7 +370,7 @@ const handleSearch = async () => {
     // Fetch AI NLP Summaries for the News Tab
     const nlpData = await fetchNlpSummaries(s)
     if (nlpData) nlpSummaries.value = nlpData
-  }).catch(err => console.error("News layer error:", err)).finally(onLayerDone)
+  }).catch(err => console.error("News layer error:", err))
 }
 
 onMounted(() => {

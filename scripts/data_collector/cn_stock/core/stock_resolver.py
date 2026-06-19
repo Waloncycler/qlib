@@ -6,6 +6,7 @@ import pandas as pd
 from pathlib import Path
 from loguru import logger
 import concurrent.futures
+import threading
 
 CUR_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = CUR_DIR.parent
@@ -184,8 +185,33 @@ class StockResolver:
                 logger.info(f"{cache_key} data was fetched recently. Using cache (TTL={ttl}s).")
                 return True
 
-        # If market is closed and data files already exist on disk AND are fresh, skip network fetch
+        # Auto-refresh stale market-wide data before checking individual stock cache
         save_dir = CUR_DIR.parent.parent.parent.parent / "data/cn_stock/hierarchical"
+        if layer == "signals" or not layer:
+            market_file_sig = save_dir / "signals" / "ths_hot_reasons.csv"
+            if not market_file_sig.exists() or time.time() - market_file_sig.stat().st_mtime > 4 * 3600:
+                logger.info("Market-wide signals are stale. Triggering background refresh...")
+                def _update_signals():
+                    try:
+                        from market_data.runners.signals_runner import SignalsRunner
+                        SignalsRunner(self.config_path)._run_market_wide(save_dir / "signals")
+                    except Exception as e:
+                        logger.error(f"Auto-refresh signals failed: {e}")
+                threading.Thread(target=_update_signals, daemon=True).start()
+
+        if layer == "news" or not layer:
+            market_file_news = save_dir / "news" / "cls_telegraph.json"
+            if not market_file_news.exists() or time.time() - market_file_news.stat().st_mtime > 4 * 3600:
+                logger.info("Market-wide news are stale. Triggering background refresh...")
+                def _update_news():
+                    try:
+                        from market_data.runners.news_runner import NewsRunner
+                        NewsRunner(self.config_path)._run_market_wide(save_dir / "news")
+                    except Exception as e:
+                        logger.error(f"Auto-refresh news failed: {e}")
+                threading.Thread(target=_update_news, daemon=True).start()
+
+        # If market is closed and data files already exist on disk AND are fresh, skip network fetch
         if not self._is_trading_hours():
             check_file = save_dir / "market" / f"{symbol}_tencent_sina_kline.csv"
             if layer == "news":
@@ -218,8 +244,8 @@ class StockResolver:
         # When fetching a single stock via frontend API, we only need ~180 days of history for speed
         start_date = pd.Timestamp.now() - pd.Timedelta(days=180)
         
-        def run_layer(layer):
-            collector.download_layer(layer=layer, symbol=symbol, save_dir=save_dir, start_date=start_date)
+        def run_layer(l):
+            collector.download_layer(layer=l, symbol=symbol, save_dir=save_dir, start_date=start_date)
             
         with concurrent.futures.ThreadPoolExecutor(max_workers=len(layers)) as executor:
             futures = {executor.submit(run_layer, l): l for l in layers}

@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 import axios from 'axios'
 import Papa from 'papaparse'
 
@@ -10,9 +10,44 @@ export function useDataLoader() {
   const loading = ref(false)
   const error = ref(null)
 
+  const layerLoading = reactive({
+    market: false,
+    signals: false,
+    capital: false,
+    fundamentals: false,
+    news: false
+  })
+
+  const layerErrors = reactive({
+    market: null,
+    signals: null,
+    capital: null,
+    fundamentals: null,
+    news: null
+  })
+
+  const setLayerLoading = (layer, isLoading) => {
+    if (layer && layerLoading.hasOwnProperty(layer)) {
+      layerLoading[layer] = isLoading
+    } else {
+      loading.value = isLoading
+    }
+  }
+
+  const setLayerError = (layer, err) => {
+    if (layer && layerErrors.hasOwnProperty(layer)) {
+      layerErrors[layer] = err
+    } else {
+      error.value = err
+    }
+  }
+
   const fetchCsv = async (layer, filename) => {
-    loading.value = true
-    error.value = null
+    // Only set loading if it's explicitly tied to a layer, though fetchCsv itself is fast
+    // and usually we want the real loading to be tracked by the caller or triggerRealtimeFetch.
+    // However, for consistency:
+    setLayerLoading(layer, true)
+    setLayerError(layer, null)
     try {
       const timestamp = Date.now()
       const res = await api.get(`/data/${layer}/${filename}?_t=${timestamp}`)
@@ -29,18 +64,18 @@ export function useDataLoader() {
       if (err.response && err.response.status === 404) {
         // Silently ignore missing files, they just mean no data
       } else {
-        error.value = err.message
+        setLayerError(layer, err.message)
         console.error(err)
       }
       return []
     } finally {
-      loading.value = false
+      setLayerLoading(layer, false)
     }
   }
 
   const fetchJson = async (layer, filename) => {
-    loading.value = true
-    error.value = null
+    setLayerLoading(layer, true)
+    setLayerError(layer, null)
     try {
       const timestamp = Date.now()
       const res = await api.get(`/data/${layer}/${filename}?_t=${timestamp}`)
@@ -49,12 +84,12 @@ export function useDataLoader() {
       if (err.response && err.response.status === 404) {
         // Silently ignore missing files
       } else {
-        error.value = err.message
+        setLayerError(layer, err.message)
         console.error(err)
       }
       return null
     } finally {
-      loading.value = false
+      setLayerLoading(layer, false)
     }
   }
   
@@ -89,18 +124,18 @@ export function useDataLoader() {
   }
 
   const triggerRealtimeFetch = async (symbol, layer = null) => {
-    loading.value = true
-    error.value = null
+    setLayerLoading(layer, true)
+    setLayerError(layer, null)
     try {
       const url = layer ? `/stock/${symbol}/fetch?layer=${layer}` : `/stock/${symbol}/fetch`
       const res = await api.get(url)
       return res.data
     } catch (err) {
-      error.value = err.message
+      setLayerError(layer, err.message)
       console.error(err)
       return null
     } finally {
-      loading.value = false
+      setLayerLoading(layer, false)
     }
   }
 
@@ -138,7 +173,7 @@ export function useDataLoader() {
   }
 
   const fetchNlpSummaries = async (symbol) => {
-    loading.value = true
+    setLayerLoading('news', true)
     try {
       const res = await api.get(`/stock/${symbol}/nlp_summaries`)
       if (res.data && res.data.status === 'success') {
@@ -149,7 +184,7 @@ export function useDataLoader() {
       console.error('Failed to fetch nlp summaries:', err)
       return null
     } finally {
-      loading.value = false
+      setLayerLoading('news', false)
     }
   }
 
@@ -193,5 +228,5 @@ export function useDataLoader() {
     }
   }
 
-  return { loading, error, fetchCsv, fetchJson, fetchTopics, fetchReports, triggerRealtimeFetch, triggerBackendRefresh, checkRefreshStatus, triggerRiskAudit, triggerReportsRefresh, checkReportsRefreshStatus, triggerTopicsRefresh, checkTopicsRefreshStatus, fetchNlpSummaries }
+  return { loading, error, layerLoading, layerErrors, fetchCsv, fetchJson, fetchTopics, fetchReports, triggerRealtimeFetch, triggerBackendRefresh, checkRefreshStatus, triggerRiskAudit, triggerReportsRefresh, checkReportsRefreshStatus, triggerTopicsRefresh, checkTopicsRefreshStatus, fetchNlpSummaries }
 }

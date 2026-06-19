@@ -64,7 +64,7 @@
         
         <template v-else>
           <div class="chart-panel glass-panel" style="position: relative; transition: height 0.3s;" :style="{ height: selectedStock ? '600px' : '350px' }">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 12px 16px 0 16px; position: absolute; top: 0; left: 0; right: 0; z-index: 10;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px 0 16px; position: absolute; top: 0; left: 0; right: 0; z-index: 10;">
               <h3 class="section-title" style="margin-bottom: 0;">Market Trend & Active Stocks</h3>
               
               <div style="display: flex; gap: 8px;" v-if="selectedStock && Object.keys(topicKlineOption).length > 0 && !stockLoading">
@@ -82,7 +82,7 @@
                <p>Fetching multi-grid data for {{ selectedStock }}...</p>
             </div>
             
-            <div style="height: 100%; padding-top: 40px; box-sizing: border-box;">
+            <div style="height: 100%; padding-top: 48px; box-sizing: border-box; position: relative;">
               <v-chart v-if="Object.keys(topicKlineOption).length > 0" class="chart" :option="topicKlineOption" @datazoom="handleDataZoom" autoresize style="height: 100%; width: 100%;" />
               <div v-else class="empty-state-small" style="height: 100%; display: flex; align-items: center; justify-content: center;">
                 <p>No historical K-line data available for this topic from upstream API.</p>
@@ -476,7 +476,15 @@ const updateChartOption = () => {
           })
         }
       } else {
-        const upText = ups.map(u => `[${u.time}] ${u.name}`).join('\n')
+        let upText = ''
+        if (ups.length > 0) {
+          const names = ups.map(u => u.name)
+          if (names.length <= 2) {
+            upText = names.join('\n')
+          } else {
+            upText = names.slice(0, 2).join('\n') + `\n...共${names.length}只`
+          }
+        }
         if (upText) upScatterData.push({ value: [idx, d.high, upText], symbolOffset: [0, -15] })
       }
 
@@ -491,7 +499,15 @@ const updateChartOption = () => {
           })
         }
       } else {
-        const downText = downs.map(u => `[${u.time}] ${u.name}`).join('\n')
+        let downText = ''
+        if (downs.length > 0) {
+          const names = downs.map(u => u.name)
+          if (names.length <= 2) {
+            downText = names.join('\n')
+          } else {
+            downText = names.slice(0, 2).join('\n') + `\n...共${names.length}只`
+          }
+        }
         if (downText) downScatterData.push({ value: [idx, d.low, downText], symbolOffset: [0, 15] })
       }
     } catch(e) {}
@@ -518,13 +534,63 @@ const updateChartOption = () => {
 
   let option = {
     backgroundColor: 'transparent',
-    tooltip: { trigger: 'axis', axisPointer: { type: 'cross' }, showContent: false },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross', lineStyle: { color: 'rgba(148,163,184,0.3)' } },
+      backgroundColor: 'rgba(15, 23, 42, 0.95)',
+      borderColor: 'rgba(255,255,255,0.1)',
+      textStyle: { color: '#f2f2f2', fontSize: 12 },
+      padding: [8, 12],
+      formatter: (params) => {
+        if (!params || !params.length) return ''
+        const dateIdx = params[0].dataIndex
+        const d = kdata[dateIdx]
+        if (!d) return ''
+        let html = `<div style="font-weight:600;margin-bottom:4px;color:#94a3b8">${d.trade_date}</div>`
+        // Candlestick OHLC
+        const candleParam = params.find(p => p.seriesName === 'Topic Index')
+        if (candleParam) {
+          const [open, close, low, high] = candleParam.data?.value || candleParam.data || []
+          html += `<div>Open: <b>${open}</b>  Close: <b>${close}</b></div>`
+          html += `<div>High: <b>${high}</b>  Low: <b>${low}</b></div>`
+        }
+        // Limit Up stocks
+        try {
+          const ups = JSON.parse(d.up_limit_stocks || '[]')
+          if (ups.length > 0) {
+            html += `<div style="margin-top:6px;color:#ef4444;font-weight:600">🔥 Limit Up (${ups.length})</div>`
+            ups.slice(0, 8).forEach(u => {
+              const highlight = hasSelected && u.name === selectedStock.value
+              html += `<div style="padding-left:8px;${highlight ? 'color:#facc15;font-weight:700' : 'color:#fca5a5'}">[${u.time}] ${u.name}</div>`
+            })
+            if (ups.length > 8) html += `<div style="padding-left:8px;color:#9ba1a6">...+${ups.length - 8} more</div>`
+          }
+        } catch(e) {}
+        // Limit Down stocks
+        try {
+          const downs = JSON.parse(d.down_limit_stocks || '[]')
+          if (downs.length > 0) {
+            html += `<div style="margin-top:6px;color:#10b981;font-weight:600">❄ Limit Down (${downs.length})</div>`
+            downs.slice(0, 8).forEach(u => {
+              const highlight = hasSelected && u.name === selectedStock.value
+              html += `<div style="padding-left:8px;${highlight ? 'color:#facc15;font-weight:700' : 'color:#6ee7b7'}">[${u.time}] ${u.name}</div>`
+            })
+            if (downs.length > 8) html += `<div style="padding-left:8px;color:#9ba1a6">...+${downs.length - 8} more</div>`
+          }
+        } catch(e) {}
+        return html
+      }
+    },
     legend: { 
       data: [{name: 'Topic Index'}, {name: 'Limit Up', itemStyle: {color: '#ef4444'}}, {name: 'Limit Down', itemStyle: {color: '#10b981'}}], 
-      textStyle: { color: '#9ba1a6' },
-      top: 0 
+      textStyle: { color: '#9ba1a6', fontSize: 11 },
+      top: 4,
+      left: 'center',
+      itemGap: 16,
+      itemWidth: 14,
+      itemHeight: 10
     },
-    grid: [{ left: '2%', right: '2%', bottom: '15%', top: 30 }],
+    grid: [{ left: '2%', right: '2%', bottom: '15%', top: 36 }],
     xAxis: [{ type: 'category', data: dates, axisLine: { lineStyle: { color: '#334155' } }, axisLabel: { color: '#9ba1a6' } }],
     yAxis: [{ type: 'value', scale: true, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }, axisLabel: { color: '#9ba1a6' } }],
     dataZoom: dzConfig,
@@ -535,12 +601,54 @@ const updateChartOption = () => {
         itemStyle: { color: '#ef4444', color0: '#10b981', borderColor: '#ef4444', borderColor0: '#10b981' }
       },
       {
-        name: 'Limit Up', type: 'scatter', symbolSize: 0, data: upScatterData,
-        label: { show: true, position: 'top', formatter: p => p.value[2], backgroundColor: 'rgba(239, 68, 68, 0.8)', color: '#fff', padding: [2,4], borderRadius: 3, fontSize: 10 }, z: 10
+        name: 'Limit Up', type: 'scatter', data: upScatterData,
+        symbolSize: 0,
+        itemStyle: { color: 'rgba(239, 68, 68, 0.85)', borderColor: '#fff', borderWidth: 0.5 },
+        label: {
+          show: true,
+          position: 'top',
+          formatter: p => {
+            const text = p.value[2] || ''
+            if (hasSelected) {
+              const match = text.match(/\[([^\]]+)\]\s*(.+)/)
+              if (match) return match[2]
+            }
+            return text
+          },
+          backgroundColor: 'rgba(239, 68, 68, 0.9)',
+          color: '#fff',
+          padding: [3, 6],
+          borderRadius: 3,
+          fontSize: 10,
+          distance: 8
+        },
+        labelLayout: { moveOverlap: 'shiftY' },
+        z: 10
       },
       {
-        name: 'Limit Down', type: 'scatter', symbolSize: 0, data: downScatterData,
-        label: { show: true, position: 'bottom', formatter: p => p.value[2], backgroundColor: 'rgba(16, 185, 129, 0.8)', color: '#fff', padding: [2,4], borderRadius: 3, fontSize: 10 }, z: 10
+        name: 'Limit Down', type: 'scatter', data: downScatterData,
+        symbolSize: 0,
+        itemStyle: { color: 'rgba(16, 185, 129, 0.85)', borderColor: '#fff', borderWidth: 0.5 },
+        label: {
+          show: true,
+          position: 'bottom',
+          formatter: p => {
+            const text = p.value[2] || ''
+            if (hasSelected) {
+              const match = text.match(/\[([^\]]+)\]\s*(.+)/)
+              if (match) return match[2]
+            }
+            return text
+          },
+          backgroundColor: 'rgba(16, 185, 129, 0.9)',
+          color: '#fff',
+          padding: [3, 6],
+          borderRadius: 3,
+          fontSize: 10,
+          distance: 8
+        },
+        labelLayout: { moveOverlap: 'shiftY' },
+        z: 10
       }
     ]
   }
@@ -548,16 +656,17 @@ const updateChartOption = () => {
   if (hasSelected && Object.keys(stockKlineOption.value).length > 0) {
     const stockOpt = stockKlineOption.value
     
-    // Top grid for Topic Index
-    option.grid[0].height = '35%'
+    // Top grid for Topic Index - leave room for legend row
+    option.grid[0].top = 36
+    option.grid[0].height = '30%'
     option.grid[0].bottom = 'auto'
     option.xAxis[0].axisLabel = { show: false }
     option.xAxis[0].axisTick = { show: false }
     
     // Bottom grids for Stock Kline and Volume
     option.grid.push(
-      { left: '2%', right: '2%', top: '45%', height: '35%' }, 
-      { left: '2%', right: '2%', top: '82%', height: '10%' }
+      { left: '2%', right: '2%', top: '42%', height: '35%' }, 
+      { left: '2%', right: '2%', top: '80%', height: '10%' }
     )
     
     option.xAxis.push(
@@ -581,9 +690,12 @@ const updateChartOption = () => {
       option.series = [...option.series, ...stockSeries]
     }
     
+    // Merge legend data and use two-row layout to avoid horizontal overflow
     if (stockOpt.legend && stockOpt.legend.data) {
       option.legend.data = [...option.legend.data, ...stockOpt.legend.data]
     }
+    option.legend.type = 'scroll'
+    option.legend.width = '80%'
     
     dzConfig.forEach(z => {
       z.xAxisIndex = [0, 1, 2]
@@ -655,8 +767,8 @@ onMounted(() => {
 .main-content { flex: 1; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; padding-right: 8px; }
 .topic-description { font-size: 0.95rem; line-height: 1.6; color: rgba(255,255,255,0.8); background: rgba(0,0,0,0.2); padding: 16px; border-radius: 8px; }
 
-.chart-panel { padding: 16px; height: auto; display: flex; flex-direction: column; }
-.chart { width: 100%; height: 450px; min-height: 450px; }
+.chart-panel { padding: 0; position: relative; overflow: hidden; flex-shrink: 0; min-height: 350px; }
+.chart { width: 100%; height: 100%; }
 .section-title { font-size: 1.1rem; margin-bottom: 16px; font-weight: 600; }
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 
