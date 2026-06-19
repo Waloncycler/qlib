@@ -364,9 +364,11 @@ const handleSearch = async () => {
   }).catch(err => console.error("News layer error:", err)).finally(onLayerDone)
 }
 
-if (route.params.symbol) {
-  handleSearch()
-}
+onMounted(() => {
+  if (symbol.value) {
+    handleSearch()
+  }
+})
 </script>
 
 <style scoped>

@@ -218,41 +218,41 @@ class StockFundFlow120dAdapter(BaseSourceAdapter):
         return pd.DataFrame()
 
     def fetch_daily_flow(self, symbol: str, limit: int = 120) -> pd.DataFrame:
-        code = clean_symbol(symbol)
-        prefix_num = 1 if code.startswith("6") else 0
-        url = "https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get"
+        code = clean_symbol(symbol).lower()
+        if code.startswith("6"):
+            sina_sym = f"sh{code}"
+        elif code.startswith("8") or code.startswith("4"):
+            sina_sym = f"bj{code}"
+        else:
+            sina_sym = f"sz{code}"
+
+        url = "http://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/MoneyFlow.ssl_qsfx_zjlrqs"
         params = {
-            "secid": f"{prefix_num}.{code}",
-            "fields1": "f1,f2,f3,f7",
-            "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64,f65",
-            "lmt": str(limit),
+            "page": 1,
+            "num": limit,
+            "sort": "opendate",
+            "asc": 0,
+            "daima": sina_sym
         }
-        headers = {
-            "User-Agent": UA,
-            "Referer": "https://quote.eastmoney.com/",
-            "Origin": "https://quote.eastmoney.com",
-        }
+        headers = {"User-Agent": UA}
         try:
             r = resilient_request("get", url, params=params, headers=headers)
-            d = r.json()
-            klines = d.get("data", {}).get("klines", [])
+            # Sina returns pure JSON array
+            items = r.json()
             rows = []
-            for line in klines:
-                parts = line.split(",")
-                if len(parts) >= 7:
-                    rows.append({
-                        "date": parts[0],
-                        "main_net": float(parts[1]) if parts[1] != "-" else 0.0,
-                        "small_net": float(parts[2]) if parts[2] != "-" else 0.0,
-                        "mid_net": float(parts[3]) if parts[3] != "-" else 0.0,
-                        "large_net": float(parts[4]) if parts[4] != "-" else 0.0,
-                        "super_net": float(parts[5]) if parts[5] != "-" else 0.0,
-                    })
+            for item in items:
+                rows.append({
+                    "date": item.get("opendate"),
+                    "main_net_flow": float(item.get("netamount", 0.0)),
+                    "turnover": float(item.get("turnover", 0.0)),
+                })
             if rows:
                 df = pd.DataFrame(rows)
                 df["symbol"] = to_qlib_symbol(symbol)
                 df["date"] = pd.to_datetime(df["date"])
+                # Sina returns descending by date, we might want ascending for charts
+                df = df.sort_values("date").reset_index(drop=True)
                 return df
         except Exception as e:
-            logger.error(f"Daily fund flows failed for {symbol}: {e}")
+            logger.error(f"Daily fund flows failed for {symbol} via Sina: {e}")
         return pd.DataFrame()
