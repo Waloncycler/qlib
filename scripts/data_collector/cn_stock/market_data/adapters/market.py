@@ -178,19 +178,24 @@ class TencentSinaAdapter(BaseSourceAdapter):
                         code_no_prefix = clean_symbol(symbol)
                         if code_no_prefix in quotes:
                             q = quotes[code_no_prefix]
-                            if q["open"] > 0:
-                                today = pd.Timestamp.now().normalize()
-                                new_row = {
-                                    "date": today,
-                                    "open": q["open"],
-                                    "high": q["high"],
-                                    "low": q["low"],
-                                    "close": q["price"],
-                                    "volume": q["volume_lots"] * 100,
-                                    "factor": 1.0,
-                                    "symbol": to_qlib_symbol(symbol)
-                                }
-                                df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+                            if q["open"] > 0 and q.get("datetime") and len(q["datetime"]) >= 8:
+                                q_date_str = q["datetime"][:8]
+                                try:
+                                    q_date = pd.to_datetime(q_date_str).normalize()
+                                    if q_date > df.iloc[-1]["date"].normalize():
+                                        new_row = {
+                                            "date": q_date,
+                                            "open": q["open"],
+                                            "high": q["high"],
+                                            "low": q["low"],
+                                            "close": q["price"],
+                                            "volume": q["volume_lots"] * 100,
+                                            "factor": 1.0,
+                                            "symbol": to_qlib_symbol(symbol)
+                                        }
+                                        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+                                except Exception as parse_err:
+                                    logger.warning(f"Could not parse Tencent datetime {q['datetime']} for {symbol}: {parse_err}")
 
                     df["ma5"] = df["close"].rolling(5).mean()
                     df["ma20"] = df["close"].rolling(20).mean()
@@ -239,6 +244,7 @@ class TencentSinaAdapter(BaseSourceAdapter):
                     "vol_ratio": float(vals[49]) if vals[49] else 0.0,
                     "pe_static": float(vals[52]) if vals[52] else 0.0,
                     "volume_lots": float(vals[36]) if len(vals) > 36 and vals[36] else 0.0,
+                    "datetime": vals[30] if len(vals) > 30 else "",
                 }
             return result
         except Exception as e:
