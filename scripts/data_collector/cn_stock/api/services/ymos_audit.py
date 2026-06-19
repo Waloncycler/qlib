@@ -117,6 +117,38 @@ def generate_risk_audit(symbol: str) -> str:
         logger.error(f"Error fetching real-time risk data for {symbol}: {e}")
         deep_risk_str += "\n[实时扫描数据获取失败]\n"
         
+    # 5. Fetch NLP Summaries for Announcements, Reports, and Hudongyi
+    try:
+        logger.info(f"Running NLP semantic search for {symbol} announcements, reports, and hudongyi...")
+        
+        # 5.1 Announcements
+        announcements = iwencai_adapter.semantic_search(f"{raw_code} 近一年 风险 诉讼 减持 监管函 立案", channel="announcement", size=3)
+        if announcements:
+            deep_risk_str += "\n=== 巨潮资讯 - 官方公告核心摘要 (Cninfo Announcements) ===\n"
+            for a in announcements:
+                deep_risk_str += f"- [{a.get('publish_date', '')[:10]}] {a.get('title')}\n"
+                deep_risk_str += f"  正文摘要: {a.get('summary', '')[:250]}\n"
+                
+        # 5.2 Reports
+        reports = iwencai_adapter.semantic_search(f"{raw_code} 近半年 风险提示 评级下调 业绩不达预期", channel="report", size=3)
+        if reports:
+            deep_risk_str += "\n=== 东方财富 - 机构研报摘要与风险提示 (Eastmoney Reports) ===\n"
+            for r in reports:
+                deep_risk_str += f"- [{r.get('publish_date', '')[:10]}] {r.get('title')}\n"
+                deep_risk_str += f"  正文摘要: {r.get('summary', '')[:250]}\n"
+                
+        # 5.3 Hudongyi
+        hudongyi = iwencai_adapter.semantic_search(f"{raw_code} 近半年 互动易回复", channel="news", size=3)
+        if hudongyi:
+            deep_risk_str += "\n=== 互动易 / e互动 投资者问答 (Hudongyi Q&A) ===\n"
+            for h in hudongyi:
+                deep_risk_str += f"- [{h.get('publish_date', '')}] {h.get('title')}\n"
+                deep_risk_str += f"  问答实录: {h.get('summary', '')[:300]}\n"
+                
+    except Exception as e:
+        logger.error(f"Error fetching NLP semantic summaries for {symbol}: {e}")
+
+        
     # The User's YMOS Prompt
     ymos_prompt = f"""# Role: YMOS 首席风控官 & 逻辑校准官 (Chief Risk Auditor)
 
@@ -135,9 +167,9 @@ def generate_risk_audit(symbol: str) -> str:
 - 【股性劣根】: 是否有长期“割韭菜”的行为记录，或者频繁更换主业的“蹭热点”惯犯特征。
 
 # 核心任务二：🔍 【逻辑真伪性校验】 (Logic Consistency)
-对比【题材逻辑描述】、【核心题材归属与逻辑支撑】与【全网一手新闻】：
-- 【逻辑对账】: 核实新闻中提到的具体订单、产品报价涨幅、中标公告或调研纪要是否真实存在，并且与【核心题材归属与逻辑支撑】里的相关性描述是否高度吻合。
-- 【打假/剔除】: 如果该股只是在互动易上通过含糊其辞的回复蹭热度，或者其实际业务根本不匹配核心逻辑支撑，标记为“虚假蹭热度”。如果行业基本面出现利空但题材仍在唱多，标记为“逻辑证伪”。
+对比【题材逻辑描述】、【全网一手新闻】、【官方公告核心摘要】、【机构研报摘要】及【互动易问答实录】：
+- 【逻辑对账】: 重点核实【官方公告】与【机构研报】的正文摘要中，是否真实存在产品报价涨幅、中标公告或调研纪要，这比新闻媒体的吹捧更具有权威性。确保与【核心题材归属与逻辑支撑】里的相关性描述高度吻合。
+- 【打假/剔除】: 仔细审查【互动易问答实录】。如果该股只是在互动易上通过含糊其辞的回复蹭热度，或者其实际业务根本不匹配核心逻辑支撑，必须标记为“虚假蹭热度”。如果研报或公告揭示了行业利空但题材仍在唱多，标记为“逻辑证伪”。
 
 # 输出规范 (Output Format)
 直接输出以下两部分，绝对不要输出任何标题，也不要输出股票代码和名字：

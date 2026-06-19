@@ -28,6 +28,26 @@ def iwencai_search(req: SearchRequest):
         logger.error(f"Error calling iWencai: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/api/stock/{symbol}/nlp_summaries")
+def get_nlp_summaries(symbol: str):
+    """Fetches NLP summaries from iWencai for UI rendering."""
+    try:
+        raw_code = ''.join([c for c in symbol if c.isdigit()])
+        announcements = iwencai_adapter.semantic_search(f"{raw_code} 近一年 风险 诉讼 减持 监管函 立案", channel="announcement", size=5)
+        reports = iwencai_adapter.semantic_search(f"{raw_code} 近半年 风险提示 评级下调 业绩不达预期", channel="report", size=5)
+        hudongyi = iwencai_adapter.semantic_search(f"{raw_code} 近半年 互动易回复", channel="news", size=5)
+        return {
+            "status": "success",
+            "data": {
+                "announcements": announcements,
+                "reports": reports,
+                "hudongyi": hudongyi
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error fetching NLP summaries for {symbol}: {e}")
+        return {"status": "error", "message": str(e)}
+
 @router.get("/api/stock/{symbol}/fetch")
 def fetch_realtime_stock(symbol: str, layer: str = None):
     """Triggers real-time fetching for a single stock."""

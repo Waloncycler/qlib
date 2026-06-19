@@ -6,6 +6,7 @@
         <div v-for="(news, idx) in eastmoneyNews" :key="idx" class="news-card">
           <h4 class="news-title">{{ news.title }}</h4>
           <p class="news-time mt-2"><i class="fa-regular fa-calendar mr-1"></i>{{ formatTime(news.time || news.publish_time || news.date) }}</p>
+          <p class="news-content mt-2" v-if="news.summary">{{ news.summary }}</p>
         </div>
         <div v-if="!eastmoneyNews.length" class="empty-state-small">No company news found.</div>
       </div>
@@ -18,6 +19,42 @@
           <p class="news-content">{{ news.summary || news.content }}</p>
         </div>
         <div v-if="!clsTelegraphs.length" class="empty-state-small">No recent telegraphs.</div>
+      </div>
+    </div>
+    
+    <div v-if="nlpSummaries?.announcements" class="glass-panel p-6 flex flex-col h-[600px]">
+      <h3 class="section-title text-blue-400 mb-4"><i class="fa-solid fa-bullhorn mr-2"></i> 巨潮公告摘要 (Cninfo)</h3>
+      <div class="overflow-y-auto custom-scrollbar flex-1 space-y-4 pr-2">
+        <div v-for="(item, idx) in nlpSummaries.announcements" :key="idx" class="news-card border-l-2 border-l-blue-500">
+          <h4 class="news-title">{{ item.title }}</h4>
+          <p class="news-time mt-2"><i class="fa-regular fa-calendar mr-1"></i>{{ formatTime(item.publish_date) }}</p>
+          <p class="news-content mt-2">{{ item.summary }}</p>
+        </div>
+        <div v-if="!nlpSummaries.announcements.length" class="empty-state-small">No announcements found.</div>
+      </div>
+    </div>
+
+    <div v-if="nlpSummaries?.reports" class="glass-panel p-6 flex flex-col h-[600px]">
+      <h3 class="section-title text-purple-400 mb-4"><i class="fa-solid fa-file-invoice mr-2"></i> 机构研报摘要 (Reports)</h3>
+      <div class="overflow-y-auto custom-scrollbar flex-1 space-y-4 pr-2">
+        <div v-for="(item, idx) in nlpSummaries.reports" :key="idx" class="news-card border-l-2 border-l-purple-500">
+          <h4 class="news-title">{{ item.title }}</h4>
+          <p class="news-time mt-2"><i class="fa-regular fa-calendar mr-1"></i>{{ formatTime(item.publish_date) }}</p>
+          <p class="news-content mt-2">{{ item.summary }}</p>
+        </div>
+        <div v-if="!nlpSummaries.reports.length" class="empty-state-small">No reports found.</div>
+      </div>
+    </div>
+
+    <div v-if="nlpSummaries?.hudongyi" class="glass-panel p-6 flex flex-col h-[600px]">
+      <h3 class="section-title text-emerald-400 mb-4"><i class="fa-solid fa-comments mr-2"></i> 互动易问答 (Hudongyi)</h3>
+      <div class="overflow-y-auto custom-scrollbar flex-1 space-y-4 pr-2">
+        <div v-for="(item, idx) in nlpSummaries.hudongyi" :key="idx" class="news-card border-l-2 border-l-emerald-500">
+          <h4 class="news-title">{{ item.title }}</h4>
+          <p class="news-time mt-2"><i class="fa-regular fa-calendar mr-1"></i>{{ formatTime(item.publish_date) }}</p>
+          <p class="news-content mt-2">{{ item.summary }}</p>
+        </div>
+        <div v-if="!nlpSummaries.hudongyi.length" class="empty-state-small">No interactions found.</div>
       </div>
     </div>
   </div>
@@ -33,6 +70,10 @@ defineProps({
   eastmoneyNews: {
     type: Array,
     default: () => []
+  },
+  nlpSummaries: {
+    type: Object,
+    default: null
   }
 })
 
@@ -48,7 +89,7 @@ const formatTime = (t) => {
 
 <style scoped>
 .layer-content { display: flex; flex-direction: column; gap: 16px; flex: 1; }
-.grid-2-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 500px), 1fr)); gap: 16px; }
+.grid-2-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); gap: 16px; }
 .section-title { font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
 .p-6 { padding: 24px; }
 .news-card { padding: 16px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; transition: border-color 0.2s; }

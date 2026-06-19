@@ -112,6 +112,7 @@
       :symbol="symbol"
       :clsTelegraphs="clsTelegraphs"
       :eastmoneyNews="eastmoneyNews"
+      :nlpSummaries="nlpSummaries"
     />
     
     <div v-if="!hasData && !loading && !error" class="empty-state glass-panel">
@@ -138,7 +139,7 @@ import NewsTab from '../components/tabs/NewsTab.vue'
 
 const route = useRoute()
 const router = useRouter()
-const { loading, error, fetchCsv, fetchJson, triggerRealtimeFetch, triggerRiskAudit } = useDataLoader()
+const { loading, error, fetchCsv, fetchJson, triggerRealtimeFetch, triggerRiskAudit, fetchNlpSummaries } = useDataLoader()
 const symbol = ref(route.params.symbol || 'SH600519')
 const successMsg = ref('')
 const hasData = ref(false)
@@ -200,6 +201,7 @@ const financeData = ref([])
 // News Layer
 const clsTelegraphs = ref([])
 const eastmoneyNews = ref([])
+const nlpSummaries = ref(null)
 
 
 
@@ -256,6 +258,7 @@ const handleSearch = async () => {
   financeData.value = []
   clsTelegraphs.value = []
   eastmoneyNews.value = []
+  nlpSummaries.value = null
   
   // 1. Trigger real-time fetch for MARKET layer FIRST
   const triggerRes = await triggerRealtimeFetch(s, 'market')
@@ -354,6 +357,10 @@ const handleSearch = async () => {
     
     const emNews = await fetchJson('news', `${s}_eastmoney_news.json`)
     if (emNews && emNews.length) eastmoneyNews.value = emNews
+    
+    // Fetch AI NLP Summaries for the News Tab
+    const nlpData = await fetchNlpSummaries(s)
+    if (nlpData) nlpSummaries.value = nlpData
   }).catch(err => console.error("News layer error:", err)).finally(onLayerDone)
 }
 

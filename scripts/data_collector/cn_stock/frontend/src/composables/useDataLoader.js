@@ -137,6 +137,22 @@ export function useDataLoader() {
     }
   }
 
+  const fetchNlpSummaries = async (symbol) => {
+    loading.value = true
+    try {
+      const res = await api.get(`/stock/${symbol}/nlp_summaries`)
+      if (res.data && res.data.status === 'success') {
+        return res.data.data
+      }
+      return null
+    } catch (err) {
+      console.error('Failed to fetch nlp summaries:', err)
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
   const triggerReportsRefresh = async () => {
     try {
       const res = await api.post('/refresh/reports')
@@ -177,5 +193,5 @@ export function useDataLoader() {
     }
   }
 
-  return { loading, error, fetchCsv, fetchJson, fetchTopics, fetchReports, triggerRealtimeFetch, triggerBackendRefresh, checkRefreshStatus, triggerRiskAudit, triggerReportsRefresh, checkReportsRefreshStatus, triggerTopicsRefresh, checkTopicsRefreshStatus }
+  return { loading, error, fetchCsv, fetchJson, fetchTopics, fetchReports, triggerRealtimeFetch, triggerBackendRefresh, checkRefreshStatus, triggerRiskAudit, triggerReportsRefresh, checkReportsRefreshStatus, triggerTopicsRefresh, checkTopicsRefreshStatus, fetchNlpSummaries }
 }
