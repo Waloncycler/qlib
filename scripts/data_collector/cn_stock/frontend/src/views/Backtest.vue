@@ -174,19 +174,19 @@ const selectTheme = async (theme) => {
   // Define standard 5-minute intervals for a trading day (uniform width)
   const generateDayGrid = (d) => {
     const grid = []
-    // Morning: 09:30 to 11:30
+    // Morning: 09:35 to 11:30
     for (let h = 9; h <= 11; h++) {
-      for (let m = 0; m < 60; m += 1) {
-        if (h === 9 && m < 30) continue
+      for (let m = 0; m < 60; m += 5) {
+        if (h === 9 && m <= 30) continue
         if (h === 11 && m > 30) continue
         const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
         grid.push(`${d} ${timeStr}`)
       }
     }
-    // Afternoon: 13:01 to 15:00
+    // Afternoon: 13:05 to 15:00
     for (let h = 13; h <= 15; h++) {
-      for (let m = 0; m < 60; m += 1) {
-        if (h === 13 && m < 1) continue
+      for (let m = 0; m < 60; m += 5) {
+        if (h === 13 && m === 0) continue
         if (h === 15 && m > 0) continue
         const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
         grid.push(`${d} ${timeStr}`)

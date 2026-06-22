@@ -12,6 +12,7 @@ from api.routers.market import router as market_router
 from api.routers.backtest import router as backtest_router
 from api.routers.audit import router as audit_router
 from api.routers.tasks import router as tasks_router
+from api.routers.user_prefs import router as user_prefs_router
 
 app = FastAPI(title="Qlib CN Stock API Gateway")
 
@@ -29,6 +30,7 @@ app.include_router(market_router)
 app.include_router(backtest_router)
 app.include_router(audit_router)
 app.include_router(tasks_router)
+app.include_router(user_prefs_router)
 
 if __name__ == "__main__":
     import uvicorn

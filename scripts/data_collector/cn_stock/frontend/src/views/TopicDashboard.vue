@@ -6,6 +6,10 @@
         <p class="subtitle">Trending themes and their K-line trajectories.</p>
       </div>
       <div class="actions">
+        <button class="filter-btn" :class="{ 'active': showStarredOnly }" @click="showStarredOnly = !showStarredOnly" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; height: 38px; border-radius: 8px;">
+          <StarIcon class="icon-small" :fill="showStarredOnly ? 'currentColor' : 'none'" :class="{ 'text-yellow': showStarredOnly }" :style="{ color: showStarredOnly ? '#fbbf24' : 'inherit' }" />
+          Starred
+        </button>
         <div class="search-box">
           <SearchIcon class="search-icon" />
           <input type="text" v-model="searchQuery" placeholder="Search stock or topic..." class="search-input" />
@@ -90,6 +94,35 @@
             </div>
           </div>
 
+          <!-- Selected Stock Details Panel -->
+          <div class="selected-stock-panel glass-panel" v-if="selectedStockDetails && selectedStockDetails.length > 0" style="margin-bottom: 16px;">
+            <div class="section-header" style="margin-bottom: 8px; padding: 16px 20px 0 20px;">
+              <h3 class="section-title" style="margin: 0; display: flex; align-items: center; gap: 12px;">
+                <span style="color: #60a5fa; font-size: 1.2rem;">{{ selectedStockDetails[0]['个股'] }}</span>
+                <span style="font-size: 0.85rem; color: #9ba1a6; font-weight: normal;" v-if="selectedStockDetails.length > 1">({{ selectedStockDetails.length }} items)</span>
+              </h3>
+              <button class="filter-btn" @click="toggleStockSelection(selectedStockDetails[0]['个股'])" style="display: flex; align-items: center; gap: 4px;">
+                <XIcon class="icon-tiny" /> Clear
+              </button>
+            </div>
+            
+            <div v-for="(detail, idx) in selectedStockDetails" :key="idx" class="topic-description" :style="idx < selectedStockDetails.length - 1 ? 'border-bottom: 1px dashed rgba(255,255,255,0.1); margin-bottom: 8px;' : ''" style="background: transparent; padding-top: 0; padding-bottom: 16px; padding-left: 20px; padding-right: 20px;">
+              <div style="margin-bottom: 12px; margin-top: 8px;">
+                <span class="stock-badge" style="font-size: 0.85rem; font-weight: normal; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 6px;">
+                  {{ detail['一级大类'] }}<span v-if="detail['二级小类']"> - {{ detail['二级小类'] }}</span>
+                </span>
+              </div>
+              <div style="margin-bottom: 8px;">
+                <span style="color: #9ba1a6; font-size: 0.85rem;">Logic & Relevance:</span>
+                <div style="margin-top: 4px; line-height: 1.6; color: #f8fafc; font-size: 0.95rem;">{{ detail['相关性'] }}</div>
+              </div>
+              <div v-if="detail['信息源']" style="margin-top: 12px;">
+                <span style="color: #9ba1a6; font-size: 0.85rem;">Source:</span>
+                <span class="source-tag" style="margin-left: 8px; font-size: 0.8rem; background: rgba(16, 185, 129, 0.15); color: #6ee7b7; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.2);">{{ detail['信息源'] }}</span>
+              </div>
+            </div>
+          </div>
+
           <!-- Leaderboard -->
           <div class="table-container glass-panel" v-if="activeStocksLeaderboard.length > 0">
             <div class="section-header">
@@ -108,6 +141,9 @@
                    :class="{'selected': selectedStock === stock.name}"
                    @click="toggleStockSelection(stock.name)">
                 <div class="lb-header">
+                  <button class="lb-action-btn" @click.stop="toggleStar(stock.name)" title="Toggle Star">
+                    <StarIcon class="icon-tiny" :fill="starredStocks.includes(stock.name) ? 'currentColor' : 'none'" :style="{ color: starredStocks.includes(stock.name) ? '#fbbf24' : 'inherit' }" />
+                  </button>
                   <div class="lb-name">{{ stock.name }}</div>
                   <button class="lb-action-btn" @click.stop="goToStockExplorer(stock.name)" title="Open in Stock Data Explorer">
                     <ExternalLinkIcon class="icon-tiny" />
@@ -129,11 +165,12 @@
 
           <!-- Related Stocks Table -->
           <div class="table-container glass-panel">
-            <h3 class="section-title">Related Stocks ({{ selectedTopic.rows ? selectedTopic.rows.length : 0 }})</h3>
-            <div class="table-scroll" v-if="selectedTopic.rows && selectedTopic.rows.length > 0">
+            <h3 class="section-title">Related Stocks ({{ filteredTopicRows ? filteredTopicRows.length : 0 }})</h3>
+            <div class="table-scroll" v-if="filteredTopicRows && filteredTopicRows.length > 0">
               <table class="data-table">
                 <thead>
                   <tr>
+                    <th style="width: 40px; text-align: center;">⭐</th>
                     <th>Category</th>
                     <th>Stock Name</th>
                     <th>Relevance / Logic</th>
@@ -141,9 +178,12 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(row, index) in selectedTopic.rows" :key="index"
+                  <tr v-for="(row, index) in filteredTopicRows" :key="index"
                       :class="{ 'highlighted-row': selectedStock === row['个股'] }"
                       @click="toggleStockSelection(row['个股'])">
+                    <td @click.stop="toggleStar(row['个股'])" style="cursor: pointer; text-align: center;">
+                      <StarIcon class="icon-small" :fill="starredStocks.includes(row['个股']) ? 'currentColor' : 'none'" :style="{ color: starredStocks.includes(row['个股']) ? '#fbbf24' : '#64748b', transition: 'all 0.2s' }" />
+                    </td>
                     <td>
                       {{ row['一级大类'] }}
                       <div class="sub-category" v-if="row['二级小类']">{{ row['二级小类'] }}</div>
@@ -166,7 +206,7 @@
 <script setup>
 import { ref, computed, onMounted, watch, shallowRef, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { RefreshCwIcon, AlertTriangleIcon, HashIcon, ExternalLinkIcon, ChevronLeftIcon, ChevronRightIcon, EyeOffIcon, SearchIcon, XIcon } from 'lucide-vue-next'
+import { RefreshCwIcon, AlertTriangleIcon, HashIcon, ExternalLinkIcon, ChevronLeftIcon, ChevronRightIcon, EyeOffIcon, SearchIcon, XIcon, StarIcon } from 'lucide-vue-next'
 import { useDataLoader } from '../composables/useDataLoader'
 import { useChartFactory } from '../composables/useChartFactory'
 import axios from 'axios'
@@ -176,6 +216,30 @@ const router = useRouter()
 const { loading, error, fetchTopics, triggerTopicsRefresh, checkTopicsRefreshStatus, fetchCsv, triggerRealtimeFetch } = useDataLoader()
 
 const backendUpdating = ref(false)
+const showStarredOnly = ref(false)
+const starredStocks = ref([])
+
+const loadStarredStocks = async () => {
+  try {
+    const res = await axios.get('/api/user/starred_stocks')
+    if (res.data && res.data.starred) {
+      starredStocks.value = res.data.starred
+    }
+  } catch (err) {
+    console.error("Failed to load starred stocks:", err)
+  }
+}
+
+const toggleStar = async (stockName) => {
+  try {
+    const res = await axios.post('/api/user/starred_stocks/toggle', { symbol: stockName })
+    if (res.data && res.data.starred) {
+      starredStocks.value = res.data.starred
+    }
+  } catch (err) {
+    console.error("Failed to toggle starred stock:", err)
+  }
+}
 
 const handleRefresh = async () => {
   if (backendUpdating.value) return
@@ -204,14 +268,31 @@ const pollStatus = () => {
 const topicsList = ref([])
 const searchQuery = ref('')
 const filteredTopics = computed(() => {
-  if (!searchQuery.value.trim()) return topicsList.value
+  let list = topicsList.value
+  
+  if (showStarredOnly.value) {
+    list = list.filter(topic => {
+      if (!topic.rows) return false
+      return topic.rows.some(row => starredStocks.value.includes(row['个股']))
+    })
+  }
+
+  if (!searchQuery.value.trim()) return list
   
   const query = searchQuery.value.trim().toLowerCase()
-  return topicsList.value.filter(topic => {
+  return list.filter(topic => {
     if (topic.name && topic.name.toLowerCase().includes(query)) return true
     if (topic.rows && Array.isArray(topic.rows) && topic.rows.some(row => row && row['个股'] && String(row['个股']).toLowerCase().includes(query))) return true
     return false
   })
+})
+
+const filteredTopicRows = computed(() => {
+  if (!selectedTopic.value || !selectedTopic.value.rows) return []
+  if (showStarredOnly.value) {
+    return selectedTopic.value.rows.filter(r => starredStocks.value.includes(r['个股']))
+  }
+  return selectedTopic.value.rows
 })
 
 const klinesMap = shallowRef({})
@@ -219,6 +300,11 @@ const selectedTopic = ref(null)
 const selectedStock = ref(null)
 const stockLoading = ref(false)
 const topicKlineOption = shallowRef({})
+
+const selectedStockDetails = computed(() => {
+  if (!selectedStock.value || !selectedTopic.value || !selectedTopic.value.rows) return []
+  return selectedTopic.value.rows.filter(r => r['个股'] === selectedStock.value)
+})
 
 const stockKlineOption = shallowRef({})
 const { createKlineOption } = useChartFactory()
@@ -255,6 +341,21 @@ watch(filteredTopics, (newVal) => {
     selectedTopic.value = null
     selectedStock.value = null
     topicKlineOption.value = {}
+  }
+})
+
+watch(searchQuery, (newVal) => {
+  if (!newVal.trim() || !selectedTopic.value) return
+  
+  const query = newVal.trim().toLowerCase()
+  const matchedRow = selectedTopic.value.rows?.find(r => r['个股'] && String(r['个股']).toLowerCase().includes(query))
+  
+  if (matchedRow && selectedStock.value !== matchedRow['个股']) {
+    setTimeout(() => {
+      if (selectedStock.value !== matchedRow['个股']) {
+        toggleStockSelection(matchedRow['个股'])
+      }
+    }, 50)
   }
 })
 
@@ -402,11 +503,20 @@ const buildLeaderboard = () => {
     } catch(e) {}
   })
   
-  activeStocksLeaderboard.value = Object.keys(counts)
+  let allCounts = Object.keys(counts)
     .map(name => ({ name, up: counts[name].up, down: counts[name].down }))
     .sort((a, b) => b.up - a.up || b.down - a.down)
-    .slice(0, 20) // show top 20
+    
+  if (showStarredOnly.value) {
+    allCounts = allCounts.filter(s => starredStocks.value.includes(s.name))
+  }
+  
+  activeStocksLeaderboard.value = allCounts.slice(0, 20) // show top 20
 }
+
+watch([showStarredOnly, starredStocks], () => {
+  buildLeaderboard()
+}, { deep: true })
 
 const goToStockExplorer = (stockName) => {
   router.push({ name: 'Stock', params: { symbol: stockName } })
@@ -721,6 +831,7 @@ const loadData = async () => {
 }
 
 onMounted(() => {
+  loadStarredStocks()
   loadData()
 })
 </script>
