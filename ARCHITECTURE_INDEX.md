@@ -37,7 +37,7 @@ graph TD
 
 ## 模块说明
 
-### 1. 数据采集层 (`scripts/data_collector/cn_stock/`)
+### 1. 数据采集层 (`backend/`)
 
 | 组件 | 职责 |
 |------|------|

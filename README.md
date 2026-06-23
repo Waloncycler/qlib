@@ -23,7 +23,7 @@
 
 ### 1. 配置密钥
 
-在 `scripts/data_collector/cn_stock/secret.yaml` 中填写 API 密钥：
+在 `backend/secret.yaml` 中填写 API 密钥：
 
 ```yaml
 zizi_email: "your@email.com"
@@ -45,13 +45,13 @@ deepseek_api_key: "YOUR_DEEPSEEK_KEY"  # 用于 YMOS 风控审计
 - 脚本会自动将前端看板挂载在 **http://localhost:28457**
 - **按 `Ctrl + C`** 即可一键安全停止所有服务。
 
-> **注**：如果你希望手动分步启动，可以分别进入 `scripts/data_collector/cn_stock/` 运行 `python api_server.py`，以及在 `frontend/` 下运行 `npm run dev`。
+> **注**：如果你希望手动分步启动，可以分别进入 `backend/` 运行 `python api_server.py`，以及在 `frontend/` 下运行 `npm run dev`。
 
 ### 4. 数据更新（可选）
 
 ```bash
 # 手动触发全量数据刷新（情绪、题材、个股行情）
-cd scripts/data_collector/cn_stock
+cd backend
 python update_all_data.py --force
 
 # 或设置定时任务（参考 crontab.example）
@@ -78,14 +78,21 @@ qlib/
 │   ├── workflow/                  # 实验记录与任务调度
 │   └── rl/                        # 强化学习模块
 │
-├── scripts/data_collector/cn_stock/   # 📌 自定义 A 股数据系统
+├── frontend/                      # 📌 Vue 3 交互式看板
+│   ├── src/views/                 # 页面组件
+│   ├── src/composables/           # 可复用逻辑
+│   ├── src/router/                # 路由配置
+│   ├── package.json               # Node 依赖
+│   └── vite.config.js             # Vite 配置
+│
+├── backend/   # 📌 自定义 A 股数据系统
 │   ├── collector.py               # 多源数据采集器（核心）
-│   ├── api_server.py              # FastAPI 后端服务
-│   ├── stock_resolver.py          # 股票代码智能解析
-│   ├── trading_calendar.py        # 交易日历工具
-│   ├── data_schema.py             # 数据层 Schema 定义
-│   ├── update_all_data.py         # 全量数据更新脚本
-│   ├── adapters/                  # 数据源适配器（插件化）
+│   ├── api/server.py              # FastAPI 后端服务
+│   ├── core/stock_resolver.py     # 股票代码智能解析
+│   ├── core/trading_calendar.py   # 交易日历工具
+│   ├── core/data_schema.py        # 数据层 Schema 定义
+│   ├── tasks/update_daily.py      # 全量数据定时更新脚本
+│   ├── market_data/adapters/      # 数据源适配器（插件化）
 │   │   ├── market.py              # 行情数据（百度/腾讯/新浪）
 │   │   ├── signals.py             # 市场情绪信号（乐咕乐股等）
 │   │   ├── news.py                # 新闻数据（东方财富）
@@ -96,16 +103,6 @@ qlib/
 │   │   └── legacy.py              # 旧版兼容适配器
 │   ├── fetch_zizizaizai_*.py      # ZIZIZAIZAI 数据抓取脚本
 │   ├── backfill_*.py              # 历史数据回填脚本
-│   ├── frontend/                  # 📌 Vue 3 交互式看板
-│   │   ├── src/views/             # 页面组件
-│   │   │   ├── MarketDashboard.vue    # 市场情绪看板
-│   │   │   ├── TopicDashboard.vue     # 热点题材看板
-│   │   │   ├── StockDashboard.vue     # 个股研究看板
-│   │   │   ├── AiReportDashboard.vue  # AI 早报看板
-│   │   │   ├── IwencaiDashboard.vue   # iWencai 搜索看板
-│   │   │   └── Backtest.vue           # 回测结果看板
-│   │   ├── src/composables/       # 可复用逻辑（图表工厂、数据加载器）
-│   │   └── src/router/            # 路由配置
 │   ├── secret.yaml                # 🔒 API 密钥（不提交 Git）
 │   ├── watchlist.yaml             # 自选股列表
 │   └── crontab.example            # 定时任务示例
@@ -166,7 +163,7 @@ custom_workflow.py + timing_strategy.py  ──→  回测结果 (MLflow)
 
 ### 添加新数据源
 
-1. 在 `scripts/data_collector/cn_stock/adapters/` 下创建新适配器
+1. 在 `backend/adapters/` 下创建新适配器
 2. 继承 `adapters/base.py` 中的基类
 3. 在 `collector.py` 中注册新适配器
 4. 数据将自动通过 `api_server.py` 暴露给前端
@@ -186,7 +183,7 @@ custom_workflow.py + timing_strategy.py  ──→  回测结果 (MLflow)
 ## 📚 相关文档
 
 - [Qlib 上游 README](docs/QLIB_UPSTREAM_README.md) — Microsoft Qlib 原版文档
-- [数据采集器 README](scripts/data_collector/cn_stock/README.md) — 数据采集详细说明
+- [数据采集器 README](backend/README.md) — 数据采集详细说明
 - [Qlib 官方文档](https://qlib.readthedocs.io/) — 完整 API 参考
 
 ## 📄 License

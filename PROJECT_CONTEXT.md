@@ -20,14 +20,14 @@
 
 ## Directory Map
 - [qlib/](file:///Users/walox/qlib/qlib): Qlib 核心框架（上游代码，不修改）
-- [scripts/data_collector/cn_stock/](file:///Users/walox/qlib/scripts/data_collector/cn_stock): 自定义 A 股数据采集与 API 服务
-- [scripts/data_collector/cn_stock/api/](file:///Users/walox/qlib/scripts/data_collector/cn_stock/api): API 层
-- [scripts/data_collector/cn_stock/core/](file:///Users/walox/qlib/scripts/data_collector/cn_stock/core): 核心实体、日历、解析器
-- [scripts/data_collector/cn_stock/market_data/](file:///Users/walox/qlib/scripts/data_collector/cn_stock/market_data): 行情与适配器引擎
-- [scripts/data_collector/cn_stock/zizizaizai/](file:///Users/walox/qlib/scripts/data_collector/cn_stock/zizizaizai): Zizizaizai (AI) 早报与个股信息抓取
-- [scripts/data_collector/cn_stock/sentiment/](file:///Users/walox/qlib/scripts/data_collector/cn_stock/sentiment): 市场情绪抓取
-- [scripts/data_collector/cn_stock/tasks/](file:///Users/walox/qlib/scripts/data_collector/cn_stock/tasks): 定时更新任务
-- [scripts/data_collector/cn_stock/frontend/](file:///Users/walox/qlib/scripts/data_collector/cn_stock/frontend): Vue 3 交互式看板
+- [backend/](file:///Users/walox/qlib/backend): 自定义 A 股数据采集与 API 服务
+  - [api/](file:///Users/walox/qlib/backend/api): API 层
+  - [core/](file:///Users/walox/qlib/backend/core): 核心实体、日历、解析器
+  - [market_data/](file:///Users/walox/qlib/backend/market_data): 行情与适配器引擎
+  - [zizizaizai/](file:///Users/walox/qlib/backend/zizizaizai): Zizizaizai (AI) 早报与个股信息抓取
+  - [sentiment/](file:///Users/walox/qlib/backend/sentiment): 市场情绪抓取
+  - [tasks/](file:///Users/walox/qlib/backend/tasks): 定时更新任务
+- [frontend/](file:///Users/walox/qlib/frontend): Vue 3 交互式看板
 - [data/cn_stock/](file:///Users/walox/qlib/data/cn_stock): 本地数据存储（分层 + Qlib 标准格式）
 - [custom_workflow.py](file:///Users/walox/qlib/custom_workflow.py): 回测工作流入口
 - [timing_strategy.py](file:///Users/walox/qlib/timing_strategy.py): 择时增强策略

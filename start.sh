@@ -26,7 +26,7 @@ fi
 # 1. 启动后端 API 服务器
 # ==========================================
 echo -e "${GREEN}👉 [1/2] 正在启动后端 API 服务器...${NC}"
-cd "$PROJECT_ROOT/scripts/data_collector/cn_stock"
+cd "$PROJECT_ROOT/backend"
 
 # 允许 MLflow 使用本地文件系统存储
 export MLFLOW_ALLOW_FILE_STORE=true
@@ -39,7 +39,7 @@ API_PID=$!
 # 2. 启动前端看版
 # ==========================================
 echo -e "${GREEN}👉 [2/2] 正在启动前端看板 (Vite)...${NC}"
-cd "$PROJECT_ROOT/scripts/data_collector/cn_stock/frontend"
+cd "$PROJECT_ROOT/frontend"
 
 # 如果没有 node_modules，自动安装依赖
 if [ ! -d "node_modules" ]; then
