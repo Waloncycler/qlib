@@ -1,0 +1,198 @@
+-e [0;34m=======================================[0m
+-e [0;34m🚀 正在启动 A 股量化投研平台...[0m
+-e [0;34m=======================================[0m
+-e [0;32m👉 [1/2] 正在启动后端 API 服务器...[0m
+-e [0;32m👉 [2/2] 正在启动前端看板 (Vite)...[0m
+-e [0;32m✅ 启动成功！[0m
+-e ---------------------------------------
+-e 👉 前端看板: [0;34mhttp://localhost:28457[0m
+-e 👉 后端 API: [0;34mhttp://localhost:28456[0m
+-e ---------------------------------------
+按 Ctrl+C 停止所有服务...
+
+> frontend@0.0.0 dev
+> vite
+
+
+  VITE v8.0.14  ready in 227 ms
+
+  ➜  Local:   http://localhost:28457/
+  ➜  Network: use --host to expose
+INFO:     Will watch for changes in these directories: ['/Users/walox/qlib/backend']
+INFO:     Uvicorn running on http://0.0.0.0:28456 (Press CTRL+C to quit)
+INFO:     Started reloader process [20370] using StatReload
+INFO:     Started server process [20398]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:55073 - "GET /api/refresh/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55075 - "GET /api/backtest/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55076 - "GET /api/backtest/pool/dates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55077 - "GET /api/backtest/pool?date=2026-06-23 HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'modules/backtest/data_downloader.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [20398]
+INFO:     Started server process [20446]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'modules/backtest/signal_backtest.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [20446]
+INFO:     Started server process [22665]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'modules/backtest/signal_backtest.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [22665]
+INFO:     Started server process [22679]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'modules/backtest/topic_workflow.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [22679]
+INFO:     Started server process [23389]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'modules/backtest/signal_backtest.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [23389]
+INFO:     Started server process [23514]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'modules/backtest/signal_backtest.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [23514]
+INFO:     Started server process [23531]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'modules/backtest/service.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [23531]
+INFO:     Started server process [23552]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'modules/backtest/router.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [23552]
+INFO:     Started server process [23565]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+start.sh: line 65: 20370 Killed: 9               "$PROJECT_ROOT/.venv/bin/python" -m main  (wd: ~/qlib/backend)
+1:01:04 AM [vite] (client) hmr update /src/views/Backtest.vue
+1:01:04 AM [vite] (client) [console.warn] [Vue warn]: Property "enableMlFilter" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< null > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+1:01:04 AM [vite] (client) [console.error] Failed to fetch backtest results: ReferenceError: enableMlFilter is not defined
+    at fetchResults (http://localhost:28457/src/views/Backtest.vue?t=1782234064193:520:75)
+    at http://localhost:28457/src/views/Backtest.vue?t=1782234064193:580:3
+    at http://localhost:28457/node_modules/.vite/deps/vue.runtime.esm-bundler-DbLSB1wY.js?v=5dba4c6b:3792:87
+    at callWithErrorHandling (http://localhost:28457/node_modules/.vite/deps/vue.runtime.esm-bundler-DbLSB1wY.js?v=5dba4c6b:1888:17)
+    at callWithAsyncErrorHandling (http://localhost:28457/node_modules/.vite/deps/vue.runtime.esm-bundler-DbLSB1wY.js?v=5dba4c6b:1895:15)
+    at hook.__weh.hook.__weh (http://localhost:28457/node_modules/.vite/deps/vue.runtime.esm-bundler-DbLSB1wY.js?v=5dba4c6b:3781:16)
+    at flushPostFlushCbs (http://localhost:28457/node_modules/.vite/deps/vue.runtime.esm-bundler-DbLSB1wY.js?v=5dba4c6b:2020:25)
+    at flushJobs (http://localhost:28457/node_modules/.vite/deps/vue.runtime.esm-bundler-DbLSB1wY.js?v=5dba4c6b:2048:3)
+1:01:04 AM [vite] (client) [console.warn] [Vue warn]: Property "enableMlFilter" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+1:01:04 AM [vite] (client) [console.warn] [Vue warn]: Property "enableMlFilter" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+1:04:34 AM [vite] (client) [console.warn] [Vue warn]: Property "enableMlFilter" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+1:04:34 AM [vite] (client) [console.warn] [Vue warn]: Unhandled error during execution of native event handler 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+1:04:34 AM [vite] (client) [Unhandled rejection] ReferenceError: enableMlFilter is not defined
+ > runIntelligentBacktest src/views/Backtest.vue:740:22
+    738 |    isComparisonMode.value = false
+    739 |    loading.value = true
+    740 |    loadingMsg.value = enableMlFilter.value ? 'Running ML Hybrid Backtest...' : 'Running Signal Backtest...'
+        |                        ^
+    741 |    error.value = null
+    742 |    try {
+ > callWithErrorHandling node_modules/@vue/runtime-core/dist/runtime-core.esm-bundler.js:199:18
+ > callWithAsyncErrorHandling node_modules/@vue/runtime-core/dist/runtime-core.esm-bundler.js:206:16
+ > HTMLButtonElement.invoker node_modules/@vue/runtime-dom/dist/runtime-dom.esm-bundler.js:769:6
+
+1:07:31 AM [vite] (client) [console.warn] [Vue warn]: Property "enableMlFilter" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< undefined > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+1:07:31 AM [vite] (client) [console.error] Failed to fetch backtest results: ReferenceError: enableMlFilter is not defined
+    at fetchResults (http://localhost:28457/src/views/Backtest.vue?t=1782234064193:520:75)
+    at http://localhost:28457/src/views/Backtest.vue?t=1782234064193:580:3
+    at http://localhost:28457/node_modules/.vite/deps/vue.runtime.esm-bundler-DbLSB1wY.js?v=5dba4c6b:3792:87
+    at callWithErrorHandling (http://localhost:28457/node_modules/.vite/deps/vue.runtime.esm-bundler-DbLSB1wY.js?v=5dba4c6b:1888:17)
+    at callWithAsyncErrorHandling (http://localhost:28457/node_modules/.vite/deps/vue.runtime.esm-bundler-DbLSB1wY.js?v=5dba4c6b:1895:15)
+    at hook.__weh.hook.__weh (http://localhost:28457/node_modules/.vite/deps/vue.runtime.esm-bundler-DbLSB1wY.js?v=5dba4c6b:3781:16)
+    at flushPostFlushCbs (http://localhost:28457/node_modules/.vite/deps/vue.runtime.esm-bundler-DbLSB1wY.js?v=5dba4c6b:2020:25)
+    at flushJobs (http://localhost:28457/node_modules/.vite/deps/vue.runtime.esm-bundler-DbLSB1wY.js?v=5dba4c6b:2048:3)
+1:07:31 AM [vite] (client) [console.warn] [Vue warn]: Property "enableMlFilter" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+1:07:31 AM [vite] (client) [console.warn] [Vue warn]: Property "enableMlFilter" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+1:07:33 AM [vite] (client) [console.error] Failed to fetch backtest results: ReferenceError: enableMlFilter is not defined
+    at fetchResults (http://localhost:28457/src/views/Backtest.vue?t=1782234064193:520:75)
+    at callWithErrorHandling (http://localhost:28457/node_modules/.vite/deps/vue.runtime.esm-bundler-DbLSB1wY.js?v=5dba4c6b:1888:17)
+    at callWithAsyncErrorHandling (http://localhost:28457/node_modules/.vite/deps/vue.runtime.esm-bundler-DbLSB1wY.js?v=5dba4c6b:1895:15)
+    at HTMLInputElement.invoker (http://localhost:28457/node_modules/.vite/deps/vue.runtime.esm-bundler-DbLSB1wY.js?v=5dba4c6b:7662:10)
+1:07:40 AM [vite] (client) [console.warn] [Vue warn]: Unhandled error during execution of native event handler 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+1:07:40 AM [vite] (client) [Unhandled rejection] ReferenceError: enableMlFilter is not defined
+ > runIntelligentBacktest src/views/Backtest.vue:740:22
+    738 |    isComparisonMode.value = false
+    739 |    loading.value = true
+    740 |    loadingMsg.value = enableMlFilter.value ? 'Running ML Hybrid Backtest...' : 'Running Signal Backtest...'
+        |                        ^
+    741 |    error.value = null
+    742 |    try {
+ > callWithErrorHandling node_modules/@vue/runtime-core/dist/runtime-core.esm-bundler.js:199:18
+ > callWithAsyncErrorHandling node_modules/@vue/runtime-core/dist/runtime-core.esm-bundler.js:206:16
+ > HTMLButtonElement.invoker node_modules/@vue/runtime-dom/dist/runtime-dom.esm-bundler.js:769:6
+
+1:09:32 AM [vite] (client) hmr update /src/views/Backtest.vue

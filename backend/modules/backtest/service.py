@@ -6,54 +6,122 @@ from loguru import logger
 from fastapi import HTTPException
 from core.config import WORKSPACE_DIR, DATA_DIR, resolver, PROJECT_DIR
 
-# Setup Qlib lazily
+
+def get_signal_backtest_results(enable_ml_filter: bool = False):
+    """Returns cached signal backtest results, or runs the backtest if no cache exists."""
+    cache_name = "_ml_backtest_cache.json" if enable_ml_filter else "_signal_backtest_cache.json"
+    cache_path = WORKSPACE_DIR / "data" / "cn_stock" / "backtest_ohlcv" / cache_name
+
+    if cache_path.exists():
+        try:
+            with open(cache_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            logger.error(f"Failed to load backtest cache: {e}")
+
+    # No cache — return empty (user needs to trigger backtest first)
+    return {
+        "metrics": {},
+        "curve": [],
+        "holdings": [],
+        "concept_attribution": [],
+    }
+
+
+def run_signal_backtest_service(enable_ml_filter: bool = False):
+    """
+    Runs the signal backtest and caches results.
+    This is the main entry point called from the router.
+    """
+    from modules.backtest.signal_backtest import run_signal_backtest, BacktestConfig
+
+    logger.info(f"Running AI signal backtest... (ML Filter: {enable_ml_filter})")
+    config = BacktestConfig(enable_ml_filter=enable_ml_filter)
+    result = run_signal_backtest(config)
+
+    # Cache to disk (separate caches)
+    cache_name = "_ml_backtest_cache.json" if enable_ml_filter else "_signal_backtest_cache.json"
+    cache_path = WORKSPACE_DIR / "data" / "cn_stock" / "backtest_ohlcv" / cache_name
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(cache_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False)
+
+    logger.info("Signal backtest completed and cached.")
+    return result
+
+
+def run_data_download_service():
+    """Downloads OHLCV data for all stocks in the AI report universe."""
+    from modules.backtest.pool_generator import get_topic_universe
+    from modules.backtest.data_downloader import download_all
+
+    universe, min_date, max_date = get_topic_universe()
+    if not universe:
+        raise ValueError("No symbols found in topic universe")
+
+    success, fail, failed_syms = download_all(universe, min_date, max_date)
+
+    return {
+        "status": "success",
+        "total": len(universe),
+        "downloaded": success,
+        "failed": fail,
+        "failed_symbols": failed_syms[:20],  # Limit response size
+    }
+
+
+# --- Legacy Qlib-based backtest (kept for backward compatibility) ---
+
 _qlib_initialized = False
 
+
 def get_backtest_metrics_and_curve():
-    """Returns the latest backtest metrics and curve."""
+    """Returns the latest Qlib-based backtest metrics and curve (legacy)."""
     global _qlib_initialized
     import qlib
     from qlib.workflow import R
-    
+
     if not _qlib_initialized:
         provider_uri = str(WORKSPACE_DIR / "data/cn_stock/standard/qlib_data")
         qlib.init(provider_uri=provider_uri, region="cn")
         _qlib_initialized = True
-        
-    exp = R.get_exp(experiment_name="custom_workflow")
+
+    exp = R.get_exp(experiment_name="Topic_Alpha158_LGBM_NoTiming")
     recorders = exp.list_recorders()
-    
-    # iterate from newest to oldest
+
     report_normal = None
     port_analysis = None
-    
-    # Safely iterate through recorders
+    positions_df = None
+
     rec_ids = sorted(recorders.keys(), reverse=True)
     for rec_id in rec_ids:
         rec = recorders[rec_id]
         try:
             report_normal = rec.load_object("portfolio_analysis/report_normal_1day.pkl")
             port_analysis = rec.load_object("portfolio_analysis/port_analysis_1day.pkl")
+            try:
+                positions_df = rec.load_object("portfolio_analysis/positions_normal_1day.pkl")
+            except Exception:
+                pass
             if report_normal is not None and port_analysis is not None:
                 break
         except Exception:
             continue
-            
+
     if report_normal is None or port_analysis is None:
         return {
             "metrics": {"annualized_return": 0.0, "information_ratio": 0.0, "max_drawdown": 0.0},
-            "curve": []
+            "curve": [],
+            "holdings": []
         }
-        
-    # Parse analysis
+
     def safe_float(val, default=0.0):
         if val is None or pd.isna(val):
             return default
         try:
             res = float(val)
-            if pd.isna(res):
-                return default
-            return res
+            return default if pd.isna(res) else res
         except ValueError:
             return default
 
@@ -66,75 +134,43 @@ def get_backtest_metrics_and_curve():
         }
     except Exception:
         metrics = {"annualized_return": 0.0, "information_ratio": 0.0, "max_drawdown": 0.0}
-        
-    # Parse cumulative return curve
+
     curve_data = []
     if not report_normal.empty:
         cum_strategy = (1 + report_normal["return"] - report_normal["cost"]).cumprod() - 1
         cum_bench = (1 + report_normal["bench"]).cumprod() - 1
-        
-        # Load macro signals
-        macro_file = DATA_DIR / "signals" / "market_sentiment.csv"
-        macro_df = pd.DataFrame()
-        if macro_file.exists():
-            try:
-                macro_df = pd.read_csv(macro_file)
-                macro_df['date'] = pd.to_datetime(macro_df['date'])
-                macro_df.set_index('date', inplace=True)
-                macro_df = macro_df.ffill()
-            except Exception as e:
-                logger.error(f"Error reading macro signals: {e}")
-        
-        for date, row in report_normal.iterrows():
-            d_str = date.strftime("%Y-%m-%d")
-            
-            # Default sentiment
-            sentiment = 50.0
-            pe_median = 0.0
-            uplimit_num = 0.0
-            is_bull = 0.0
-            
-            if not macro_df.empty:
-                try:
-                    if date in macro_df.index:
-                        s_row = macro_df.loc[date]
-                        if isinstance(s_row, pd.DataFrame):
-                            s_row = s_row.iloc[0]
-                        sentiment = float(s_row.get("sentiment_score", 50.0))
-                        pe_median = float(s_row.get("pe_median", 0.0))
-                        uplimit_num = float(s_row.get("uplimit_num", 0.0))
-                        tiandi = s_row.get("tiandi_num")
-                        
-                        u_val = float(uplimit_num) if uplimit_num is not None and not pd.isna(uplimit_num) else float('nan')
-                        t_val = float(tiandi) if tiandi is not None and not pd.isna(tiandi) else float('nan')
-                        
-                        if pd.isna(u_val) or pd.isna(t_val):
-                            is_bull = 1.0 if sentiment >= 55.0 else 0.0
-                        else:
-                            is_bull = 1.0 if (sentiment >= 55.0 and u_val >= 40 and t_val <= 2) else 0.0
-                except Exception:
-                    pass
 
+        for date, row in report_normal.iterrows():
             curve_data.append({
-                "date": d_str,
+                "date": date.strftime("%Y-%m-%d"),
                 "strategy": safe_float(cum_strategy.loc[date]),
                 "benchmark": safe_float(cum_bench.loc[date]),
-                "sentiment_score": safe_float(sentiment, 50.0),
-                "pe_median": safe_float(pe_median, 0.0),
-                "uplimit_num": safe_float(uplimit_num, 0.0),
-                "timing_signal": safe_float(is_bull, 0.0)
             })
-            
+
+    holdings_data = []
+    if positions_df is not None:
+        try:
+            for date_idx, pos in positions_df.items():
+                d_str = date_idx.strftime("%Y-%m-%d") if hasattr(date_idx, 'strftime') else str(date_idx)
+                symbols = []
+                if isinstance(pos, dict):
+                    symbols = [k for k in pos.keys() if not str(k).startswith('<') and str(k).lower() != 'cash']
+                elif hasattr(pos, 'index'):
+                    symbols = [k for k in pos.index if not str(k).startswith('<') and str(k).lower() != 'cash']
+                if symbols:
+                    holdings_data.append({"date": d_str, "symbols": symbols})
+        except Exception as e:
+            logger.error(f"Error parsing holdings: {e}")
+
     return {
         "metrics": metrics,
-        "curve": curve_data
+        "curve": curve_data,
+        "holdings": holdings_data
     }
 
+
 def run_single_stock_backtest(symbol: str, start_date: str, end_date: str):
-    # First ensure the stock data is resolved
     resolver.resolve_single_stock(symbol)
-    
-    # Run the single stock backtest script
     cmd = [
         sys.executable,
         str(PROJECT_DIR / "single_stock_backtest.py"),
@@ -142,14 +178,10 @@ def run_single_stock_backtest(symbol: str, start_date: str, end_date: str):
         "--start", start_date,
         "--end", end_date
     ]
-    
     logger.info(f"Running single stock backtest: {' '.join(cmd)}")
     result = subprocess.run(cmd, capture_output=True, text=True)
-    
-    # Parse the JSON from the last line of stdout
     lines = result.stdout.strip().split('\n')
     json_line = lines[-1] if lines else "{}"
-    
     try:
         parsed = json.loads(json_line)
         if parsed.get("status") == "error":
@@ -157,5 +189,18 @@ def run_single_stock_backtest(symbol: str, start_date: str, end_date: str):
         return parsed
     except json.JSONDecodeError:
         logger.error(f"Failed to parse JSON output: {result.stdout}")
-        logger.error(f"Stderr: {result.stderr}")
         raise ValueError("Backend failed to return valid JSON results.")
+
+
+def run_intelligent_backtest_service():
+    """Runs the Qlib-based intelligent backtest workflow (legacy)."""
+    cmd = [sys.executable, "-m", "modules.backtest.topic_workflow"]
+    logger.info(f"Running intelligent backtest workflow: {' '.join(cmd)}")
+    result = subprocess.run(cmd, cwd=str(PROJECT_DIR), capture_output=True, text=True)
+    if result.returncode != 0:
+        # Extract only last 5 lines of stderr for cleaner error messages
+        err_lines = result.stderr.strip().split('\n')
+        err_msg = '\n'.join(err_lines[-5:])
+        logger.error(f"Intelligent backtest failed: {err_msg}")
+        raise ValueError(f"Intelligent backtest failed: {err_msg}")
+    return {"status": "success", "message": "Intelligent backtest completed successfully."}

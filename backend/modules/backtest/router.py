@@ -4,7 +4,14 @@ from pathlib import Path
 from datetime import datetime
 from pydantic import BaseModel
 from loguru import logger
-from modules.backtest.service import get_backtest_metrics_and_curve, run_single_stock_backtest
+from modules.backtest.service import (
+    get_backtest_metrics_and_curve,
+    run_single_stock_backtest,
+    run_intelligent_backtest_service,
+    get_signal_backtest_results,
+    run_signal_backtest_service,
+    run_data_download_service,
+)
 
 router = APIRouter()
 
@@ -14,13 +21,23 @@ class SingleBacktestRequest(BaseModel):
     end_date: str
 
 @router.get("/api/backtest/results")
-def get_backtest_results_route():
-    """Returns the latest backtest metrics and curve."""
+def get_backtest_results_route(enable_ml_filter: bool = Query(False)):
+    """Returns the latest signal backtest results (new default)."""
+    try:
+        data = get_signal_backtest_results(enable_ml_filter=enable_ml_filter)
+        return {"status": "success", "data": data}
+    except Exception as e:
+        logger.error(f"Error fetching backtest results: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/api/backtest/results/legacy")
+def get_backtest_results_legacy_route():
+    """Returns the latest Qlib-based backtest results (legacy)."""
     try:
         data = get_backtest_metrics_and_curve()
         return {"status": "success", "data": data}
     except Exception as e:
-        logger.error(f"Error fetching backtest results: {e}")
+        logger.error(f"Error fetching legacy backtest results: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/api/backtest/single")
@@ -29,6 +46,26 @@ def run_single_stock_backtest_route(req: SingleBacktestRequest):
         return run_single_stock_backtest(req.symbol, req.start_date, req.end_date)
     except Exception as e:
         logger.error(f"Error running single backtest: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/api/backtest/intelligent")
+def run_intelligent_backtest_route(enable_ml_filter: bool = Query(False)):
+    """Run AI signal backtest (new default)."""
+    try:
+        result = run_signal_backtest_service(enable_ml_filter=enable_ml_filter)
+        return {"status": "success", "data": result}
+    except Exception as e:
+        logger.error(f"Error running signal backtest: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/api/backtest/download-data")
+def download_data_route():
+    """Download OHLCV data for all stocks in the AI report universe."""
+    try:
+        result = run_data_download_service()
+        return result
+    except Exception as e:
+        logger.error(f"Error downloading data: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 from core.config import DATA_DIR

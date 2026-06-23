@@ -25,8 +25,19 @@
       </div>
 
       <div class="controls-right">
-        <button class="mini-btn" @click="runBacktest" :disabled="loading">
-          {{ loading ? '...' : 'Refresh' }}
+        <div class="control-item" style="margin-right: 15px; display: flex; align-items: center; gap: 8px;">
+          <label style="color: #60a5fa; font-weight: bold; cursor: pointer;">
+            <input type="checkbox" v-model="enableMlFilter" @change="fetchResults" style="accent-color: #3b82f6; width: 16px; height: 16px; cursor: pointer;" />
+            🧠 Enable ML Filter (Top 10)
+          </label>
+        </div>
+        <button class="mini-btn" @click="downloadData" :disabled="downloading" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">
+          <i class="fa-solid fa-download mr-1"></i>
+          {{ downloading ? 'Downloading...' : '📥 Download Data' }}
+        </button>
+        <button class="mini-btn" @click="runIntelligentBacktest" :disabled="loading" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);">
+          <i class="fa-solid fa-play mr-1"></i>
+          {{ loading ? 'Running...' : 'Run Backtest' }}
         </button>
       </div>
     </div>
@@ -64,7 +75,7 @@
     <div class="content-wrapper" v-show="!loading">
       
       <!-- Chart Area (Full Width) -->
-      <div class="chart-container glass-panel" style="position: relative;">
+      <div class="chart-container glass-panel" style="position: relative; flex: 1;">
         <div v-if="comparisonLoading" class="comparison-overlay">
           <div class="spinner"></div>
           <p>Comparing {{ selectedTheme?.concept }}...</p>
@@ -75,12 +86,101 @@
         <v-chart class="chart" :option="chartOption" :update-options="{ notMerge: true }" autoresize />
       </div>
 
+      <!-- Analysis Side Panel -->
+      <div class="side-panel-right" v-if="!isComparisonMode">
+        <div class="glass-panel p-4 info-card" style="height: 100%; display: flex; flex-direction: column; overflow-y: auto;">
+          <h4 class="text-sky-400 font-bold mb-3"><i class="fa-solid fa-chart-line mr-2"></i> Signal Backtest Metrics</h4>
+          
+          <div class="metrics-row mb-3" v-if="metrics && metrics.total_return !== undefined">
+            <div class="mini-metric">
+              <span class="l">Total Return</span>
+              <span class="v" :class="metrics.total_return >= 0 ? 'text-emerald-400' : 'text-red-400'">{{ (metrics.total_return * 100).toFixed(2) }}%</span>
+            </div>
+            <div class="mini-metric">
+              <span class="l">Ann. Return</span>
+              <span class="v" :class="metrics.annualized_return >= 0 ? 'text-emerald-400' : 'text-red-400'">{{ (metrics.annualized_return * 100).toFixed(2) }}%</span>
+            </div>
+            <div class="mini-metric">
+              <span class="l">Max Drawdown</span>
+              <span class="v text-red-400">{{ (metrics.max_drawdown * 100).toFixed(2) }}%</span>
+            </div>
+            <div class="mini-metric">
+              <span class="l">Sharpe</span>
+              <span class="v text-blue-400">{{ metrics.sharpe_ratio?.toFixed(3) || 'N/A' }}</span>
+            </div>
+            <div class="mini-metric">
+              <span class="l">Hit Rate</span>
+              <span class="v text-amber-400">{{ ((metrics.hit_rate || 0) * 100).toFixed(1) }}%</span>
+            </div>
+            <div class="mini-metric">
+              <span class="l">P/L Ratio</span>
+              <span class="v text-purple-400">{{ metrics.profit_loss_ratio?.toFixed(2) || 'N/A' }}</span>
+            </div>
+            <div class="mini-metric" style="grid-column: span 2;">
+              <span class="l">Benchmark Return</span>
+              <span class="v text-gray-400">{{ ((metrics.benchmark_total_return || 0) * 100).toFixed(2) }}%</span>
+            </div>
+          </div>
+          <div v-else-if="metrics && metrics.annualized_return !== undefined" class="metrics-row mb-3">
+            <div class="mini-metric"><span class="l">Ann. Return</span><span class="v text-emerald-400">{{ (metrics.annualized_return * 100).toFixed(2) }}%</span></div>
+            <div class="mini-metric"><span class="l">Max Drawdown</span><span class="v text-red-400">{{ (metrics.max_drawdown * 100).toFixed(2) }}%</span></div>
+          </div>
+          <div v-else class="text-sm text-gray-400 text-center py-4">Run backtest to see metrics</div>
+
+          <!-- Concept Attribution -->
+          <h4 class="text-sky-400 font-bold mt-3 mb-2"><i class="fa-solid fa-tags mr-2"></i> Top Concepts</h4>
+          <div class="signals-scroll" style="max-height: 180px;">
+            <div v-if="conceptAttribution && conceptAttribution.length > 0">
+              <div v-for="(c, idx) in conceptAttribution.slice(0, 15)" :key="idx" 
+                   class="mb-1 p-2 rounded text-xs" 
+                   :style="{ background: c.total_return > 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', border: '1px solid ' + (c.total_return > 0 ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)') }">
+                <div class="flex justify-between">
+                  <span class="text-gray-300 truncate" style="max-width: 140px;">{{ c.concept }}</span>
+                  <span :class="c.total_return > 0 ? 'text-emerald-400' : 'text-red-400'" class="font-bold">{{ (c.total_return * 100).toFixed(1) }}%</span>
+                </div>
+                <div class="text-gray-500 mt-1">{{ c.days_active }}d · hit {{ (c.hit_rate * 100).toFixed(0) }}%</div>
+              </div>
+            </div>
+            <div v-else class="text-sm text-gray-400 text-center py-2">No concept data</div>
+          </div>
+
+          <!-- Daily Holdings -->
+          <h4 class="text-sky-400 font-bold mt-3 mb-2"><i class="fa-solid fa-list mr-2"></i> Daily Trades</h4>
+          <div class="signals-scroll flex-1">
+            <div v-if="holdings && holdings.length > 0">
+              <div v-for="(h, idx) in reversedHoldings" :key="idx" class="mb-2 p-2 bg-slate-800/50 rounded border border-slate-700/50">
+                <div class="text-xs text-gray-400 font-bold mb-1">{{ h.date }} <span class="text-gray-600">· {{ h.holdings?.length || 0 }} held</span></div>
+                
+                <!-- Entries -->
+                <div v-if="h.entries && h.entries.length" class="flex flex-wrap gap-1 mb-1">
+                  <span v-for="sym in h.entries" :key="'e'+sym" class="stock-tag" style="padding: 1px 5px; font-size: 0.65rem; background: rgba(16,185,129,0.2); color: #34d399; border: 1px solid rgba(16,185,129,0.3);">
+                    ▲ {{ sym }} <span v-if="getScore(h.holdings, sym)" class="text-sky-300 ml-1">({{ getScore(h.holdings, sym) }})</span>
+                  </span>
+                </div>
+                
+                <!-- Exits -->
+                <div v-if="h.exits && h.exits.length" class="flex flex-wrap gap-1">
+                  <span v-for="sym in h.exits" :key="'x'+sym" class="stock-tag" style="padding: 1px 5px; font-size: 0.65rem; background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3);">▼ {{ sym }}</span>
+                </div>
+                
+                <!-- If neither entries nor exits, just show held count -->
+                <div v-if="(!h.entries || !h.entries.length) && (!h.exits || !h.exits.length) && h.holdings && h.holdings.length" class="text-xs text-gray-500 mt-1">
+                  No trades. Holding {{ h.holdings.length }} symbols.
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-sm text-gray-400 text-center py-4">No holdings data</div>
+          </div>
+        </div>
+      </div>
+
+
     </div>
 
     <!-- Global Loading State -->
     <div v-if="loading" class="global-loading-panel">
       <div class="spinner"></div>
-      <p>Loading Backtest Results...</p>
+      <p>{{ loadingMsg }}</p>
     </div>
 
     <!-- Error State -->
@@ -122,9 +222,17 @@ use([
 ])
 
 const loading = ref(false)
+const enableMlFilter = ref(false)
+const loadingMsg = ref('Loading...')
+const downloading = ref(false)
 const error = ref(null)
 const metrics = ref(null)
 const curveData = ref(null)
+const holdings = ref([])
+const conceptAttribution = ref([])
+const reversedHoldings = computed(() => {
+  return [...holdings.value].reverse()
+})
 
 // Pool State
 const poolDate = ref('')
@@ -460,14 +568,12 @@ const chartOption = computed(() => {
   // Define default series names to ensure legend matches
   const seriesNames = [
     'AI Strategy Return',
-    'Stock Buy&Hold',
-    'Position Signal'
+    'Stock Buy&Hold'
   ]
 
   const baseBacktestOption = {
     tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'cross' }
+      trigger: 'axis'
     },
     legend: {
       data: seriesNames,
@@ -478,21 +584,17 @@ const chartOption = computed(() => {
       link: { xAxisIndex: 'all' }
     },
     grid: [
-      { left: '5%', right: '4%', top: '10%', height: '50%' },
-      { left: '5%', right: '4%', top: '68%', height: '22%' }
+      { left: '5%', right: '4%', top: '10%', bottom: '15%' }
     ],
     xAxis: [
-      { type: 'category', boundaryGap: false, gridIndex: 0, axisLabel: { show: false }, axisTick: { show: false }, data: [] },
-      { type: 'category', boundaryGap: false, gridIndex: 1, axisLabel: { color: '#9ca3af' }, data: [] }
+      { type: 'category', boundaryGap: false, axisLabel: { color: '#9ca3af' }, data: [] }
     ],
     yAxis: [
-      { type: 'value', gridIndex: 0, axisLabel: { color: '#9ca3af', formatter: '{value} %' }, splitLine: { lineStyle: { color: '#374151', type: 'dashed' } } },
-      { type: 'value', gridIndex: 0, min: 0, max: 6, show: false, splitLine: { show: false } },
-      { type: 'value', gridIndex: 1, name: 'Sentiment', nameTextStyle: { color: '#9ca3af' }, axisLabel: { color: '#9ca3af' }, splitLine: { lineStyle: { color: '#374151', type: 'dashed' } }, min: 0, max: 100 }
+      { type: 'value', axisLabel: { color: '#9ca3af', formatter: '{value} %' }, splitLine: { lineStyle: { color: '#374151', type: 'dashed' } } }
     ],
     dataZoom: [
-      { type: 'inside', xAxisIndex: [0, 1], start: 0, end: 100 },
-      { show: true, xAxisIndex: [0, 1], type: 'slider', bottom: '2%', start: 0, end: 100 }
+      { type: 'inside', start: 0, end: 100 },
+      { show: true, type: 'slider', bottom: '2%', start: 0, end: 100 }
     ],
     series: []
   }
@@ -504,8 +606,6 @@ const chartOption = computed(() => {
       series: seriesNames.map(name => ({ 
         name, 
         type: 'line', 
-        xAxisIndex: name === 'Position Signal' ? 0 : 0,
-        yAxisIndex: name === 'Position Signal' ? 1 : 0,
         data: [] 
       }))
     }
@@ -514,10 +614,8 @@ const chartOption = computed(() => {
   const dates = curveData.value.map(d => d.date)
   const strategySeries = curveData.value.map(d => (d.strategy * 100).toFixed(2))
   const benchSeries = curveData.value.map(d => (d.benchmark * 100).toFixed(2))
-  const timingSeries = curveData.value.map(d => d.timing_signal !== undefined ? d.timing_signal : 0.0)
 
   baseBacktestOption.xAxis[0].data = dates
-  baseBacktestOption.xAxis[1].data = dates
 
   return {
     ...baseBacktestOption,
@@ -528,7 +626,6 @@ const chartOption = computed(() => {
         let date = '';
         let strat = '';
         let bench = '';
-        let signal = '';
         
         params.forEach(p => {
           date = p.name;
@@ -536,15 +633,12 @@ const chartOption = computed(() => {
             strat = `<span style="color:#3b82f6;font-weight:bold;">${p.value}%</span>`;
           } else if (p.seriesName === 'Stock Buy&Hold') {
             bench = `<span style="color:#9ca3af;">${p.value}%</span>`;
-          } else if (p.seriesName === 'Position Signal') {
-            signal = (p.value === '1.00' || p.value == 1.0) ? '<span style="color:#ef4444;font-weight:bold;">HOLD</span>' : '<span style="color:#10b981;font-weight:bold;">EMPTY</span>';
           }
         });
         
         res += `<div style="font-weight:bold;margin-bottom:4px;color:#f8fafc;">${date}</div>`;
         if (strat) res += `Strategy Return: ${strat}<br/>`;
         if (bench) res += `Benchmark Return: ${bench}<br/>`;
-        if (signal) res += `Timing Signal: ${signal}<br/>`;
         return res;
       }
     },
@@ -553,8 +647,6 @@ const chartOption = computed(() => {
         name: 'AI Strategy Return',
         type: 'line',
         data: strategySeries,
-        xAxisIndex: 0,
-        yAxisIndex: 0,
         itemStyle: { color: '#3b82f6' },
         lineStyle: { width: 3 },
         showSymbol: false,
@@ -564,29 +656,10 @@ const chartOption = computed(() => {
         name: 'Stock Buy&Hold',
         type: 'line',
         data: benchSeries,
-        xAxisIndex: 0,
-        yAxisIndex: 0,
-        itemStyle: { color: '#9ca3af' },
+        itemStyle: { color: '#6b7280' },
         lineStyle: { width: 2, type: 'dashed' },
         showSymbol: false,
         smooth: true
-      },
-      {
-        name: 'Position Signal',
-        type: 'line',
-        step: 'start',
-        data: timingSeries,
-        xAxisIndex: 0,
-        yAxisIndex: 1,
-        lineStyle: { width: 2, color: '#ef4444' },
-        areaStyle: {
-          opacity: 0.35,
-          color: {
-            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-            colorStops: [{ offset: 0, color: '#ef4444' }, { offset: 1, color: 'rgba(239, 68, 68, 0.05)' }]
-          }
-        },
-        symbol: 'none'
       }
     ]
   }
@@ -629,23 +702,66 @@ const runSingleBacktest = async () => {
 
 const fetchResults = async () => {
   loading.value = true
+  loadingMsg.value = 'Loading cached results...'
   error.value = null
   try {
-    const res = await axios.get('/api/backtest/results')
+    const res = await axios.get(`/api/backtest/results?enable_ml_filter=${enableMlFilter.value}`)
     if (res.data.status === 'success') {
-      metrics.value = res.data.data.metrics
-      curveData.value = res.data.data.curve
+      metrics.value = res.data.data.metrics || null
+      curveData.value = res.data.data.curve || null
+      holdings.value = res.data.data.holdings || []
+      conceptAttribution.value = res.data.data.concept_attribution || []
     }
   } catch (err) {
     console.error("Failed to fetch backtest results:", err)
-    // Don't show full error panel for initial results fetch to avoid blocking pool
   } finally {
     loading.value = false
   }
 }
 
-const runBacktest = () => {
-  runSingleBacktest()
+const downloadData = async () => {
+  downloading.value = true
+  error.value = null
+  try {
+    const res = await axios.post('/api/backtest/download-data', {}, { timeout: 1800000 })
+    if (res.data.status === 'success') {
+      alert(`Downloaded ${res.data.downloaded} stocks (${res.data.failed} failed)`)
+    }
+  } catch (err) {
+    console.error(err)
+    error.value = err.response?.data?.detail || err.message
+  } finally {
+    downloading.value = false
+  }
+}
+
+const runIntelligentBacktest = async () => {
+  isComparisonMode.value = false
+  loading.value = true
+  loadingMsg.value = enableMlFilter.value ? 'Running ML Hybrid Backtest...' : 'Running Signal Backtest...'
+  error.value = null
+  try {
+    const res = await axios.post(`/api/backtest/intelligent?enable_ml_filter=${enableMlFilter.value}`, {}, { timeout: 600000 })
+    if (res.data.status === 'success') {
+      metrics.value = res.data.data.metrics
+      curveData.value = res.data.data.curve
+      holdings.value = res.data.data.holdings || []
+      conceptAttribution.value = res.data.data.concept_attribution || []
+    } else {
+      error.value = res.data.message || 'Unknown error occurred.'
+    }
+  } catch (err) {
+    console.error(err)
+    error.value = err.response?.data?.detail || err.message
+  } finally {
+    loading.value = false
+  }
+}
+
+const getScore = (holdingsList, symbol) => {
+  if (!holdingsList) return null;
+  const item = holdingsList.find(h => h.symbol === symbol);
+  return item && item.score !== null ? item.score : null;
 }
 
 onMounted(() => {
