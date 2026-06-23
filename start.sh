@@ -32,7 +32,7 @@ cd "$PROJECT_ROOT/backend"
 export MLFLOW_ALLOW_FILE_STORE=true
 
 # 在后台启动 API，使用项目的 python 环境
-"$PROJECT_ROOT/.venv/bin/python" -m api.server &
+"$PROJECT_ROOT/.venv/bin/python" -m main &
 API_PID=$!
 
 # ==========================================

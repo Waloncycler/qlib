@@ -100,9 +100,9 @@ def main():
             print(f"Finished {script_name}")
             
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-            future_topics = executor.submit(run_script, "zizizaizai/topics.py")
-            future_sentiment = executor.submit(run_script, "sentiment/fetch_ziruxing.py")
-            future_reports = executor.submit(run_script, "zizizaizai/reports.py")
+            future_topics = executor.submit(run_script, "modules/intelligence/zizizaizai/topics.py")
+            future_sentiment = executor.submit(run_script, "modules/intelligence/sentiment/fetch_ziruxing.py")
+            future_reports = executor.submit(run_script, "modules/intelligence/zizizaizai/reports.py")
             concurrent.futures.wait([future_topics, future_sentiment, future_reports])
             # Re-raise exceptions if any
             future_topics.result()
@@ -123,13 +123,13 @@ def main():
         print("\n=====================================")
         print("3. Fetching Zizizaizai K-Lines...")
         print("=====================================")
-        subprocess.run([sys.executable, str(PROJECT_DIR / "zizizaizai/klines.py"), "--force", "--max-workers=5"], check=True)
+        subprocess.run([sys.executable, str(PROJECT_DIR / "modules/intelligence/zizizaizai/klines.py"), "--force", "--max-workers=5"], check=True)
     elif args.mode == "topics":
         print("\n=====================================")
         print("Running topics mode: Topics & K-lines...")
         print("=====================================")
-        subprocess.run([sys.executable, str(PROJECT_DIR / "zizizaizai/topics.py")], check=True)
-        subprocess.run([sys.executable, str(PROJECT_DIR / "zizizaizai/klines.py"), "--force", "--max-workers=5"], check=True)
+        subprocess.run([sys.executable, str(PROJECT_DIR / "modules/intelligence/zizizaizai/topics.py")], check=True)
+        subprocess.run([sys.executable, str(PROJECT_DIR / "modules/intelligence/zizizaizai/klines.py"), "--force", "--max-workers=5"], check=True)
         print("Topics and K-lines updated. Exiting.")
         return
     elif args.mode == "morning":

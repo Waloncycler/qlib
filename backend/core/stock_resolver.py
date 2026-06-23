@@ -12,7 +12,7 @@ CUR_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = CUR_DIR.parent
 sys.path.append(str(PROJECT_DIR))
 
-from market_data.adapters import (
+from modules.market.adapters import (
     DragonTigerAdapter,
     MarketSentimentAdapter,
     ThsNorthboundAdapter,
@@ -20,7 +20,7 @@ from market_data.adapters import (
     clean_symbol,
     to_qlib_symbol
 )
-from market_data.collector import CnStockCollector
+from modules.market.collector import CnStockCollector
 
 class StockResolver:
     def __init__(self, config_path=None):
@@ -103,7 +103,7 @@ class StockResolver:
                 "client": "WEB"
             }
             # Need resilient_request here
-            from market_data.adapters.base import resilient_request
+            from modules.market.adapters.base import resilient_request
             r = resilient_request("get", url, params=params)
             d = r.json() or {}
             result = d.get("result") or {}
@@ -118,7 +118,7 @@ class StockResolver:
         try:
             ms = MarketSentimentAdapter(self.secret)
             # Use resilient_request directly for zt_pool
-            from market_data.adapters.base import resilient_request
+            from modules.market.adapters.base import resilient_request
             url = "http://push2ex.eastmoney.com/getTopicZTPool"
             params = {"ut": "7eea3edcaed734bea9cbfc24409ed989", "dpt": "wz.ztb"}
             r = resilient_request("get", url, params=params)
@@ -140,7 +140,7 @@ class StockResolver:
 
     def _get_broken_limit_up(self) -> list:
         try:
-            from market_data.adapters.base import resilient_request
+            from modules.market.adapters.base import resilient_request
             url = "http://push2ex.eastmoney.com/getTopicZBPool"
             params = {"ut": "7eea3edcaed734bea9cbfc24409ed989", "dpt": "wz.ztb"}
             r = resilient_request("get", url, params=params)
@@ -193,7 +193,7 @@ class StockResolver:
                 logger.info("Market-wide signals are stale. Triggering background refresh...")
                 def _update_signals():
                     try:
-                        from market_data.runners.signals_runner import SignalsRunner
+                        from modules.market.runners.signals_runner import SignalsRunner
                         SignalsRunner(self.config_path)._run_market_wide(save_dir / "signals")
                     except Exception as e:
                         logger.error(f"Auto-refresh signals failed: {e}")
@@ -205,7 +205,7 @@ class StockResolver:
                 logger.info("Market-wide news are stale. Triggering background refresh...")
                 def _update_news():
                     try:
-                        from market_data.runners.news_runner import NewsRunner
+                        from modules.market.runners.news_runner import NewsRunner
                         NewsRunner(self.config_path)._run_market_wide(save_dir / "news")
                     except Exception as e:
                         logger.error(f"Auto-refresh news failed: {e}")

@@ -28,8 +28,8 @@ CUR_DIR = Path(__file__).resolve().parent
 sys.path.append(str(CUR_DIR))
 sys.path.append(str(CUR_DIR.parent))
 
-from market_data.adapters.signals import EastmoneyIndustryAdapter, DragonTigerAdapter
-from market_data.adapters.legacy import ZizizaizaiAdapter, ZzshareAdapter
+from modules.market.adapters.signals import EastmoneyIndustryAdapter, DragonTigerAdapter
+from modules.market.adapters.legacy import ZizizaizaiAdapter, ZzshareAdapter
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("EnhancedBackfill")
