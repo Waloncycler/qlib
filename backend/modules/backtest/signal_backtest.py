@@ -247,15 +247,28 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
         holds = prev_symbols & target_symbols
 
         # --- Process exits: sell at today's open ---
+        daily_trades = []
         exit_proceeds = 0.0
         exit_symbols = []
         for sym in exits:
             if sym in prices and date_ts in prices[sym].index:
                 sell_price = prices[sym].loc[date_ts, "open"]
                 shares = current_shares.get(sym, 0)
-                proceeds = shares * sell_price * (1 - config.sell_cost)
+                gross_proceeds = shares * sell_price
+                fee = gross_proceeds * config.sell_cost
+                proceeds = gross_proceeds - fee
                 exit_proceeds += proceeds
                 exit_symbols.append(sym)
+                if shares > 0:
+                    daily_trades.append({
+                        "symbol": sym,
+                        "action": "sell",
+                        "reason": "exit",
+                        "price": round(sell_price, 3),
+                        "shares": round(shares, 2),
+                        "amount": round(gross_proceeds, 2),
+                        "fee": round(fee, 2)
+                    })
 
         # Remove exited positions
         for sym in exits:
@@ -289,14 +302,20 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                     current_val = 0
                     if sym in holds:
                         current_val = current_shares[sym] * buy_price
-                    
                     diff = allocated - current_val
+                    trade_action = ""
+                    trade_fee = 0.0
+                    trade_amount = abs(diff)
                     if diff > 0:
                         # Buying
-                        allocated -= diff * config.buy_cost
+                        trade_fee = diff * config.buy_cost
+                        allocated -= trade_fee
+                        trade_action = "buy"
                     elif diff < 0:
                         # Selling
-                        allocated += abs(diff) * config.sell_cost
+                        trade_fee = abs(diff) * config.sell_cost
+                        allocated += trade_fee
+                        trade_action = "sell"
 
                     if sym in new_entries:
                         entry_symbols.append(sym)
@@ -305,6 +324,17 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                     new_shares[sym] = shares
                     new_entry_prices[sym] = buy_price
                     new_cash -= allocated
+                    
+                    if trade_amount > 100:  # Ignore tiny rounding rebalances
+                        daily_trades.append({
+                            "symbol": sym,
+                            "action": trade_action,
+                            "reason": "entry" if sym in new_entries else "rebalance",
+                            "price": round(buy_price, 3),
+                            "shares": round(trade_amount / buy_price, 2),
+                            "amount": round(trade_amount, 2),
+                            "fee": round(trade_fee, 2)
+                        })
 
         current_shares = new_shares
         current_holdings = tradeable_targets.copy()
@@ -382,6 +412,7 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
             "entries": entry_symbols,
             "exits": exit_symbols,
             "holdings": holding_syms,
+            "trades": daily_trades,
         })
 
         prev_nav = eod_nav

@@ -163,8 +163,38 @@
                   <span v-for="sym in h.exits" :key="'x'+sym" class="stock-tag" style="padding: 1px 5px; font-size: 0.65rem; background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3);">▼ {{ sym }}</span>
                 </div>
                 
-                <!-- If neither entries nor exits, just show held count -->
-                <div v-if="(!h.entries || !h.entries.length) && (!h.exits || !h.exits.length) && h.holdings && h.holdings.length" class="text-xs text-gray-500 mt-1">
+                <!-- Detailed Trades (交割单) -->
+                <div v-if="h.trades && h.trades.length" class="mt-2 text-[0.7rem] border-t border-slate-700/50 pt-1">
+                  <div class="text-gray-500 mb-1">Transaction Details (交割单)</div>
+                  <table class="w-full text-left border-collapse" style="color: #9ca3af;">
+                    <thead>
+                      <tr>
+                        <th class="font-normal pb-1 border-b border-slate-700/50">Symbol</th>
+                        <th class="font-normal pb-1 border-b border-slate-700/50">Action</th>
+                        <th class="font-normal pb-1 border-b border-slate-700/50">Price</th>
+                        <th class="font-normal pb-1 border-b border-slate-700/50">Shares</th>
+                        <th class="font-normal pb-1 border-b border-slate-700/50">Amount</th>
+                        <th class="font-normal pb-1 border-b border-slate-700/50">Fee</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(t, i) in h.trades" :key="'t'+i" class="border-b border-slate-800/50 hover:bg-slate-800">
+                        <td class="py-1">{{ t.symbol }}</td>
+                        <td class="py-1">
+                          <span :class="t.action === 'buy' ? 'text-emerald-400' : 'text-red-400'">{{ t.action.toUpperCase() }}</span>
+                          <span class="text-[0.6rem] text-gray-600 ml-1">({{ t.reason }})</span>
+                        </td>
+                        <td class="py-1">{{ t.price }}</td>
+                        <td class="py-1">{{ t.shares }}</td>
+                        <td class="py-1">{{ t.amount }}</td>
+                        <td class="py-1">{{ t.fee }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                
+                <!-- If neither entries nor exits nor trades, just show held count -->
+                <div v-if="(!h.entries || !h.entries.length) && (!h.exits || !h.exits.length) && (!h.trades || !h.trades.length) && h.holdings && h.holdings.length" class="text-xs text-gray-500 mt-1">
                   No trades. Holding {{ h.holdings.length }} symbols.
                 </div>
               </div>

@@ -196,3 +196,4 @@ start.sh: line 65: 20370 Killed: 9               "$PROJECT_ROOT/.venv/bin/python
  > HTMLButtonElement.invoker node_modules/@vue/runtime-dom/dist/runtime-dom.esm-bundler.js:769:6
 
 1:09:32 AM [vite] (client) hmr update /src/views/Backtest.vue
+1:17:01 AM [vite] (client) hmr update /src/views/Backtest.vue
