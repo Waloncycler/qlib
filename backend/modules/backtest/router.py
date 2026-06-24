@@ -58,6 +58,16 @@ def run_intelligent_backtest_route(enable_ml_filter: bool = Query(False)):
         logger.error(f"Error running signal backtest: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/api/backtest/todays-picks")
+def get_todays_picks_route():
+    """Get the ML filtered picks for today's AI pre-market report."""
+    try:
+        from modules.backtest.service import get_todays_picks_service
+        return get_todays_picks_service()
+    except Exception as e:
+        logger.error(f"Error fetching today's picks: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/api/backtest/download-data")
 def download_data_route():
     """Download OHLCV data for all stocks in the AI report universe."""

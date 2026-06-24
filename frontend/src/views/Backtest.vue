@@ -129,7 +129,7 @@
 
           <!-- Concept Attribution -->
           <h4 class="text-sky-400 font-bold mt-3 mb-2"><i class="fa-solid fa-tags mr-2"></i> Top Concepts</h4>
-          <div class="signals-scroll" style="max-height: 180px;">
+          <div class="signals-scroll">
             <div v-if="conceptAttribution && conceptAttribution.length > 0">
               <div v-for="(c, idx) in conceptAttribution.slice(0, 15)" :key="idx" 
                    class="mb-1 p-2 rounded text-xs" 
@@ -144,9 +144,34 @@
             <div v-else class="text-sm text-gray-400 text-center py-2">No concept data</div>
           </div>
 
+          <!-- Today's ML Top Picks (Elegant List) -->
+          <div v-if="todaysPicks" class="mt-4 mb-2">
+            <h4 class="text-sky-400 font-bold mb-2 flex justify-between items-end">
+              <span><i class="fa-solid fa-bolt mr-2 text-yellow-400"></i> Today's Top Picks</span>
+              <span class="text-[0.65rem] text-gray-500 font-normal">({{ todaysPicks.date }})</span>
+            </h4>
+            <div class="bg-slate-800/30 rounded border border-slate-700/50 p-2">
+              <table class="w-full text-left text-xs" style="color: #cbd5e1;">
+                <tbody>
+                  <tr v-for="(pick, idx) in todaysPicks.top_picks" :key="idx" 
+                      class="border-b border-slate-700/30 last:border-0 hover:bg-slate-800/50 transition-colors">
+                    <td class="py-1.5 w-5 text-gray-500 font-mono">{{ idx + 1 }}.</td>
+                    <td class="py-1.5 font-bold cursor-help" :title="pick.theme">
+                      {{ pick.name }}
+                      <span class="text-[0.6rem] text-sky-400/60 ml-1 font-normal opacity-80 truncate inline-block max-w-[80px] align-bottom">{{ pick.theme ? pick.theme.split('/')[0] : '' }}</span>
+                    </td>
+                    <td class="py-1.5 text-right font-mono" :class="pick.score > 0 ? 'text-emerald-400' : 'text-red-400'">
+                      {{ pick.score > 0 ? '+' : '' }}{{ pick.score }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           <!-- Daily Holdings -->
           <h4 class="text-sky-400 font-bold mt-3 mb-2"><i class="fa-solid fa-list mr-2"></i> Daily Trades</h4>
-          <div class="signals-scroll flex-1">
+          <div class="signals-scroll">
             <div v-if="holdings && holdings.length > 0">
               <div v-for="(h, idx) in reversedHoldings" :key="idx" class="mb-2 p-2 bg-slate-800/50 rounded border border-slate-700/50">
                 <div class="text-xs text-gray-400 font-bold mb-1">{{ h.date }} <span class="text-gray-600">· {{ h.holdings?.length || 0 }} held</span></div>
@@ -253,6 +278,7 @@ use([
 
 const loading = ref(false)
 const enableMlFilter = ref(false)
+const todaysPicks = ref(null)
 const loadingMsg = ref('Loading...')
 const downloading = ref(false)
 const error = ref(null)
@@ -794,9 +820,21 @@ const getScore = (holdingsList, symbol) => {
   return item && item.score !== null ? item.score : null;
 }
 
+const fetchTodaysPicks = async () => {
+  try {
+    const res = await axios.get('/api/backtest/todays-picks')
+    if (res.data && res.data.status === 'success') {
+      todaysPicks.value = res.data
+    }
+  } catch (err) {
+    console.error("Failed to fetch todays picks:", err)
+  }
+}
+
 onMounted(() => {
   fetchResults()
   fetchValidDates()
+  fetchTodaysPicks()
 })
 </script>
 
@@ -1013,10 +1051,11 @@ onMounted(() => {
 }
 
 .side-panel-right {
-  width: 240px;
+  width: 320px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 0;
 }
 
 .info-card h4 {
@@ -1060,8 +1099,6 @@ onMounted(() => {
 .mini-metric .v { font-size: 1rem; font-weight: 700; }
 
 .signals-scroll {
-  max-height: 300px;
-  overflow-y: auto;
   font-size: 0.75rem;
 }
 

@@ -1,4 +1,6 @@
 import sys
+import os
+import glob
 import subprocess
 import json
 import pandas as pd
@@ -49,6 +51,70 @@ def run_signal_backtest_service(enable_ml_filter: bool = False):
 
     logger.info("Signal backtest completed and cached.")
     return result
+
+def get_todays_picks_service():
+    """Fetches the latest AI pre-market report and scores it with ML."""
+    # 1. Find latest OpenClaw stock pool
+    openclaw_dir = WORKSPACE_DIR.parent / "YMOS" / "OpenClaw" / "3_Quant" / "Stock_Pools"
+    if not openclaw_dir.exists():
+        return {"status": "error", "message": f"OpenClaw directory not found at {openclaw_dir}"}
+        
+    pool_files = glob.glob(str(openclaw_dir / "stock_pool_*.json"))
+    if not pool_files:
+        return {"status": "error", "message": "No stock_pool JSON files found in OpenClaw."}
+        
+    latest_pool_file = max(pool_files, key=os.path.getmtime)
+    
+    with open(latest_pool_file, 'r', encoding='utf-8') as f:
+        pool_data = json.load(f)
+        
+    pool = pool_data.get('stocks', [])
+    date = pool_data.get('date', '')
+    
+    # Construct Qlib symbols
+    def to_qlib_symbol(code):
+        if code.startswith('6'):
+            return 'SH' + code
+        elif code.startswith('0') or code.startswith('3'):
+            return 'SZ' + code
+        else:
+            return 'BJ' + code
+            
+    candidates = {to_qlib_symbol(s['code']): s for s in pool}
+    
+    # 2. Load ML predictions
+    pred_path = WORKSPACE_DIR / "data" / "cn_stock" / "ml_predictions.pkl"
+    if not pred_path.exists():
+        return {"status": "error", "message": "ML predictions file not found. Run backtest first."}
+        
+    preds = pd.read_pickle(pred_path)
+    if isinstance(preds, pd.DataFrame) and preds.shape[1] > 0:
+        preds = preds.iloc[:, 0]
+        
+    latest_date = preds.index.get_level_values(0).max()
+    day_preds = preds.loc[latest_date]
+    valid_preds = day_preds.reindex(list(candidates.keys())).dropna()
+    
+    # Map scores back
+    results = []
+    for sym, score in valid_preds.items():
+        s_info = candidates[sym]
+        results.append({
+            'symbol': sym,
+            'name': s_info['name'],
+            'theme': s_info.get('theme', ''),
+            'score': round(float(score), 4)
+        })
+        
+    results.sort(key=lambda x: x['score'], reverse=True)
+    
+    return {
+        "status": "success",
+        "date": date,
+        "prediction_date": latest_date.strftime("%Y-%m-%d"),
+        "top_picks": results[:10],
+        "other_candidates": results[10:]
+    }
 
 
 def run_data_download_service():

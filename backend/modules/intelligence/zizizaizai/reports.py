@@ -60,7 +60,7 @@ def get_token():
     token = os.environ.get("ZIZIZAIZAI_TOKEN")
     if not token:
         import yaml
-        config_path = Path(__file__).resolve().parent.parent / "secret.yaml"
+        config_path = Path(__file__).resolve().parent.parent.parent.parent / "secret.yaml"
         if config_path.exists():
             with open(config_path, "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
@@ -287,7 +287,7 @@ def fetch_reports(max_pages=20):
         time.sleep(1)
 
     if not all_items: return
-    out_dir = Path(__file__).resolve().parent.parent.parent / "data" / "cn_stock" / "hierarchical" / "signals"
+    out_dir = Path(__file__).resolve().parent.parent.parent.parent.parent / "data" / "cn_stock" / "hierarchical" / "signals"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_file = out_dir / "zizizaizai_reports.json"
     
