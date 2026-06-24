@@ -99,49 +99,8 @@ def _parse_reports() -> Dict[str, dict]:
                             "name": stock.get("name", ""),
                         }
 
-    # --- Override ONLY the latest few days with curated pools ---
-    # This ensures today's and yesterday's trades match the curated Top Picks,
-    # while preserving all historical backtest data unchanged.
-    import glob
-    from core.config import WORKSPACE_DIR
-    stock_pools_dir = WORKSPACE_DIR / "data" / "cn_stock" / "stock_pools"
-    if stock_pools_dir.exists():
-        def to_qlib_symbol(code):
-            code = str(code)
-            if code.startswith('6'):
-                return 'SH' + code
-            elif code.startswith('0') or code.startswith('3'):
-                return 'SZ' + code
-            else:
-                return 'BJ' + code
-
-        pool_files = sorted(glob.glob(str(stock_pools_dir / "stock_pool_*.json")))
-        # Only override TODAY (the single latest pool file)
-        recent_files = pool_files[-1:] if pool_files else []
-        for fpath in recent_files:
-            try:
-                with open(fpath, "r", encoding="utf-8") as f:
-                    pool_data = json.load(f)
-                raw_date = pool_data.get("date", "")
-                if not raw_date:
-                    continue
-                date = raw_date.split(" ")[0]
-                curated = {}
-                for stock in pool_data.get("stocks", []):
-                    sym = to_qlib_symbol(stock.get("code", ""))
-                    if sym and not sym.startswith("BJ"):
-                        curated[sym] = {
-                            "weight_type": "core",
-                            "is_new": False,
-                            "concept": stock.get("theme", "Unknown"),
-                            "name": stock.get("name", ""),
-                        }
-                if curated:
-                    daily_pools[date] = curated
-                    logger.info(f"Overrode pool for {date} with curated {len(curated)} stocks")
-            except Exception as e:
-                logger.error(f"Error parsing curated pool {fpath}: {e}")
-
+    # --- Native Qlib Flow (Faction 1) ---
+    # We rely entirely on zizizaizai_reports.json. No external overrides.
     return daily_pools
 
 
