@@ -32,6 +32,16 @@ app.include_router(audit_router)
 app.include_router(tasks_router)
 app.include_router(user_prefs_router)
 
+from core.scheduler import start_scheduler, stop_scheduler
+
+@app.on_event("startup")
+def startup_event():
+    start_scheduler()
+
+@app.on_event("shutdown")
+def shutdown_event():
+    stop_scheduler()
+
 if __name__ == "__main__":
     import uvicorn
     # Run the server on port 28456

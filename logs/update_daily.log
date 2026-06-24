@@ -1,0 +1,63 @@
+Traceback (most recent call last):
+  File "/Users/walox/qlib/backend/modules/intelligence/sentiment/fetch_ziruxing.py", line 108, in <module>
+    fetch_history(all_years=args.all)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/walox/qlib/backend/modules/intelligence/sentiment/fetch_ziruxing.py", line 24, in fetch_history
+    with open(PROJECT_DIR / "secret.yaml", "r") as f:
+         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/walox/qlib/backend/modules/intelligence/secret.yaml'
+Starting to fetch topics...
+Fetching page 1...
+Fetching page 2...
+Fetching page 3...
+Fetching page 4...
+Fetching page 5...
+Fetching page 6...
+Fetched 119 topics. Now fetching details...
+Out of 119 topics, 0 need detail updates.
+Successfully saved 119 topics with details to /Users/walox/qlib/data/cn_stock/hierarchical/signals/zizizaizai_topics.json
+Successfully saved stock mapping to /Users/walox/qlib/data/cn_stock/hierarchical/signals/zizizaizai_topic_stocks.csv
+Fetching Zizizaizai AI Morning Reports list (up to 20 pages)...
+  Page 1: found 50 items.
+  Page 2: found 50 items.
+  Page 3: found 46 items.
+  0%|          | 0/17 [00:00<?, ?it/s]  6%|▌         | 1/17 [00:00<00:03,  4.70it/s] 12%|█▏        | 2/17 [00:00<00:03,  4.98it/s] 18%|█▊        | 3/17 [00:00<00:03,  4.47it/s] 24%|██▎       | 4/17 [00:00<00:02,  4.56it/s] 29%|██▉       | 5/17 [00:01<00:02,  4.34it/s] 35%|███▌      | 6/17 [00:01<00:02,  4.06it/s] 41%|████      | 7/17 [00:01<00:02,  4.31it/s] 47%|████▋     | 8/17 [00:01<00:02,  4.49it/s] 53%|█████▎    | 9/17 [00:02<00:01,  4.61it/s] 59%|█████▉    | 10/17 [00:02<00:01,  4.36it/s] 65%|██████▍   | 11/17 [00:02<00:01,  4.55it/s] 71%|███████   | 12/17 [00:02<00:01,  4.39it/s] 76%|███████▋  | 13/17 [00:02<00:00,  4.60it/s] 82%|████████▏ | 14/17 [00:03<00:00,  4.77it/s] 88%|████████▊ | 15/17 [00:03<00:00,  4.53it/s] 94%|█████████▍| 16/17 [00:03<00:00,  4.39it/s]100%|██████████| 17/17 [00:03<00:00,  4.65it/s]                                               Successfully saved 146 reports to /Users/walox/qlib/data/cn_stock/hierarchical/signals/zizizaizai_reports.json
+
+=====================================
+Data Collection Run - Mode: EVENING
+=====================================
+=====================================
+0. Logging in to ZIZIZAIZAI...
+=====================================
+Login attempt 1/4...
+Successfully logged in and retrieved Bearer token.
+
+=====================================
+Running parallel tasks: Topics & Sentiment...
+=====================================
+Starting modules/intelligence/zizizaizai/topics.py...
+Starting modules/intelligence/sentiment/fetch_ziruxing.py...
+Starting modules/intelligence/zizizaizai/reports.py...
+Finished modules/intelligence/zizizaizai/topics.py
+Finished modules/intelligence/zizizaizai/reports.py
+Traceback (most recent call last):
+  File "/Users/walox/qlib/backend/tasks/update_daily.py", line 196, in <module>
+    main()
+    ~~~~^^
+  File "/Users/walox/qlib/backend/tasks/update_daily.py", line 109, in main
+    future_sentiment.result()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.3_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/concurrent/futures/_base.py", line 449, in result
+    return self.__get_result()
+           ~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.3_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/opt/homebrew/Cellar/python@3.13/3.13.3_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/concurrent/futures/thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "/Users/walox/qlib/backend/tasks/update_daily.py", line 99, in run_script
+    subprocess.run([sys.executable, str(PROJECT_DIR / script_name)], check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.3_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/subprocess.py", line 577, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['/Users/walox/qlib/.venv/bin/python', '/Users/walox/qlib/backend/modules/intelligence/sentiment/fetch_ziruxing.py']' returned non-zero exit status 1.

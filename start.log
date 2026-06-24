@@ -197,3 +197,1819 @@ start.sh: line 65: 20370 Killed: 9               "$PROJECT_ROOT/.venv/bin/python
 
 1:09:32 AM [vite] (client) hmr update /src/views/Backtest.vue
 1:17:01 AM [vite] (client) hmr update /src/views/Backtest.vue
+9:14:29 AM [vite] (client) hmr update /src/views/Backtest.vue
+9:14:38 AM [vite] (client) hmr update /src/views/Backtest.vue
+9:17:21 AM [vite] (client) hmr update /src/views/Backtest.vue
+9:21:28 AM [vite] (client) hmr update /src/views/Backtest.vue
+9:23:45 AM [vite] (client) hmr update /src/views/Backtest.vue
+1:11:08 PM [vite] (client) hmr update /src/views/Backtest.vue?vue&type=style&index=0&scoped=9faa2d0b&lang.css
+1:11:23 PM [vite] (client) hmr update /src/views/Backtest.vue, /src/views/Backtest.vue?vue&type=style&index=0&scoped=9faa2d0b&lang.css
+8:13:46 PM [vite] (client) hmr update /src/views/Backtest.vue
+8:19:06 PM [vite] (client) hmr update /src/views/Backtest.vue
+8:27:53 PM [vite] (client) hmr update /src/views/Backtest.vue
+8:50:12 PM [vite] (client) hmr update /src/views/Backtest.vue
+8:52:57 PM [vite] (client) [console.error] Failed to fetch backtest results: AxiosError: Request failed with status code 500
+    at settle (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:1738:14)
+    at XMLHttpRequest.onloadend (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:2091:4)
+8:53:09 PM [vite] (client) [console.error] Failed to fetch backtest results: AxiosError: Request failed with status code 500
+    at settle (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:1738:14)
+    at XMLHttpRequest.onloadend (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:2091:4)
+8:55:26 PM [vite] (client) [console.error] Failed to fetch backtest results: AxiosError: Request failed with status code 500
+    at settle (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:1738:14)
+    at XMLHttpRequest.onloadend (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:2091:4)
+8:55:29 PM [vite] (client) [console.error] Failed to fetch backtest results: AxiosError: Request failed with status code 500
+    at settle (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:1738:14)
+    at XMLHttpRequest.onloadend (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:2091:4)
+8:55:34 PM [vite] (client) [console.error] Failed to fetch backtest results: AxiosError: Request failed with status code 500
+    at settle (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:1738:14)
+    at XMLHttpRequest.onloadend (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:2091:4)
+9:34:13 PM [vite] (client) hmr update /src/views/Backtest.vue
+9:41:23 PM [vite] (client) [console.error] Failed to fetch todays picks: AxiosError: Request failed with status code 500
+    at settle (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:1738:14)
+    at XMLHttpRequest.onloadend (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:2091:4)
+9:42:11 PM [vite] (client) [console.error] Failed to fetch todays picks: AxiosError: Request failed with status code 500
+    at settle (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:1738:14)
+    at XMLHttpRequest.onloadend (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:2091:4)
+10:06:32 PM [vite] (client) hmr update /src/views/Backtest.vue
+10:08:06 PM [vite] (client) hmr update /src/views/Backtest.vue
+10:11:43 PM [vite] (client) hmr update /src/views/Backtest.vue
+10:11:43 PM [vite] (client) [console.warn] [Vue warn]: Property "onChartClick" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:43 PM [vite] (client) [console.warn] [Vue warn]: Property "hoveredDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:43 PM [vite] (client) [console.warn] [Vue warn]: Property "hoveredDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) hmr update /src/views/Backtest.vue
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "onChartClick" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "hoveredDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "hoveredDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:11:56 PM [vite] (client) [console.warn] [Vue warn]: Property "activeDate" was accessed during render but is not defined on instance. 
+  at <Backtest onVnodeUnmounted=fn<onVnodeUnmounted> ref=Ref< {} > > 
+  at <BaseTransition mode="out-in" appear=false persisted=false  ... > 
+  at <Transition name="fade" mode="out-in" > 
+  at <RouterView> 
+  at <App>
+10:12:15 PM [vite] (client) hmr update /src/views/Backtest.vue
+10:12:26 PM [vite] (client) hmr update /src/views/Backtest.vue
+10:14:49 PM [vite] (client) hmr update /src/views/Backtest.vue

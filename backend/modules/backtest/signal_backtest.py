@@ -9,6 +9,7 @@ Logic:
 - Benchmark: Equal-weight all-A index.
 """
 import json
+import math
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -45,12 +46,17 @@ class DailyRecord:
     exits: List[str] = field(default_factory=list)
 
 
-def _parse_reports() -> List[dict]:
-    """Parse AI Morning Reports and return structured daily pools."""
+def _parse_reports() -> Dict[str, dict]:
+    """Parse AI Morning Reports and return structured daily pools.
+    
+    For dates where a curated OpenClaw stock pool exists locally
+    (data/cn_stock/stock_pools/), it OVERRIDES the zizi report pool
+    to ensure trades match the curated Top Picks.
+    """
     reports_path = DATA_DIR / "signals" / "zizizaizai_reports.json"
     if not reports_path.exists():
         logger.error(f"Reports file not found: {reports_path}")
-        return []
+        return {}
 
     with open(reports_path, "r", encoding="utf-8") as f:
         reports = json.load(f)
@@ -73,7 +79,6 @@ def _parse_reports() -> List[dict]:
             for stock in pool.get("core_stocks", []):
                 sym = stock.get("symbol", "")
                 if sym and not sym.startswith("BJ"):
-                    # If same stock appears in multiple concepts, keep the higher weight
                     existing = daily_pools[date].get(sym)
                     if not existing or existing["weight_type"] != "core":
                         daily_pools[date][sym] = {
@@ -93,6 +98,49 @@ def _parse_reports() -> List[dict]:
                             "concept": concept,
                             "name": stock.get("name", ""),
                         }
+
+    # --- Override ONLY the latest few days with curated pools ---
+    # This ensures today's and yesterday's trades match the curated Top Picks,
+    # while preserving all historical backtest data unchanged.
+    import glob
+    from core.config import WORKSPACE_DIR
+    stock_pools_dir = WORKSPACE_DIR / "data" / "cn_stock" / "stock_pools"
+    if stock_pools_dir.exists():
+        def to_qlib_symbol(code):
+            code = str(code)
+            if code.startswith('6'):
+                return 'SH' + code
+            elif code.startswith('0') or code.startswith('3'):
+                return 'SZ' + code
+            else:
+                return 'BJ' + code
+
+        pool_files = sorted(glob.glob(str(stock_pools_dir / "stock_pool_*.json")))
+        # Only override TODAY (the single latest pool file)
+        recent_files = pool_files[-1:] if pool_files else []
+        for fpath in recent_files:
+            try:
+                with open(fpath, "r", encoding="utf-8") as f:
+                    pool_data = json.load(f)
+                raw_date = pool_data.get("date", "")
+                if not raw_date:
+                    continue
+                date = raw_date.split(" ")[0]
+                curated = {}
+                for stock in pool_data.get("stocks", []):
+                    sym = to_qlib_symbol(stock.get("code", ""))
+                    if sym and not sym.startswith("BJ"):
+                        curated[sym] = {
+                            "weight_type": "core",
+                            "is_new": False,
+                            "concept": stock.get("theme", "Unknown"),
+                            "name": stock.get("name", ""),
+                        }
+                if curated:
+                    daily_pools[date] = curated
+                    logger.info(f"Overrode pool for {date} with curated {len(curated)} stocks")
+            except Exception as e:
+                logger.error(f"Error parsing curated pool {fpath}: {e}")
 
     return daily_pools
 
@@ -199,17 +247,18 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
         today_pool = daily_pools[date_str]
 
         # ML Filter: Keep only Top K scored stocks in today's pool
+        latest_ml_date = None
         if config.enable_ml_filter and ml_preds is not None:
-            # ml_preds multi-index is usually (datetime, instrument)
             try:
-                # get scores for this date
-                if date_ts in ml_preds.index.get_level_values(0):
-                    day_preds = ml_preds.loc[date_ts]
+                available_dates = ml_preds.index.get_level_values(0).unique()
+                valid_dates = available_dates[available_dates <= date_ts]
+                
+                if not valid_dates.empty:
+                    latest_ml_date = valid_dates.max()
+                    day_preds = ml_preds.loc[latest_ml_date]
+                    
                     # Filter to only stocks in today_pool
                     pool_syms = list(today_pool.keys())
-                    
-                    # Convert our symbols (SH600519) to match Qlib output if necessary, 
-                    # but our qlib_data was built using exactly our symbol names (SH600519).
                     valid_preds = day_preds.reindex(pool_syms).dropna()
                     
                     if not valid_preds.empty:
@@ -219,12 +268,86 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                         today_pool = {s: info for s, info in today_pool.items() if s in top_syms}
                     else:
                         today_pool = {}  # No ML scores available for today's pool
+                else:
+                    today_pool = {} # No ML predictions available before this date
             except Exception as e:
                 logger.error(f"Error applying ML filter on {date_str}: {e}")
-                pass
+                today_pool = {} # Fail-safe to avoid buying the entire pool
 
         # Determine target portfolio
         target_weights = _compute_target_weights(today_pool, config)
+
+        # ---------------------------------------------------------
+        # Intended trades (for UI display even if data is missing)
+        # ---------------------------------------------------------
+        prev_symbols_intended = set(current_holdings.keys())
+        target_symbols_intended = set(target_weights.keys())
+        intended_entries = list(target_symbols_intended - prev_symbols_intended)
+        intended_exits = list(prev_symbols_intended - target_symbols_intended)
+        intended_holds = list(prev_symbols_intended & target_symbols_intended)
+
+        # ---------------------------------------------------------
+        # Critical Fix: Check if market data for today exists
+        # We only need to verify if the required symbols for today (holds + entries + exits) have prices.
+        # If the majority of our specific target portfolio is missing data, assume data isn't published yet.
+        # ---------------------------------------------------------
+        required_syms = prev_symbols_intended.union(target_symbols_intended)
+        missing_required = 0
+        if len(required_syms) > 0:
+            missing_required = sum(1 for sym in required_syms if sym not in prices or date_ts not in prices[sym].index)
+            
+        if len(required_syms) > 0 and missing_required >= (len(required_syms) * 0.5):
+            # Log missing data and carry over previous state
+            logger.warning(f"Market data missing for {date_str}. Rolling forward previous NAV. Recording intended trades.")
+            records.append({
+                "date": date_str,
+                "nav": round(prev_nav, 2),
+                "daily_return": 0.0,
+                "benchmark_return": 0.0,
+                "holdings_count": len(current_shares),
+                "turnover": 0.0,
+            })
+            
+            holding_syms = []
+            all_involved = set(current_shares.keys()).union(set(intended_exits))
+            for sym in sorted(all_involved):
+                info = today_pool.get(sym, {})
+                score = None
+                if config.enable_ml_filter and ml_preds is not None and latest_ml_date is not None:
+                    try:
+                        if sym in ml_preds.loc[latest_ml_date].index:
+                            score = round(float(ml_preds.loc[latest_ml_date, sym]), 4)
+                    except:
+                        pass
+                
+                ret = None
+                if sym in prices and date_ts in prices[sym].index:
+                    try:
+                        pct = float(prices[sym].loc[date_ts, "pct_change"])
+                        if not math.isnan(pct):
+                            ret = round(pct / 100.0, 4)
+                    except:
+                        pass
+
+                holding_syms.append({
+                    "symbol": sym,
+                    "name": info.get("name", sym),
+                    "type": "carry_over",
+                    "concept": info.get("concept", ""),
+                    "score": score,
+                    "ret": ret
+                })
+                
+            daily_holdings_log.append({
+                "date": date_str,
+                "entries": intended_entries,
+                "exits": intended_exits,
+                "holds": intended_holds,
+                "holdings": holding_syms,
+                "trades": [],
+                "daily_return": 0.0,
+            })
+            continue
 
         # Filter to symbols we have price data for
         tradeable_targets = {}
@@ -389,13 +512,34 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
 
         # Holdings log
         holding_syms = []
-        for sym in sorted(current_shares.keys()):
+        all_involved = set(current_shares.keys()).union(set(exits))
+        for sym in sorted(all_involved):
             info = today_pool.get(sym, {})
             score = None
-            if config.enable_ml_filter and ml_preds is not None and date_ts in ml_preds.index.get_level_values(0):
+            if config.enable_ml_filter and ml_preds is not None and latest_ml_date is not None:
                 try:
-                    if sym in ml_preds.loc[date_ts].index:
-                        score = round(float(ml_preds.loc[date_ts, sym]), 4)
+                    if sym in ml_preds.loc[latest_ml_date].index:
+                        score = round(float(ml_preds.loc[latest_ml_date, sym]), 4)
+                except:
+                    pass
+            
+            ret = None
+            if sym in prices and date_ts in prices[sym].index:
+                try:
+                    open_p = float(prices[sym].loc[date_ts, "open"])
+                    close_p = float(prices[sym].loc[date_ts, "close"])
+                    pct = float(prices[sym].loc[date_ts, "pct_change"]) / 100.0
+                    
+                    if not math.isnan(pct):
+                        if sym in entry_symbols:
+                            if open_p > 0:
+                                ret = round((close_p - open_p) / open_p, 4)
+                        elif sym in exit_symbols:
+                            pre_close = close_p / (1 + pct) if pct != -1.0 else open_p
+                            if pre_close > 0:
+                                ret = round((open_p - pre_close) / pre_close, 4)
+                        else:
+                            ret = round(pct, 4)
                 except:
                     pass
                     
@@ -404,15 +548,18 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                 "name": info.get("name", ""),
                 "type": info.get("weight_type", ""),
                 "concept": info.get("concept", ""),
-                "score": score
+                "score": score,
+                "ret": ret
             })
 
         daily_holdings_log.append({
             "date": date_str,
             "entries": entry_symbols,
             "exits": exit_symbols,
+            "holds": list(holds),
             "holdings": holding_syms,
             "trades": daily_trades,
+            "daily_return": round(daily_return, 6),
         })
 
         prev_nav = eod_nav

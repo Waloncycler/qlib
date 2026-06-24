@@ -19,21 +19,28 @@
             <span class="range-val">{{ isLatestDate ? 0 : rangePost }}</span>
           </div>
         </div>
-        <button class="icon-btn" @click="showPool = !showPool" :title="showPool ? 'Hide Pool' : 'Show Pool'">
-          {{ showPool ? '📂 Hide Pool' : '📁 Show Pool' }}
-        </button>
+        <div class="control-item" style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-left: 12px;" @click="showPool = !showPool">
+          <span style="font-size: 0.75rem; font-weight: bold; transition: color 0.3s;" :style="{ color: showPool ? '#38bdf8' : '#94a3b8' }">Show Pool</span>
+          <div style="position: relative; display: inline-flex; height: 16px; width: 32px; border-radius: 9999px; align-items: center; padding: 0 2px; transition: all 0.3s;"
+               :style="{ background: showPool ? '#0ea5e9' : '#334155', border: showPool ? 'none' : '1px solid #475569', boxShadow: showPool ? '0 0 8px rgba(14,165,233,0.5)' : 'none' }">
+            <div style="height: 12px; width: 12px; border-radius: 9999px; background-color: white; transition: transform 0.3s;"
+                 :style="{ transform: showPool ? 'translateX(16px)' : 'translateX(0)' }"></div>
+          </div>
+        </div>
       </div>
 
       <div class="controls-right">
-        <div class="control-item" style="margin-right: 15px; display: flex; align-items: center; gap: 8px;">
-          <label style="color: #60a5fa; font-weight: bold; cursor: pointer;">
-            <input type="checkbox" v-model="enableMlFilter" @change="fetchResults" style="accent-color: #3b82f6; width: 16px; height: 16px; cursor: pointer;" />
-            🧠 Enable ML Filter (Top 10)
-          </label>
+        <div class="control-item" style="margin-right: 15px; display: flex; align-items: center; gap: 8px; cursor: pointer;" @click="enableMlFilter = !enableMlFilter; fetchResults()">
+          <span style="font-size: 0.75rem; font-weight: bold; transition: color 0.3s;" :style="{ color: enableMlFilter ? '#38bdf8' : '#94a3b8' }">ML Filter</span>
+          <div style="position: relative; display: inline-flex; height: 16px; width: 32px; border-radius: 9999px; align-items: center; padding: 0 2px; transition: all 0.3s;"
+               :style="{ background: enableMlFilter ? '#0ea5e9' : '#334155', border: enableMlFilter ? 'none' : '1px solid #475569', boxShadow: enableMlFilter ? '0 0 8px rgba(14,165,233,0.5)' : 'none' }">
+            <div style="height: 12px; width: 12px; border-radius: 9999px; background-color: white; transition: transform 0.3s;"
+                 :style="{ transform: enableMlFilter ? 'translateX(16px)' : 'translateX(0)' }"></div>
+          </div>
         </div>
         <button class="mini-btn" @click="downloadData" :disabled="downloading" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">
           <i class="fa-solid fa-download mr-1"></i>
-          {{ downloading ? 'Downloading...' : '📥 Download Data' }}
+          {{ downloading ? 'Downloading...' : 'Download' }}
         </button>
         <button class="mini-btn" @click="runIntelligentBacktest" :disabled="loading" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);">
           <i class="fa-solid fa-play mr-1"></i>
@@ -83,7 +90,13 @@
         <button v-if="isComparisonMode" @click="isComparisonMode = false" class="close-comparison-btn">
           ✕ Return to Backtest
         </button>
-        <v-chart class="chart" :option="chartOption" :update-options="{ notMerge: true }" autoresize />
+        <v-chart class="chart" :option="chartOption" :update-options="{ notMerge: true }" autoresize @click="onChartClick" />
+        <div class="absolute bottom-2 left-1/2 transform -translate-x-1/2 h-6 flex items-center justify-center z-10 pointer-events-none transition-opacity duration-300" :class="hoveredDate ? 'opacity-100' : 'opacity-0'">
+          <span class="text-[0.65rem] font-mono px-3 py-1 bg-sky-900/40 text-sky-400 rounded-full border border-sky-800/60 backdrop-blur-sm shadow-lg shadow-sky-900/20">
+            <i class="fa-solid fa-crosshairs mr-1"></i> {{ hoveredDate }}
+            <span class="text-sky-200/50 ml-1 text-[0.55rem] tracking-wide">CLICK TO VIEW TRADES</span>
+          </span>
+        </div>
       </div>
 
       <!-- Analysis Side Panel -->
@@ -132,40 +145,41 @@
           <div class="signals-scroll">
             <div v-if="conceptAttribution && conceptAttribution.length > 0">
               <div v-for="(c, idx) in conceptAttribution.slice(0, 15)" :key="idx" 
-                   class="mb-1 p-2 rounded text-xs" 
-                   :style="{ background: c.total_return > 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', border: '1px solid ' + (c.total_return > 0 ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)') }">
-                <div class="flex justify-between">
-                  <span class="text-gray-300 truncate" style="max-width: 140px;">{{ c.concept }}</span>
-                  <span :class="c.total_return > 0 ? 'text-emerald-400' : 'text-red-400'" class="font-bold">{{ (c.total_return * 100).toFixed(1) }}%</span>
+                   class="mb-2 p-2 rounded border" 
+                   :style="{ background: c.total_return > 0 ? 'rgba(16,185,129,0.05)' : 'rgba(239,68,68,0.05)', border: '1px solid ' + (c.total_return > 0 ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)') }">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
+                  <span style="color: #e2e8f0; font-size: 0.75rem; font-weight: 500; display: inline-block; flex: 1; padding-right: 8px; line-height: 1.2;" :title="c.concept">
+                    {{ c.concept }}
+                  </span>
+                  <span style="font-family: monospace; font-size: 0.75rem; font-weight: bold; white-space: nowrap;" :style="{ color: c.total_return > 0 ? '#34d399' : '#f87171' }">
+                    {{ c.total_return > 0 ? '+' : '' }}{{ (c.total_return * 100).toFixed(1) }}%
+                  </span>
                 </div>
-                <div class="text-gray-500 mt-1">{{ c.days_active }}d · hit {{ (c.hit_rate * 100).toFixed(0) }}%</div>
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.65rem;">
+                  <span style="color: #64748b;">{{ c.days_active }}d Active</span>
+                  <span style="color: #7dd3fc;">Hit {{ (c.hit_rate * 100).toFixed(0) }}%</span>
+                </div>
               </div>
             </div>
             <div v-else class="text-sm text-gray-400 text-center py-2">No concept data</div>
           </div>
 
-          <!-- Today's ML Top Picks (Elegant List) -->
-          <div v-if="todaysPicks" class="mt-4 mb-2">
-            <h4 class="text-sky-400 font-bold mb-2 flex justify-between items-end">
-              <span><i class="fa-solid fa-bolt mr-2 text-yellow-400"></i> Today's Top Picks</span>
-              <span class="text-[0.65rem] text-gray-500 font-normal">({{ todaysPicks.date }})</span>
-            </h4>
-            <div class="bg-slate-800/30 rounded border border-slate-700/50 p-2">
-              <table class="w-full text-left text-xs" style="color: #cbd5e1;">
-                <tbody>
-                  <tr v-for="(pick, idx) in todaysPicks.top_picks" :key="idx" 
-                      class="border-b border-slate-700/30 last:border-0 hover:bg-slate-800/50 transition-colors">
-                    <td class="py-1.5 w-5 text-gray-500 font-mono">{{ idx + 1 }}.</td>
-                    <td class="py-1.5 font-bold cursor-help" :title="pick.theme">
-                      {{ pick.name }}
-                      <span class="text-[0.6rem] text-sky-400/60 ml-1 font-normal opacity-80 truncate inline-block max-w-[80px] align-bottom">{{ pick.theme ? pick.theme.split('/')[0] : '' }}</span>
-                    </td>
-                    <td class="py-1.5 text-right font-mono" :class="pick.score > 0 ? 'text-emerald-400' : 'text-red-400'">
-                      {{ pick.score > 0 ? '+' : '' }}{{ pick.score }}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+          <!-- Today's ML Top Picks (Chip Style, matching Daily Trades) -->
+          <div v-if="todaysPicks" class="mb-2 p-2 bg-slate-800/50 rounded border border-slate-700/50">
+            <div class="text-xs text-gray-400 font-bold mb-1">
+              <i class="fa-solid fa-bolt mr-1 text-yellow-400"></i> Today's Top Picks
+              <span class="text-gray-600">· {{ todaysPicks.date }}</span>
+            </div>
+            <div class="flex flex-wrap gap-1">
+              <span v-for="(pick, idx) in todaysPicks.top_picks" :key="idx" class="stock-tag" 
+                    style="padding: 1px 5px; font-size: 0.65rem; border: 1px solid rgba(59,130,246,0.3);"
+                    :style="{ background: pick.score > 0 ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.1)', color: pick.score > 0 ? '#34d399' : '#f87171' }">
+                {{ pick.name }}
+                <span class="text-sky-400/60 ml-1" style="font-size: 0.55rem;">{{ pick.theme ? pick.theme.split('/')[0] : '' }}</span>
+                <span class="ml-1 font-mono" :class="pick.score > 0 ? 'text-emerald-400' : 'text-red-400'">
+                  {{ pick.score > 0 ? '+' : '' }}{{ pick.score }}
+                </span>
+              </span>
             </div>
           </div>
 
@@ -173,19 +187,48 @@
           <h4 class="text-sky-400 font-bold mt-3 mb-2"><i class="fa-solid fa-list mr-2"></i> Daily Trades</h4>
           <div class="signals-scroll">
             <div v-if="holdings && holdings.length > 0">
-              <div v-for="(h, idx) in reversedHoldings" :key="idx" class="mb-2 p-2 bg-slate-800/50 rounded border border-slate-700/50">
-                <div class="text-xs text-gray-400 font-bold mb-1">{{ h.date }} <span class="text-gray-600">· {{ h.holdings?.length || 0 }} held</span></div>
+              <div v-for="(h, idx) in reversedHoldings" :key="idx" 
+                   :id="'trade-card-' + h.date"
+                   class="mb-2 p-2 rounded border transition-all duration-500"
+                   :class="activeDate === h.date ? 'bg-sky-900/40 border-sky-400/80 shadow-[0_0_15px_rgba(56,189,248,0.2)] ring-1 ring-sky-400 scale-[1.02]' : 'bg-slate-800/50 border-slate-700/50'">
+                <div class="text-xs font-bold mb-1 transition-colors duration-500" :class="activeDate === h.date ? 'text-sky-300' : 'text-gray-400'">
+                  {{ h.date }} 
+                  <span class="text-gray-600">· {{ (h.entries?.length || 0) + (h.holds?.length || 0) }} held</span>
+                  <span v-if="h.daily_return !== undefined" class="ml-2 font-mono" :class="h.daily_return > 0 ? 'text-emerald-400' : (h.daily_return < 0 ? 'text-red-400' : 'text-gray-500')">
+                    {{ h.daily_return > 0 ? '+' : '' }}{{ (h.daily_return * 100).toFixed(2) }}%
+                  </span>
+                </div>
                 
                 <!-- Entries -->
                 <div v-if="h.entries && h.entries.length" class="flex flex-wrap gap-1 mb-1">
                   <span v-for="sym in h.entries" :key="'e'+sym" class="stock-tag" style="padding: 1px 5px; font-size: 0.65rem; background: rgba(16,185,129,0.2); color: #34d399; border: 1px solid rgba(16,185,129,0.3);">
-                    ▲ {{ sym }} <span v-if="getScore(h.holdings, sym)" class="text-sky-300 ml-1">({{ getScore(h.holdings, sym) }})</span>
+                    ▲ {{ getName(h.holdings, sym) || sym }} 
+                    <span v-if="getScore(h.holdings, sym)" class="text-sky-300 ml-1">({{ getScore(h.holdings, sym) }})</span>
+                    <span v-if="getReturn(h.holdings, sym) !== undefined && getReturn(h.holdings, sym) !== null" class="ml-1" :class="getReturn(h.holdings, sym) > 0 ? 'text-emerald-400' : (getReturn(h.holdings, sym) < 0 ? 'text-red-400' : 'text-gray-500')">
+                      {{ getReturn(h.holdings, sym) > 0 ? '+' : '' }}{{ (getReturn(h.holdings, sym) * 100).toFixed(2) }}%
+                    </span>
                   </span>
                 </div>
                 
+                <!-- Holds -->
+                <div v-if="h.holds && h.holds.length" class="flex flex-wrap gap-1 mb-1">
+                  <span v-for="sym in h.holds" :key="'h'+sym" class="stock-tag" style="padding: 1px 5px; font-size: 0.65rem; background: rgba(100,116,139,0.2); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3);">
+                    ● {{ getName(h.holdings, sym) || sym }} 
+                    <span v-if="getScore(h.holdings, sym)" class="text-sky-300/70 ml-1">({{ getScore(h.holdings, sym) }})</span>
+                    <span v-if="getReturn(h.holdings, sym) !== undefined && getReturn(h.holdings, sym) !== null" class="ml-1" :class="getReturn(h.holdings, sym) > 0 ? 'text-emerald-400' : (getReturn(h.holdings, sym) < 0 ? 'text-red-400' : 'text-gray-500')">
+                      {{ getReturn(h.holdings, sym) > 0 ? '+' : '' }}{{ (getReturn(h.holdings, sym) * 100).toFixed(2) }}%
+                    </span>
+                  </span>
+                </div>
+
                 <!-- Exits -->
-                <div v-if="h.exits && h.exits.length" class="flex flex-wrap gap-1">
-                  <span v-for="sym in h.exits" :key="'x'+sym" class="stock-tag" style="padding: 1px 5px; font-size: 0.65rem; background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3);">▼ {{ sym }}</span>
+                <div v-if="h.exits && h.exits.length" class="flex flex-wrap gap-1 mb-1">
+                  <span v-for="sym in h.exits" :key="'x'+sym" class="stock-tag" style="padding: 1px 5px; font-size: 0.65rem; background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3);">
+                    ▼ {{ getName(h.holdings, sym) || sym }}
+                    <span v-if="getReturn(h.holdings, sym) !== undefined && getReturn(h.holdings, sym) !== null" class="ml-1" :class="getReturn(h.holdings, sym) > 0 ? 'text-emerald-400' : (getReturn(h.holdings, sym) < 0 ? 'text-red-400' : 'text-gray-500')">
+                      {{ getReturn(h.holdings, sym) > 0 ? '+' : '' }}{{ (getReturn(h.holdings, sym) * 100).toFixed(2) }}%
+                    </span>
+                  </span>
                 </div>
                 
                 <!-- Detailed Trades (交割单) -->
@@ -410,6 +453,32 @@ const selectTheme = async (theme) => {
   comparisonLoading.value = false
 }
 
+const activeDate = ref(null)
+const hoveredDate = ref(null)
+
+const onChartClick = (params) => {
+  if (params && params.name) {
+    const date = params.name
+    activeDate.value = date
+    
+    // Clear the active highlight after 2.5 seconds
+    setTimeout(() => {
+      if (activeDate.value === date) {
+        activeDate.value = null
+      }
+    }, 2500)
+
+    // Scroll to the card
+    // Give Vue a tick to apply the active class, though scrollIntoView works regardless
+    setTimeout(() => {
+      const el = document.getElementById('trade-card-' + date)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    }, 50)
+  }
+}
+
 const toggleSource = (src) => {
   if (openSource.value === src) {
     openSource.value = null
@@ -629,7 +698,35 @@ const chartOption = computed(() => {
 
   const baseBacktestOption = {
     tooltip: {
-      trigger: 'axis'
+      trigger: 'axis',
+      backgroundColor: 'rgba(15, 23, 42, 0.9)',
+      borderColor: 'rgba(56, 189, 248, 0.4)',
+      textStyle: { color: '#e2e8f0' },
+      formatter: function(params) {
+        if (params && params.length > 0) {
+          const date = params[0].name
+          
+          // Asynchronously update the reactive ref to avoid tracking it as a dependency
+          // of this computed property, which would cause an infinite loop of chart redraws.
+          setTimeout(() => {
+            if (hoveredDate.value !== date) {
+              hoveredDate.value = date
+            }
+          }, 0)
+
+          let tooltipHtml = `<div style="font-weight:bold;margin-bottom:4px;color:#38bdf8;">${date}</div>`
+          params.forEach(p => {
+            const val = p.value !== undefined && p.value !== null ? p.value : 0
+            const color = val >= 0 ? '#34d399' : '#f87171' // Green or red
+            tooltipHtml += `<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:4px;">
+                              <span>${p.marker} ${p.seriesName}</span>
+                              <span style="font-family:monospace; font-weight:bold; color:${color}">${val > 0 ? '+' : ''}${val.toFixed(2)}%</span>
+                            </div>`
+          })
+          return tooltipHtml
+        }
+        return ''
+      }
     },
     legend: {
       data: seriesNames,
@@ -818,6 +915,18 @@ const getScore = (holdingsList, symbol) => {
   if (!holdingsList) return null;
   const item = holdingsList.find(h => h.symbol === symbol);
   return item && item.score !== null ? item.score : null;
+}
+
+const getReturn = (holdingsList, symbol) => {
+  if (!holdingsList) return null;
+  const item = holdingsList.find(h => h.symbol === symbol);
+  return item && item.ret !== undefined ? item.ret : null;
+}
+
+const getName = (holdingsList, symbol) => {
+  if (!holdingsList) return symbol;
+  const item = holdingsList.find(h => h.symbol === symbol);
+  return item && item.name ? item.name : symbol;
 }
 
 const fetchTodaysPicks = async () => {
