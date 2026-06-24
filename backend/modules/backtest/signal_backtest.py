@@ -628,6 +628,7 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
             "date": rec["date"],
             "strategy": round(float(strategy_cumulative.iloc[i]) - 1, 6),
             "benchmark": round(float(benchmark_cumulative.iloc[i]) - 1, 6),
+            "daily_return": round(float(rec["daily_return"]), 6),
             "holdings_count": rec["holdings_count"],
             "turnover": rec["turnover"],
         })
