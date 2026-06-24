@@ -53,39 +53,46 @@ def run_signal_backtest_service(enable_ml_filter: bool = False):
     return result
 
 def get_todays_picks_service():
-    """Fetches today's curated stock pool and scores it with ML.
+    """Fetches the latest AI pre-market report and scores it with ML.
     
-    Uses the LOCAL copy of stock pools at data/cn_stock/stock_pools/ (project-internal).
-    This is separate from the backtest engine which uses zizizaizai_reports.json.
+    Hybrid Logic:
+    1. Gets the latest date from zizizaizai_reports.json.
+    2. If there is a stock_pool_YYYY-MM-DD.json for that EXACT date, use it (OpenClaw Faction 2).
+    3. Otherwise, use the raw zizizaizai pool for that date (Native Faction 1).
     """
+    from modules.backtest.signal_backtest import _parse_reports
+    
+    # 1. Get the latest date from the native big pool
+    daily_pools = _parse_reports()
+    if not daily_pools:
+        return {"status": "error", "message": "No historical pool data found."}
+        
+    latest_date = max(daily_pools.keys())
+    
+    # 2. Check if we have an OpenClaw override for THIS EXACT DATE
     stock_pools_dir = WORKSPACE_DIR / "data" / "cn_stock" / "stock_pools"
-    if not stock_pools_dir.exists():
-        return {"status": "error", "message": f"Stock pools directory not found at {stock_pools_dir}"}
+    override_file = stock_pools_dir / f"stock_pool_{latest_date}.json"
     
-    pool_files = glob.glob(str(stock_pools_dir / "stock_pool_*.json"))
-    if not pool_files:
-        return {"status": "error", "message": "No stock_pool JSON files found."}
+    candidates = {}
     
-    # Find the latest pool file by filename date
-    latest_pool_file = max(pool_files)
-    
-    with open(latest_pool_file, 'r', encoding='utf-8') as f:
-        pool_data = json.load(f)
-    
-    pool_date = pool_data.get('date', '')
-    stocks = pool_data.get('stocks', [])
-    
-    # Construct Qlib symbols
-    def to_qlib_symbol(code):
-        code = str(code)
-        if code.startswith('6'):
-            return 'SH' + code
-        elif code.startswith('0') or code.startswith('3'):
-            return 'SZ' + code
-        else:
-            return 'BJ' + code
-    
-    candidates = {to_qlib_symbol(s['code']): s for s in stocks}
+    if override_file.exists():
+        # --- Faction 2 (OpenClaw Override) ---
+        with open(override_file, 'r', encoding='utf-8') as f:
+            pool_data = json.load(f)
+        stocks = pool_data.get('stocks', [])
+        
+        def to_qlib_symbol(code):
+            code = str(code)
+            if code.startswith('6'): return 'SH' + code
+            elif code.startswith('0') or code.startswith('3'): return 'SZ' + code
+            else: return 'BJ' + code
+            
+        candidates = {to_qlib_symbol(s['code']): s for s in stocks}
+    else:
+        # --- Faction 1 (Pure Native) ---
+        pool_data = daily_pools[latest_date]
+        for sym, info in pool_data.items():
+            candidates[sym] = info
     
     # Load ML predictions
     pred_path = WORKSPACE_DIR / "data" / "cn_stock" / "ml_predictions.pkl"
