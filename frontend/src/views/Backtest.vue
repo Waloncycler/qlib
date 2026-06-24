@@ -91,12 +91,6 @@
           ✕ Return to Backtest
         </button>
         <v-chart class="chart" :option="chartOption" :update-options="{ notMerge: true }" autoresize @click="onChartClick" />
-        <div class="absolute bottom-2 left-1/2 transform -translate-x-1/2 h-6 flex items-center justify-center z-10 pointer-events-none transition-opacity duration-300" :class="hoveredDate ? 'opacity-100' : 'opacity-0'">
-          <span class="text-[0.65rem] font-mono px-3 py-1 bg-sky-900/40 text-sky-400 rounded-full border border-sky-800/60 backdrop-blur-sm shadow-lg shadow-sky-900/20">
-            <i class="fa-solid fa-crosshairs mr-1"></i> {{ hoveredDate }}
-            <span class="text-sky-200/50 ml-1 text-[0.55rem] tracking-wide">CLICK TO VIEW TRADES</span>
-          </span>
-        </div>
       </div>
 
       <!-- Analysis Side Panel -->
@@ -706,8 +700,6 @@ const chartOption = computed(() => {
         if (params && params.length > 0) {
           const date = params[0].name
           
-          // Asynchronously update the reactive ref to avoid tracking it as a dependency
-          // of this computed property, which would cause an infinite loop of chart redraws.
           setTimeout(() => {
             if (hoveredDate.value !== date) {
               hoveredDate.value = date
@@ -716,8 +708,8 @@ const chartOption = computed(() => {
 
           let tooltipHtml = `<div style="font-weight:bold;margin-bottom:4px;color:#38bdf8;">${date}</div>`
           params.forEach(p => {
-            const val = p.value !== undefined && p.value !== null ? p.value : 0
-            const color = val >= 0 ? '#34d399' : '#f87171' // Green or red
+            const val = p.value !== undefined && p.value !== null ? Number(p.value) : 0
+            const color = val >= 0 ? '#ef4444' : '#10b981' // Red for positive, Green for negative
             tooltipHtml += `<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:4px;">
                               <span>${p.marker} ${p.seriesName}</span>
                               <span style="font-family:monospace; font-weight:bold; color:${color}">${val > 0 ? '+' : ''}${val.toFixed(2)}%</span>
@@ -734,20 +726,23 @@ const chartOption = computed(() => {
       top: 5
     },
     axisPointer: {
-      link: { xAxisIndex: 'all' }
+      link: [{ xAxisIndex: 'all' }]
     },
     grid: [
-      { left: '5%', right: '4%', top: '10%', bottom: '15%' }
+      { left: '5%', right: '4%', top: '10%', height: '65%' },
+      { left: '5%', right: '4%', top: '80%', height: '15%' }
     ],
     xAxis: [
-      { type: 'category', boundaryGap: false, axisLabel: { color: '#9ca3af' }, data: [] }
+      { type: 'category', gridIndex: 0, boundaryGap: false, axisLabel: { show: false }, axisTick: { show: false }, axisLine: { lineStyle: { color: '#374151' } }, data: [] },
+      { type: 'category', gridIndex: 1, boundaryGap: true, axisLabel: { color: '#9ca3af' }, axisLine: { lineStyle: { color: '#374151' } }, data: [] }
     ],
     yAxis: [
-      { type: 'value', axisLabel: { color: '#9ca3af', formatter: '{value} %' }, splitLine: { lineStyle: { color: '#374151', type: 'dashed' } } }
+      { type: 'value', gridIndex: 0, axisLabel: { color: '#9ca3af', formatter: '{value} %' }, splitLine: { lineStyle: { color: '#374151', type: 'dashed' } } },
+      { type: 'value', gridIndex: 1, axisLabel: { show: false }, splitLine: { show: false } }
     ],
     dataZoom: [
-      { type: 'inside', start: 0, end: 100 },
-      { show: true, type: 'slider', bottom: '2%', start: 0, end: 100 }
+      { type: 'inside', xAxisIndex: [0, 1], start: 0, end: 100 },
+      { show: true, type: 'slider', xAxisIndex: [0, 1], bottom: '1%', start: 0, end: 100 }
     ],
     series: []
   }
@@ -756,63 +751,57 @@ const chartOption = computed(() => {
     return {
       ...baseBacktestOption,
       title: { text: loading.value ? 'Running backtest...' : 'No backtest data', left: 'center', top: 'center', textStyle: { color: '#9ca3af' } },
-      series: seriesNames.map(name => ({ 
-        name, 
-        type: 'line', 
-        data: [] 
-      }))
+      series: [
+        ...seriesNames.map(name => ({ name, type: 'line', data: [] })),
+        { name: 'Daily Return', type: 'bar', xAxisIndex: 1, yAxisIndex: 1, data: [] }
+      ]
     }
   }
 
   const dates = curveData.value.map(d => d.date)
   const strategySeries = curveData.value.map(d => (d.strategy * 100).toFixed(2))
   const benchSeries = curveData.value.map(d => (d.benchmark * 100).toFixed(2))
+  const dailyReturns = curveData.value.map(d => ((d.daily_return || 0) * 100).toFixed(2))
 
   baseBacktestOption.xAxis[0].data = dates
+  baseBacktestOption.xAxis[1].data = dates
 
   return {
     ...baseBacktestOption,
-    tooltip: {
-      ...baseBacktestOption.tooltip,
-      formatter: function(params) {
-        let res = '';
-        let date = '';
-        let strat = '';
-        let bench = '';
-        
-        params.forEach(p => {
-          date = p.name;
-          if (p.seriesName === 'AI Strategy Return') {
-            strat = `<span style="color:#3b82f6;font-weight:bold;">${p.value}%</span>`;
-          } else if (p.seriesName === 'Stock Buy&Hold') {
-            bench = `<span style="color:#9ca3af;">${p.value}%</span>`;
-          }
-        });
-        
-        res += `<div style="font-weight:bold;margin-bottom:4px;color:#f8fafc;">${date}</div>`;
-        if (strat) res += `Strategy Return: ${strat}<br/>`;
-        if (bench) res += `Benchmark Return: ${bench}<br/>`;
-        return res;
-      }
-    },
     series: [
       {
         name: 'AI Strategy Return',
         type: 'line',
+        xAxisIndex: 0,
+        yAxisIndex: 0,
         data: strategySeries,
-        itemStyle: { color: '#3b82f6' },
-        lineStyle: { width: 3 },
         showSymbol: false,
-        smooth: true
+        smooth: true,
+        lineStyle: { width: 3, color: '#3b82f6' },
+        itemStyle: { color: '#3b82f6' }
       },
       {
         name: 'Stock Buy&Hold',
         type: 'line',
+        xAxisIndex: 0,
+        yAxisIndex: 0,
         data: benchSeries,
-        itemStyle: { color: '#6b7280' },
-        lineStyle: { width: 2, type: 'dashed' },
         showSymbol: false,
-        smooth: true
+        smooth: true,
+        lineStyle: { width: 2, type: 'dashed', color: '#64748b' },
+        itemStyle: { color: '#64748b' }
+      },
+      {
+        name: 'Daily Return',
+        type: 'bar',
+        xAxisIndex: 1,
+        yAxisIndex: 1,
+        data: dailyReturns,
+        itemStyle: {
+          color: function(params) {
+            return params.value >= 0 ? '#ef4444' : '#10b981' // Red for positive (China style), Green for negative
+          }
+        }
       }
     ]
   }
