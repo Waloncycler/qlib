@@ -21,6 +21,7 @@ import {
   DataZoomComponent,
   MarkLineComponent,
   MarkPointComponent,
+  MarkAreaComponent,
   VisualMapComponent
 } from 'echarts/components'
 
@@ -39,6 +40,7 @@ use([
   DataZoomComponent,
   MarkLineComponent,
   MarkPointComponent,
+  MarkAreaComponent,
   VisualMapComponent
 ])
 

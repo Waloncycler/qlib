@@ -3,24 +3,23 @@
     <div class="top-control-bar glass-panel">
       <div class="controls-left">
         <div class="control-item">
-          <label>Trading Day</label>
+          <i class="fa-solid fa-calendar-days" style="color: #94a3b8;" title="Trading Day"></i>
           <select v-model="poolDate" class="mini-input" @change="fetchPool">
             <option v-for="d in validDates" :key="d" :value="d">{{ d }}</option>
           </select>
         </div>
-        <div class="control-item window-control">
-          <label>Window:</label>
-          <div class="dual-range">
-            <span class="range-hint">Pre</span>
-            <input type="range" v-model="rangePre" min="0" max="5" step="1" class="mini-slider" />
-            <span class="range-val">{{ rangePre }}</span>
-            <span class="range-hint" style="margin-left: 8px;">Post</span>
-            <input type="range" v-model="rangePost" min="0" max="5" step="1" class="mini-slider" :disabled="isLatestDate" />
-            <span class="range-val">{{ isLatestDate ? 0 : rangePost }}</span>
+        <div class="control-item window-control" style="display: flex; gap: 4px; padding: 2px 8px;">
+          <div class="dual-range" style="gap: 4px;">
+            <span class="range-hint" style="font-size: 0.7rem;">Pre</span>
+            <input type="range" v-model="rangePre" min="0" max="5" step="1" class="mini-slider" style="width: 40px;" />
+            <span class="range-val" style="font-size: 0.7rem; width: 8px;">{{ rangePre }}</span>
+            <span class="range-hint" style="margin-left: 4px; font-size: 0.7rem;">Post</span>
+            <input type="range" v-model="rangePost" min="0" max="5" step="1" class="mini-slider" style="width: 40px;" :disabled="isLatestDate" />
+            <span class="range-val" style="font-size: 0.7rem; width: 8px;">{{ isLatestDate ? 0 : rangePost }}</span>
           </div>
         </div>
-        <div class="control-item" style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-left: 12px;" @click="showPool = !showPool">
-          <span style="font-size: 0.75rem; font-weight: bold; transition: color 0.3s;" :style="{ color: showPool ? '#38bdf8' : '#94a3b8' }">Show Pool</span>
+        <div class="control-item" style="display: flex; align-items: center; gap: 4px; cursor: pointer; margin-left: 8px; white-space: nowrap;" @click="showPool = !showPool">
+          <span style="font-size: 0.75rem; font-weight: bold; transition: color 0.3s; white-space: nowrap; flex-shrink: 0;" :style="{ color: showPool ? '#38bdf8' : '#94a3b8' }">Show Pool</span>
           <div style="position: relative; display: inline-flex; height: 16px; width: 32px; border-radius: 9999px; align-items: center; padding: 0 2px; transition: all 0.3s;"
                :style="{ background: showPool ? '#0ea5e9' : '#334155', border: showPool ? 'none' : '1px solid #475569', boxShadow: showPool ? '0 0 8px rgba(14,165,233,0.5)' : 'none' }">
             <div style="height: 12px; width: 12px; border-radius: 9999px; background-color: white; transition: transform 0.3s;"
@@ -29,22 +28,37 @@
         </div>
       </div>
 
-      <div class="controls-right">
-        <div class="control-item" style="margin-right: 15px; display: flex; align-items: center; gap: 8px; cursor: pointer;" @click="enableMlFilter = !enableMlFilter; fetchResults()">
-          <span style="font-size: 0.75rem; font-weight: bold; transition: color 0.3s;" :style="{ color: enableMlFilter ? '#38bdf8' : '#94a3b8' }">ML Filter</span>
-          <div style="position: relative; display: inline-flex; height: 16px; width: 32px; border-radius: 9999px; align-items: center; padding: 0 2px; transition: all 0.3s;"
+      <div class="controls-right" style="display: flex; align-items: center; gap: 8px;">
+        <div v-if="enableMlFilter" class="control-item" style="display: flex; align-items: center; gap: 4px;">
+          <span style="font-size: 0.75rem; color: #94a3b8; font-weight: bold;">TopK:</span>
+          <input type="number" v-model="topK" @change="fetchResults" min="1" max="50" style="background: #1e293b; color: #38bdf8; border: 1px solid #334155; border-radius: 4px; font-size: 0.75rem; padding: 2px; width: 35px; outline: none; text-align: center;" />
+        </div>
+        <div v-if="enableMlFilter" class="control-item">
+          <select v-model="selectedModelVersion" @change="fetchResults" class="model-select" style="background: #1e293b; color: #38bdf8; border: 1px solid #0ea5e9; border-radius: 4px; font-size: 0.7rem; padding: 2px 4px; outline: none; cursor: pointer; max-width: 100px;">
+            <option value="v1_default">V1</option>
+            <option value="v2_open2open">V2</option>
+            <option value="v3_open2close">V3</option>
+          </select>
+        </div>
+        <div class="control-item" style="margin-right: 8px; display: flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap;" @click="enableMlFilter = !enableMlFilter; fetchResults()">
+          <span style="font-size: 0.75rem; font-weight: bold; transition: color 0.3s; white-space: nowrap; flex-shrink: 0;" :style="{ color: enableMlFilter ? '#38bdf8' : '#94a3b8' }">ML</span>
+          <div style="position: relative; display: inline-flex; height: 14px; width: 28px; border-radius: 9999px; align-items: center; padding: 0 2px; transition: all 0.3s;"
                :style="{ background: enableMlFilter ? '#0ea5e9' : '#334155', border: enableMlFilter ? 'none' : '1px solid #475569', boxShadow: enableMlFilter ? '0 0 8px rgba(14,165,233,0.5)' : 'none' }">
-            <div style="height: 12px; width: 12px; border-radius: 9999px; background-color: white; transition: transform 0.3s;"
-                 :style="{ transform: enableMlFilter ? 'translateX(16px)' : 'translateX(0)' }"></div>
+            <div style="height: 10px; width: 10px; border-radius: 9999px; background-color: white; transition: transform 0.3s;"
+                 :style="{ transform: enableMlFilter ? 'translateX(14px)' : 'translateX(0)' }"></div>
           </div>
         </div>
-        <button class="mini-btn" @click="downloadData" :disabled="downloading" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">
-          <i class="fa-solid fa-download mr-1"></i>
-          {{ downloading ? 'Downloading...' : 'Download' }}
+        <button class="mini-btn" @click="downloadData" :disabled="downloading" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 4px 10px; font-size: 0.75rem; white-space: nowrap; font-weight: bold;" title="Download Data">
+          <i class="fa-solid fa-download"></i>
+          <span style="margin-left: 6px;">{{ downloading ? '...' : 'Data' }}</span>
         </button>
-        <button class="mini-btn" @click="runIntelligentBacktest" :disabled="loading" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);">
-          <i class="fa-solid fa-play mr-1"></i>
-          {{ loading ? 'Running...' : 'Run Backtest' }}
+        <button class="mini-btn" @click="openLeaderboard" style="background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); padding: 4px 10px; font-size: 0.75rem; white-space: nowrap; font-weight: bold;" title="Leaderboard">
+          <i class="fa-solid fa-trophy"></i>
+          <span style="margin-left: 6px;">Rank</span>
+        </button>
+        <button class="mini-btn" @click="runIntelligentBacktest" :disabled="loading" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 4px 10px; font-size: 0.75rem; white-space: nowrap; font-weight: bold;" title="Run Backtest">
+          <i class="fa-solid fa-play"></i>
+          <span style="margin-left: 6px;">{{ loading ? '...' : 'Run' }}</span>
         </button>
       </div>
     </div>
@@ -96,7 +110,7 @@
       <!-- Analysis Side Panel -->
       <div class="side-panel-right" v-if="!isComparisonMode">
         <div class="glass-panel p-4 info-card" style="height: 100%; display: flex; flex-direction: column; overflow-y: auto;">
-          <h4 class="text-sky-400 font-bold mb-3"><i class="fa-solid fa-chart-line mr-2"></i> Signal Backtest Metrics</h4>
+          <h4 class="text-sky-400 font-bold mb-3">Signal Backtest Metrics</h4>
           
           <div class="metrics-row mb-3" v-if="metrics && metrics.total_return !== undefined">
             <div class="mini-metric">
@@ -135,8 +149,11 @@
           <div v-else class="text-sm text-gray-400 text-center py-4">Run backtest to see metrics</div>
 
           <!-- Concept Attribution -->
-          <h4 class="text-sky-400 font-bold mt-3 mb-2"><i class="fa-solid fa-tags mr-2"></i> Top Concepts</h4>
-          <div class="signals-scroll">
+          <h4 class="text-sky-400 font-bold mt-3 mb-2" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between;" @click="showTopConcepts = !showTopConcepts">
+            <div>Top Concepts</div>
+            <i class="fa-solid" :class="showTopConcepts ? 'fa-chevron-down' : 'fa-chevron-right'" style="font-size: 0.75rem; color: #64748b;"></i>
+          </h4>
+          <div class="signals-scroll" v-show="showTopConcepts">
             <div v-if="conceptAttribution && conceptAttribution.length > 0">
               <div v-for="(c, idx) in conceptAttribution.slice(0, 15)" :key="idx" 
                    class="mb-2 p-2 rounded border" 
@@ -161,7 +178,7 @@
           <!-- Today's ML Top Picks (Chip Style, matching Daily Trades) -->
           <div v-if="todaysPicks" class="mb-2 p-2 bg-slate-800/50 rounded border border-slate-700/50">
             <div class="text-xs text-gray-400 font-bold mb-1">
-              <i class="fa-solid fa-bolt mr-1 text-yellow-400"></i> Today's Top Picks
+              Today's Top Picks
               <span class="text-gray-600">· {{ todaysPicks.date }}</span>
             </div>
             <div class="flex flex-wrap gap-1">
@@ -170,7 +187,10 @@
                     :style="{ background: pick.score > 0 ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.1)', color: pick.score > 0 ? '#34d399' : '#f87171' }">
                 {{ pick.name }}
                 <span class="text-sky-400/60 ml-1" style="font-size: 0.55rem;">{{ pick.theme ? pick.theme.split('/')[0] : '' }}</span>
-                <span class="ml-1 font-mono" :class="pick.score > 0 ? 'text-emerald-400' : 'text-red-400'">
+                <span v-if="liveQuotes[pick.symbol]" class="ml-1 font-mono font-bold animate-pulse" :class="liveQuotes[pick.symbol].pct_change >= 0 ? 'text-emerald-400' : 'text-red-400'">
+                  {{ liveQuotes[pick.symbol].pct_change >= 0 ? '+' : '' }}{{ liveQuotes[pick.symbol].pct_change.toFixed(2) }}%
+                </span>
+                <span v-else class="ml-1 font-mono" :class="pick.score > 0 ? 'text-emerald-400' : 'text-red-400'">
                   {{ pick.score > 0 ? '+' : '' }}{{ pick.score }}
                 </span>
               </span>
@@ -178,18 +198,33 @@
           </div>
 
           <!-- Daily Holdings -->
-          <h4 class="text-sky-400 font-bold mt-3 mb-2"><i class="fa-solid fa-list mr-2"></i> Daily Trades</h4>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; margin-bottom: 8px; width: 100%;">
+            <div style="color: #38bdf8; font-weight: bold; font-size: 1rem; text-transform: uppercase;">
+              Daily Trades
+            </div>
+            <div style="position: relative; display: flex; align-items: center; justify-content: center; width: 12px; height: 12px; margin-left: 8px;" :title="isMarketOpenRef ? (isLiveSyncing ? 'Syncing...' : 'Market Open - Auto Sync Active') : 'Market Closed'">
+              <template v-if="isMarketOpenRef">
+                <span class="animate-ping" style="position: absolute; display: inline-flex; height: 10px; width: 10px; border-radius: 9999px; background-color: #34d399; opacity: 0.75;"></span>
+                <span style="position: relative; display: inline-flex; border-radius: 9999px; height: 8px; width: 8px; background-color: #10b981;"></span>
+              </template>
+              <template v-else>
+                <span style="position: relative; display: inline-flex; border-radius: 9999px; height: 8px; width: 8px; background-color: #ef4444; opacity: 0.8;"></span>
+              </template>
+            </div>
+          </div>
           <div class="signals-scroll">
             <div v-if="holdings && holdings.length > 0">
               <div v-for="(h, idx) in reversedHoldings" :key="idx" 
                    :id="'trade-card-' + h.date"
                    class="mb-2 p-2 rounded border transition-all duration-500"
                    :class="activeDate === h.date ? 'bg-sky-900/40 border-sky-400/80 shadow-[0_0_15px_rgba(56,189,248,0.2)] ring-1 ring-sky-400 scale-[1.02]' : 'bg-slate-800/50 border-slate-700/50'">
-                <div class="text-xs font-bold mb-1 transition-colors duration-500" :class="activeDate === h.date ? 'text-sky-300' : 'text-gray-400'">
-                  {{ h.date }} 
-                  <span class="text-gray-600">· {{ (h.entries?.length || 0) + (h.holds?.length || 0) }} held</span>
-                  <span v-if="h.daily_return !== undefined" class="ml-2 font-mono" :class="h.daily_return > 0 ? 'text-emerald-400' : (h.daily_return < 0 ? 'text-red-400' : 'text-gray-500')">
-                    {{ h.daily_return > 0 ? '+' : '' }}{{ (h.daily_return * 100).toFixed(2) }}%
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: nowrap; white-space: nowrap; width: 100%; margin-bottom: 4px; font-size: 0.75rem; font-weight: bold; transition: color 0.5s;" :class="activeDate === h.date ? 'text-sky-300' : 'text-gray-400'">
+                  <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    {{ h.date }} <span style="color: #4b5563;">· {{ (h.entries?.length || 0) + (h.holds?.length || 0) }} held</span>
+                  </div>
+                  <span style="white-space: nowrap; flex-shrink: 0; margin-left: 8px;" :class="getLiveDailyReturn(h) > 0 ? 'text-emerald-400' : (getLiveDailyReturn(h) < 0 ? 'text-red-400' : 'text-slate-500')">
+                    <span v-if="holdings && holdings.length > 0 && h.date === holdings[holdings.length-1].date && Object.keys(liveQuotes).length > 0" style="font-size: 0.6rem; color: #38bdf8; margin-right: 4px; font-weight: normal;" class="animate-pulse">LIVE</span>
+                    {{ getLiveDailyReturn(h) > 0 ? '+' : '' }}{{ (getLiveDailyReturn(h) * 100).toFixed(2) }}%
                   </span>
                 </div>
                 
@@ -198,7 +233,10 @@
                   <span v-for="sym in h.entries" :key="'e'+sym" class="stock-tag" style="padding: 1px 5px; font-size: 0.65rem; background: rgba(16,185,129,0.2); color: #34d399; border: 1px solid rgba(16,185,129,0.3);">
                     ▲ {{ getName(h.holdings, sym) || sym }} 
                     <span v-if="getScore(h.holdings, sym)" class="text-sky-300 ml-1">({{ getScore(h.holdings, sym) }})</span>
-                    <span v-if="getReturn(h.holdings, sym) !== undefined && getReturn(h.holdings, sym) !== null" class="ml-1" :class="getReturn(h.holdings, sym) > 0 ? 'text-emerald-400' : (getReturn(h.holdings, sym) < 0 ? 'text-red-400' : 'text-gray-500')">
+                    <span v-if="liveQuotes[sym] && getLivePnL(sym, 'entry', h.date) !== null" class="ml-1 font-mono font-bold animate-pulse" :class="getLivePnL(sym, 'entry', h.date) >= 0 ? 'text-emerald-400' : 'text-red-400'">
+                      PnL: {{ getLivePnL(sym, 'entry', h.date) >= 0 ? '+' : '' }}{{ getLivePnL(sym, 'entry', h.date).toFixed(2) }}%
+                    </span>
+                    <span v-else-if="getReturn(h.holdings, sym) !== undefined && getReturn(h.holdings, sym) !== null" class="ml-1" :class="getReturn(h.holdings, sym) > 0 ? 'text-emerald-400' : (getReturn(h.holdings, sym) < 0 ? 'text-red-400' : 'text-gray-500')">
                       {{ getReturn(h.holdings, sym) > 0 ? '+' : '' }}{{ (getReturn(h.holdings, sym) * 100).toFixed(2) }}%
                     </span>
                   </span>
@@ -209,7 +247,10 @@
                   <span v-for="sym in h.holds" :key="'h'+sym" class="stock-tag" style="padding: 1px 5px; font-size: 0.65rem; background: rgba(100,116,139,0.2); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3);">
                     ● {{ getName(h.holdings, sym) || sym }} 
                     <span v-if="getScore(h.holdings, sym)" class="text-sky-300/70 ml-1">({{ getScore(h.holdings, sym) }})</span>
-                    <span v-if="getReturn(h.holdings, sym) !== undefined && getReturn(h.holdings, sym) !== null" class="ml-1" :class="getReturn(h.holdings, sym) > 0 ? 'text-emerald-400' : (getReturn(h.holdings, sym) < 0 ? 'text-red-400' : 'text-gray-500')">
+                    <span v-if="liveQuotes[sym] && getLivePnL(sym, 'hold', h.date) !== null" class="ml-1 font-mono font-bold animate-pulse" :class="getLivePnL(sym, 'hold', h.date) >= 0 ? 'text-emerald-400' : 'text-red-400'">
+                      PnL: {{ getLivePnL(sym, 'hold', h.date) >= 0 ? '+' : '' }}{{ getLivePnL(sym, 'hold', h.date).toFixed(2) }}%
+                    </span>
+                    <span v-else-if="getReturn(h.holdings, sym) !== undefined && getReturn(h.holdings, sym) !== null" class="ml-1" :class="getReturn(h.holdings, sym) > 0 ? 'text-emerald-400' : (getReturn(h.holdings, sym) < 0 ? 'text-red-400' : 'text-gray-500')">
                       {{ getReturn(h.holdings, sym) > 0 ? '+' : '' }}{{ (getReturn(h.holdings, sym) * 100).toFixed(2) }}%
                     </span>
                   </span>
@@ -219,16 +260,19 @@
                 <div v-if="h.exits && h.exits.length" class="flex flex-wrap gap-1 mb-1">
                   <span v-for="sym in h.exits" :key="'x'+sym" class="stock-tag" style="padding: 1px 5px; font-size: 0.65rem; background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3);">
                     ▼ {{ getName(h.holdings, sym) || sym }}
-                    <span v-if="getReturn(h.holdings, sym) !== undefined && getReturn(h.holdings, sym) !== null" class="ml-1" :class="getReturn(h.holdings, sym) > 0 ? 'text-emerald-400' : (getReturn(h.holdings, sym) < 0 ? 'text-red-400' : 'text-gray-500')">
-                      {{ getReturn(h.holdings, sym) > 0 ? '+' : '' }}{{ (getReturn(h.holdings, sym) * 100).toFixed(2) }}%
+                    <span v-if="getReturn(h.holdings, sym) !== undefined && getReturn(h.holdings, sym) !== null" class="ml-1 font-bold" :class="getReturn(h.holdings, sym) > 0 ? 'text-emerald-400' : (getReturn(h.holdings, sym) < 0 ? 'text-red-400' : 'text-gray-500')">
+                      Settled: {{ getReturn(h.holdings, sym) > 0 ? '+' : '' }}{{ (getReturn(h.holdings, sym) * 100).toFixed(2) }}%
                     </span>
                   </span>
                 </div>
                 
                 <!-- Detailed Trades (交割单) -->
                 <div v-if="h.trades && h.trades.length" class="mt-2 text-[0.7rem] border-t border-slate-700/50 pt-1">
-                  <div class="text-gray-500 mb-1">Transaction Details (交割单)</div>
-                  <table class="w-full text-left border-collapse" style="color: #9ca3af;">
+                  <div class="text-gray-500 mb-1" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between;" @click="expandedTrades[h.date] = !expandedTrades[h.date]">
+                    <span>Transaction Details (交割单)</span>
+                    <i class="fa-solid" :class="expandedTrades[h.date] ? 'fa-chevron-down' : 'fa-chevron-right'" style="font-size: 0.75rem; color: #64748b;"></i>
+                  </div>
+                  <table v-show="expandedTrades[h.date]" class="w-full text-left border-collapse" style="color: #9ca3af;">
                     <thead>
                       <tr>
                         <th class="font-normal pb-1 border-b border-slate-700/50">Symbol</th>
@@ -279,11 +323,56 @@
     <div v-if="error" class="error-panel">
       <p>{{ error }}</p>
     </div>
+    
+    <!-- Leaderboard Modal -->
+    <div v-if="showLeaderboard" class="modal-overlay" @click.self="showLeaderboard = false">
+      <div class="leaderboard-modal glass-panel">
+        <div class="modal-header">
+          <h3><i class="fa-solid fa-trophy" style="color: #facc15; margin-right: 8px;"></i> Strategy Leaderboard</h3>
+          <button class="close-btn" @click="showLeaderboard = false"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body">
+          <div v-if="leaderboardLoading" class="loading-state">
+            <div class="spinner"></div>
+            <span>Loading leaderboard...</span>
+          </div>
+          <table v-else class="leaderboard-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Model Version</th>
+                <th>Top K</th>
+                <th>Annual Return</th>
+                <th>Max Drawdown</th>
+                <th>Sharpe Ratio</th>
+                <th>Win Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in leaderboardData" :key="item.model_version + item.top_k" :class="{'top-3': item.rank <= 3, 'clickable-row': true}" @click="loadStrategy(item)">
+                <td>
+                  <span v-if="item.rank === 1" style="color: #facc15;">1</span>
+                  <span v-else-if="item.rank === 2" style="color: #94a3b8;">2</span>
+                  <span v-else-if="item.rank === 3" style="color: #b45309;">3</span>
+                  <span v-else>{{ item.rank }}</span>
+                </td>
+                <td style="font-weight: 600; color: #e0f2fe;">{{ item.model_version }}</td>
+                <td style="color: #38bdf8;">{{ item.top_k }}</td>
+                <td :style="{color: parseFloat(item.annual_return) > 0 ? '#34d399' : '#f87171', fontWeight: 'bold'}">{{ item.annual_return }}</td>
+                <td style="color: #f87171;">{{ item.max_drawdown }}</td>
+                <td style="color: #a78bfa;">{{ item.sharpe_ratio }}</td>
+                <td style="color: #60a5fa;">{{ item.win_rate }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 
@@ -314,7 +403,14 @@ use([
 ])
 
 const loading = ref(false)
-const enableMlFilter = ref(false)
+const enableMlFilter = ref(true)
+const selectedModelVersion = ref('v1_default')
+const topK = ref(10)
+const showLeaderboard = ref(false)
+const leaderboardLoading = ref(false)
+const leaderboardData = ref([])
+const showTopConcepts = ref(false)
+const expandedTrades = ref({})
 const todaysPicks = ref(null)
 const loadingMsg = ref('Loading...')
 const downloading = ref(false)
@@ -494,13 +590,19 @@ const isST = (name) => {
 const fetchValidDates = async () => {
   try {
     const res = await axios.get('/api/backtest/pool/dates')
-    validDates.value = res.data.dates
-    if (validDates.value.length > 0) {
-      poolDate.value = validDates.value[0]
-      fetchPool()
+    if (res.data.dates) {
+      validDates.value = res.data.dates
+      if (validDates.value.length > 0 && !poolDate.value) {
+        poolDate.value = validDates.value[0]
+        fetchPool()
+      }
     }
   } catch (err) {
-    console.error("Failed to fetch valid dates:", err)
+    if (err.response && err.response.status === 502) {
+      // Suppress 502 during hot-reload
+    } else {
+      console.error("Failed to fetch valid dates:", err)
+    }
   }
 }
 
@@ -519,10 +621,125 @@ const fetchPool = async () => {
 
 const form = ref({
   symbol: 'SH600519',
-  startDate: '2023-01-01',
-  endDate: new Date().toISOString().split('T')[0],
-  strategy: 'ai_timing'
+  startDate: '2024-01-01',
+  endDate: '2024-12-31'
 })
+
+const isLiveSyncing = ref(false)
+const liveQuotes = ref({})
+
+const syncLiveQuotes = async () => {
+  if (isLiveSyncing.value) return
+  isLiveSyncing.value = true
+  
+  try {
+    const symbols = new Set()
+    
+    // 1. Add Today's Top Picks
+    if (todaysPicks.value && todaysPicks.value.top_picks) {
+      todaysPicks.value.top_picks.forEach(p => symbols.add(p.symbol))
+    }
+    
+    // 2. Add currently selected Daily Trades (if available)
+    const activeDateStr = activeDate.value
+    if (activeDateStr && holdings.value) {
+      const activeH = holdings.value.find(h => h.date === activeDateStr)
+      if (activeH) {
+        if (activeH.entries) activeH.entries.forEach(s => symbols.add(s))
+        if (activeH.holds) activeH.holds.forEach(s => symbols.add(s))
+        if (activeH.exits) activeH.exits.forEach(s => symbols.add(s))
+      }
+    }
+    
+    const symArr = Array.from(symbols)
+    if (symArr.length === 0) return
+    
+    const res = await axios.post('/api/backtest/live-quotes', { symbols: symArr })
+    if (res.data.status === 'success') {
+      liveQuotes.value = { ...liveQuotes.value, ...res.data.data }
+    }
+  } catch (err) {
+    console.error("Failed to sync live quotes:", err)
+  } finally {
+    isLiveSyncing.value = false
+  }
+}
+
+const getLivePnL = (sym, type, dateStr) => {
+  const quote = liveQuotes.value[sym]
+  if (!quote) return null
+  
+  let isLatest = false
+  if (holdings.value && holdings.value.length > 0) {
+    isLatest = dateStr === holdings.value[holdings.value.length - 1].date
+  }
+  
+  let pnl = quote.pct_change
+  
+  if (isLatest) {
+    if (type === 'entry' && quote.open_price > 0) {
+      pnl = (quote.price - quote.open_price) / quote.open_price * 100
+    } else if (type === 'exit' && quote.yesterday_close > 0) {
+      pnl = (quote.open_price - quote.yesterday_close) / quote.yesterday_close * 100
+    }
+  }
+  
+  return isNaN(pnl) ? 0 : pnl
+}
+
+const getLiveDailyReturn = (h) => {
+  let isLatest = false
+  if (holdings.value && holdings.value.length > 0) {
+    isLatest = h.date === holdings.value[holdings.value.length - 1].date
+  }
+  
+  if (isLatest && Object.keys(liveQuotes.value).length > 0) {
+    let totalPnL = 0
+    let count = 0
+    
+    if (h.entries) {
+      h.entries.forEach(sym => {
+        const pnl = getLivePnL(sym, 'entry', h.date)
+        if (pnl !== null) {
+          totalPnL += pnl
+          count++
+        }
+      })
+    }
+    
+    if (h.holds) {
+      h.holds.forEach(sym => {
+        const pnl = getLivePnL(sym, 'hold', h.date)
+        if (pnl !== null) {
+          totalPnL += pnl
+          count++
+        }
+      })
+    }
+    
+    if (h.exits) {
+      h.exits.forEach(sym => {
+        const ret = getReturn(h.holdings, sym)
+        if (ret !== undefined && ret !== null) {
+          totalPnL += (ret * 100)
+          count++
+        }
+      })
+    }
+    
+    // The divisor is the number of active components originally held (holds + exits). 
+    // Since it's a substitution strategy, count/2 roughly equals the portfolio size if entries == exits.
+    // To be precise for equal weight, the base capital was spread across (holds + exits).
+    let baseCount = (h.holds ? h.holds.length : 0) + (h.exits ? h.exits.length : 0)
+    if (baseCount === 0 && count > 0) baseCount = count // fallback
+    
+    if (baseCount > 0) {
+      return totalPnL / baseCount / 100.0
+    }
+  }
+  
+  return h.daily_return
+}
 
 const getComparisonOption = () => {
   const allData = themeStocksData.value
@@ -758,28 +975,112 @@ const chartOption = computed(() => {
     }
   }
 
-  const dates = curveData.value.map(d => d.date)
-  const strategySeries = curveData.value.map(d => (d.strategy * 100).toFixed(2))
-  const benchSeries = curveData.value.map(d => (d.benchmark * 100).toFixed(2))
-  const dailyReturns = curveData.value.map(d => ((d.daily_return || 0) * 100).toFixed(2))
+  let activeData = curveData.value
+  
+  // Find the first index where the strategy actually has a position or non-zero return
+  const firstActiveIdx = activeData.findIndex(d => (d.holdings_count && d.holdings_count > 0) || Math.abs(d.daily_return || 0) > 0.000001 || Math.abs(d.strategy || 0) > 0.000001)
+  
+  if (firstActiveIdx > 0) {
+    // Keep one day before the first active day so the curve starts exactly at 0
+    const startIdx = Math.max(0, firstActiveIdx - 1)
+    activeData = activeData.slice(startIdx)
+    
+    // Re-baseline benchmark so it starts at 0%
+    const baseBench = activeData[0].benchmark || 0
+    activeData = activeData.map(d => ({
+      ...d,
+      benchmark: (1 + (d.benchmark || 0)) / (1 + baseBench) - 1
+    }))
+  }
+
+  const dates = activeData.map(d => d.date)
+  const strategySeries = activeData.map(d => ((d.strategy || 0) * 100).toFixed(2))
+  const benchSeries = activeData.map(d => ((d.benchmark || 0) * 100).toFixed(2))
+  const dailyReturns = activeData.map(d => ((d.daily_return || 0) * 100).toFixed(2))
+
+  // Inject LIVE data into the last data point if applicable
+  if (holdings.value && holdings.value.length > 0 && curveData.value.length > 0) {
+    const lastHolding = holdings.value[holdings.value.length - 1]
+    if (dates[dates.length - 1] === lastHolding.date && Object.keys(liveQuotes.value).length > 0) {
+      const liveDailyRet = getLiveDailyReturn(lastHolding)
+      dailyReturns[dailyReturns.length - 1] = (liveDailyRet * 100).toFixed(2)
+      
+      if (curveData.value.length > 1) {
+        const prevCumulative = curveData.value[curveData.value.length - 2].strategy
+        const newCumulative = (1 + prevCumulative) * (1 + liveDailyRet) - 1
+        strategySeries[strategySeries.length - 1] = (newCumulative * 100).toFixed(2)
+      } else {
+        strategySeries[strategySeries.length - 1] = (liveDailyRet * 100).toFixed(2)
+      }
+    }
+  }
 
   baseBacktestOption.xAxis[0].data = dates
   baseBacktestOption.xAxis[1].data = dates
 
+  const strategySeriesObj = {
+    name: 'AI Strategy Return',
+    type: 'line',
+    xAxisIndex: 0,
+    yAxisIndex: 0,
+    data: strategySeries,
+    showSymbol: false,
+    smooth: true,
+    lineStyle: { width: 3, color: '#3b82f6' },
+    itemStyle: { color: '#3b82f6' }
+  }
+
+  if (metrics.value && metrics.value.drawdown_periods && metrics.value.drawdown_periods.length > 0) {
+    strategySeriesObj.markArea = {
+      silent: true,
+      itemStyle: {
+        color: 'rgba(239, 68, 68, 0.15)',
+        borderWidth: 1,
+        borderColor: 'rgba(239, 68, 68, 0.5)',
+        borderType: 'dashed'
+      },
+      data: metrics.value.drawdown_periods.map(dd => [
+        {
+          name: `回撤 ${(dd.drawdown * 100).toFixed(2)}%`,
+          xAxis: dd.start,
+          label: {
+            show: true,
+            position: 'insideTop',
+            color: '#f87171',
+            fontSize: 12
+          }
+        },
+        { xAxis: dd.end }
+      ])
+    }
+  } else if (metrics.value && metrics.value.max_drawdown_start && metrics.value.max_drawdown_end) {
+    strategySeriesObj.markArea = {
+      silent: true,
+      itemStyle: {
+        color: 'rgba(239, 68, 68, 0.15)',
+        borderWidth: 1,
+        borderColor: 'rgba(239, 68, 68, 0.5)',
+        borderType: 'dashed'
+      },
+      label: {
+        position: 'insideTop',
+        color: '#f87171',
+        fontSize: 12,
+        formatter: `回撤 ${(metrics.value.max_drawdown * 100).toFixed(2)}%`
+      },
+      data: [
+        [
+          { xAxis: metrics.value.max_drawdown_start },
+          { xAxis: metrics.value.max_drawdown_end }
+        ]
+      ]
+    }
+  }
+
   return {
     ...baseBacktestOption,
     series: [
-      {
-        name: 'AI Strategy Return',
-        type: 'line',
-        xAxisIndex: 0,
-        yAxisIndex: 0,
-        data: strategySeries,
-        showSymbol: false,
-        smooth: true,
-        lineStyle: { width: 3, color: '#3b82f6' },
-        itemStyle: { color: '#3b82f6' }
-      },
+      strategySeriesObj,
       {
         name: 'Stock Buy&Hold',
         type: 'line',
@@ -847,15 +1148,21 @@ const fetchResults = async () => {
   loadingMsg.value = 'Loading cached results...'
   error.value = null
   try {
-    const res = await axios.get(`/api/backtest/results?enable_ml_filter=${enableMlFilter.value}`)
+    const res = await axios.get(`/api/backtest/results?enable_ml_filter=${enableMlFilter.value}&model_version=${selectedModelVersion.value}&top_k=${topK.value}`)
     if (res.data.status === 'success') {
       metrics.value = res.data.data.metrics || null
       curveData.value = res.data.data.curve || null
       holdings.value = res.data.data.holdings || []
       conceptAttribution.value = res.data.data.concept_attribution || []
     }
+    // Refresh today's picks with matching parameters
+    await fetchTodaysPicks()
   } catch (err) {
-    console.error("Failed to fetch backtest results:", err)
+    if (err.response && err.response.status === 502) {
+      // Suppress 502 during hot-reload
+    } else {
+      console.error("Failed to fetch backtest results:", err)
+    }
   } finally {
     loading.value = false
   }
@@ -883,12 +1190,13 @@ const runIntelligentBacktest = async () => {
   loadingMsg.value = enableMlFilter.value ? 'Running ML Hybrid Backtest...' : 'Running Signal Backtest...'
   error.value = null
   try {
-    const res = await axios.post(`/api/backtest/intelligent?enable_ml_filter=${enableMlFilter.value}`, {}, { timeout: 600000 })
+    const res = await axios.post(`/api/backtest/intelligent?enable_ml_filter=${enableMlFilter.value}&model_version=${selectedModelVersion.value}&top_k=${topK.value}`, {}, { timeout: 600000 })
     if (res.data.status === 'success') {
       metrics.value = res.data.data.metrics
       curveData.value = res.data.data.curve
       holdings.value = res.data.data.holdings || []
       conceptAttribution.value = res.data.data.concept_attribution || []
+      await fetchTodaysPicks()
     } else {
       error.value = res.data.message || 'Unknown error occurred.'
     }
@@ -898,6 +1206,40 @@ const runIntelligentBacktest = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const openLeaderboard = async () => {
+  showLeaderboard.value = true
+  leaderboardLoading.value = true
+  try {
+    const res = await axios.get('/api/backtest/leaderboard')
+    if (res.data && res.data.status === 'success') {
+      leaderboardData.value = res.data.data
+    } else {
+      console.error("Leaderboard fetch failed:", res.data)
+      leaderboardData.value = []
+    }
+  } catch (err) {
+    console.error("Failed to load leaderboard:", err)
+    leaderboardData.value = []
+  } finally {
+    leaderboardLoading.value = false
+  }
+}
+
+const loadStrategy = (item) => {
+  // Check if it's ML or Signal
+  // The filename format from service: "_ml_{model_version}_top{top_k}"
+  // Wait, the API only lists ML models for now since we only saved _ml_*
+  enableMlFilter.value = true
+  selectedModelVersion.value = item.model_version
+  topK.value = item.top_k
+  
+  // Close leaderboard modal
+  showLeaderboard.value = false
+  
+  // Automatically trigger fetch/backtest for this strategy
+  runIntelligentBacktest()
 }
 
 const getScore = (holdingsList, symbol) => {
@@ -913,26 +1255,70 @@ const getReturn = (holdingsList, symbol) => {
 }
 
 const getName = (holdingsList, symbol) => {
-  if (!holdingsList) return symbol;
-  const item = holdingsList.find(h => h.symbol === symbol);
-  return item && item.name ? item.name : symbol;
+  // 1. Try Live Quotes
+  if (liveQuotes.value && liveQuotes.value[symbol] && liveQuotes.value[symbol].name) {
+    return liveQuotes.value[symbol].name;
+  }
+  
+  // 2. Try Today's Picks
+  if (todaysPicks.value && todaysPicks.value.top_picks) {
+    const pick = todaysPicks.value.top_picks.find(p => p.symbol === symbol);
+    if (pick && pick.name) return pick.name;
+  }
+
+  // 3. Try Holdings List
+  if (holdingsList) {
+    const item = holdingsList.find(h => h.symbol === symbol);
+    if (item && item.name && item.name !== symbol) return item.name;
+  }
+  
+  return symbol;
 }
 
 const fetchTodaysPicks = async () => {
   try {
-    const res = await axios.get('/api/backtest/todays-picks')
+    const res = await axios.get(`/api/backtest/todays-picks?model_version=${selectedModelVersion.value}&top_k=${topK.value}`)
     if (res.data && res.data.status === 'success') {
       todaysPicks.value = res.data
+    } else {
+      todaysPicks.value = null
     }
   } catch (err) {
     console.error("Failed to fetch todays picks:", err)
+    todaysPicks.value = null
   }
 }
+
+const isMarketOpen = () => {
+  const now = new Date()
+  const hours = now.getHours()
+  const minutes = now.getMinutes()
+  const time = hours * 100 + minutes
+  // 09:30 to 11:30 and 13:00 to 15:00
+  return (time >= 930 && time <= 1130) || (time >= 1300 && time <= 1500)
+}
+
+const isMarketOpenRef = ref(isMarketOpen())
+let syncInterval = null
 
 onMounted(() => {
   fetchResults()
   fetchValidDates()
-  fetchTodaysPicks()
+
+  syncInterval = setInterval(() => {
+    isMarketOpenRef.value = isMarketOpen()
+    if (isMarketOpenRef.value && !isLiveSyncing.value) {
+      syncLiveQuotes()
+    }
+  }, 30000)
+
+  if (isMarketOpenRef.value) {
+    syncLiveQuotes()
+  }
+})
+
+onUnmounted(() => {
+  if (syncInterval) clearInterval(syncInterval)
 })
 </script>
 
@@ -947,17 +1333,30 @@ onMounted(() => {
 }
 
 .top-control-bar {
-  padding: 8px 16px;
+  padding: 6px 12px;
   display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
   justify-content: space-between;
   align-items: center;
   border-radius: 8px;
+  overflow-x: auto;
+}
+
+.top-control-bar::-webkit-scrollbar {
+  height: 4px;
+}
+.top-control-bar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
 }
 
 .controls-left, .controls-right {
   display: flex;
-  gap: 16px;
+  flex-wrap: nowrap;
+  gap: 8px;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .control-item {
@@ -1370,5 +1769,111 @@ onMounted(() => {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.leaderboard-modal {
+  width: 90%;
+  max-width: 900px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #f8fafc;
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.close-btn:hover {
+  color: #ef4444;
+}
+
+.modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.leaderboard-table th {
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #9ca3af;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.leaderboard-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.95rem;
+}
+
+.leaderboard-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.top-3 td {
+  background: rgba(250, 204, 21, 0.05);
+}
+
+.clickable-row {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.clickable-row:hover td {
+  background: rgba(59, 130, 246, 0.15) !important;
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+  color: #9ca3af;
 }
 </style>

@@ -2013,3 +2013,130 @@ start.sh: line 65: 20370 Killed: 9               "$PROJECT_ROOT/.venv/bin/python
 10:12:15 PM [vite] (client) hmr update /src/views/Backtest.vue
 10:12:26 PM [vite] (client) hmr update /src/views/Backtest.vue
 10:14:49 PM [vite] (client) hmr update /src/views/Backtest.vue
+10:18:25 PM [vite] (client) hmr update /src/views/Backtest.vue
+10:19:50 PM [vite] (client) hmr update /src/views/Backtest.vue
+10:20:43 PM [vite] (client) hmr update /src/views/Backtest.vue
+10:22:22 PM [vite] (client) hmr update /src/views/Backtest.vue
+10:34:43 PM [vite] (client) hmr update /src/views/Backtest.vue
+10:36:27 PM [vite] (client) hmr update /src/views/Backtest.vue
+11:23:23 PM [vite] (client) [console.error] Failed to fetch todays picks: AxiosError: Request failed with status code 500
+    at settle (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:1738:14)
+    at XMLHttpRequest.onloadend (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:2091:4)
+11:26:06 PM [vite] (client) [console.error] Failed to fetch todays picks: AxiosError: Request failed with status code 500
+    at settle (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:1738:14)
+    at XMLHttpRequest.onloadend (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:2091:4)
+11:41:37 PM [vite] Internal server error: [vue/compiler-sfc] Missing semicolon. (526:12)
+
+/Users/walox/qlib/frontend/src/views/Backtest.vue
+814|    }
+815|          type: 'line',
+816|          data: strategySeries,
+   |              ^
+817|          itemStyle: { color: '#3b82f6' },
+818|          lineStyle: { width: 3 },
+  Plugin: vite:vue
+  File: /Users/walox/qlib/frontend/src/views/Backtest.vue:526:12
+  224 |                  <!-- Exits -->
+  225 |                  <div v-if="h.exits && h.exits.length" class="flex flex-wrap gap-1 mb-1">
+  226 |  ...font-size: 0.65rem; background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3);">
+      |                                                                 ^
+  227 |                      ▼ {{ getName(h.holdings, sym) || sym }}
+  228 |                      <span v-if="getReturn(h.holdings, sym) !== undefined && getReturn(h.holdings, sym) !== null" clas...
+      at constructor (/Users/walox/qlib/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at Parser.raise (/Users/walox/qlib/frontend/node_modules/@babel/parser/lib/index.js:6616:19)
+      at Parser.semicolon (/Users/walox/qlib/frontend/node_modules/@babel/parser/lib/index.js:6912:10)
+      at Parser.parseExpressionStatement (/Users/walox/qlib/frontend/node_modules/@babel/parser/lib/index.js:13302:10)
+      at Parser.parseStatementContent (/Users/walox/qlib/frontend/node_modules/@babel/parser/lib/index.js:12916:19)
+      at Parser.parseStatementLike (/Users/walox/qlib/frontend/node_modules/@babel/parser/lib/index.js:12784:17)
+      at Parser.parseStatement (/Users/walox/qlib/frontend/node_modules/@babel/parser/lib/index.js:12777:17)
+      at Parser.parseLabeledStatement (/Users/walox/qlib/frontend/node_modules/@babel/parser/lib/index.js:13295:95)
+      at Parser.parseStatementContent (/Users/walox/qlib/frontend/node_modules/@babel/parser/lib/index.js:12914:19)
+      at Parser.parseStatementLike (/Users/walox/qlib/frontend/node_modules/@babel/parser/lib/index.js:12784:17)
+11:41:37 PM [vite] (client) [console.warn] [Vue Router warn]: uncaught error during route navigation:
+11:41:37 PM [vite] (client) [console.error] TypeError: Failed to fetch dynamically imported module: http://localhost:28457/src/views/Backtest.vue?t=1782311787251
+11:41:37 PM [vite] (client) [console.warn] [Vue Router warn]: Unexpected error when starting the router: TypeError: Failed to fetch dynamically imported module: http://localhost:28457/src/views/Backtest.vue?t=1782311787251
+11:42:00 PM [vite] (client) hmr update /src/views/Backtest.vue
+11:42:01 PM [vite] (client) [console.error] Failed to fetch todays picks: AxiosError: Request failed with status code 500
+    at settle (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:1738:14)
+    at XMLHttpRequest.onloadend (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:2091:4)
+11:42:05 PM [vite] (client) [Unhandled error] TypeError: val.toFixed is not a function
+ > src/views/Backtest.vue:721:128
+    719 |              tooltipHtml += `<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; ma...
+    720 |                                <span>${p.marker} ${p.seriesName}</span>
+    721 |  ...nt-weight:bold; color:${color}">${val > 0 ? '+' : ''}${val.toFixed(2)}%</span>
+        |                                                                 ^
+    722 |                              </div>`
+    723 |            })
+ > formatter src/views/Backtest.vue:716:18
+ > TooltipView._showTooltipContent node_modules/echarts/lib/component/tooltip/TooltipView.js:585:15
+ > TooltipView.<anonymous> node_modules/echarts/lib/component/tooltip/TooltipView.js:440:13
+ > TooltipView._showOrMove node_modules/echarts/lib/component/tooltip/TooltipView.js:356:59
+ > TooltipView._showAxisTooltip node_modules/echarts/lib/component/tooltip/TooltipView.js:436:9
+ > TooltipView._tryShow node_modules/echarts/lib/component/tooltip/TooltipView.js:307:11
+ > TooltipView.manuallyShowTip node_modules/echarts/lib/component/tooltip/TooltipView.js:216:11
+ > callView node_modules/echarts/lib/core/echarts.js:1281:61
+
+11:42:05 PM [vite] (client) [console.error] [ECharts] `resize` should not be called during main process.
+11:42:09 PM [vite] (client) [console.error] [ECharts] `resize` should not be called during main process.
+11:42:09 PM [vite] (client) [console.error] [ECharts] `resize` should not be called during main process.
+11:42:09 PM [vite] (client) [console.error] [ECharts] `resize` should not be called during main process.
+11:42:09 PM [vite] (client) [console.error] [ECharts] `resize` should not be called during main process.
+11:42:12 PM [vite] (client) [console.error] [ECharts] `setOption` should not be called during main process.
+11:42:12 PM [vite] (client) [console.error] [ECharts] `resize` should not be called during main process.
+11:42:18 PM [vite] (client) [console.error] [ECharts] `setOption` should not be called during main process.
+11:42:19 PM [vite] (client) [console.error] [ECharts] `resize` should not be called during main process.
+11:42:21 PM [vite] (client) [console.error] [ECharts] `setOption` should not be called during main process.
+11:42:21 PM [vite] (client) [console.error] [ECharts] `resize` should not be called during main process.
+11:42:24 PM [vite] (client) [console.error] [ECharts] `resize` should not be called during main process.
+11:42:24 PM [vite] (client) [console.error] [ECharts] `resize` should not be called during main process.
+11:42:33 PM [vite] (client) [console.error] [ECharts] `resize` should not be called during main process.
+11:42:34 PM [vite] (client) [console.error] [ECharts] `resize` should not be called during main process.
+11:42:34 PM [vite] (client) [console.error] [ECharts] `resize` should not be called during main process.
+11:42:34 PM [vite] (client) [console.error] [ECharts] `resize` should not be called during main process.
+11:43:03 PM [vite] (client) hmr update /src/views/Backtest.vue
+11:43:04 PM [vite] (client) [console.error] Failed to fetch todays picks: AxiosError: Request failed with status code 500
+    at settle (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:1738:14)
+    at XMLHttpRequest.onloadend (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:2091:4)
+11:43:19 PM [vite] (client) [Unhandled error] TypeError: val.toFixed is not a function
+ > src/views/Backtest.vue:721:128
+    719 |              tooltipHtml += `<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; ma...
+    720 |                                <span>${p.marker} ${p.seriesName}</span>
+    721 |  ...nt-weight:bold; color:${color}">${val > 0 ? '+' : ''}${val.toFixed(2)}%</span>
+        |                                                                 ^
+    722 |                              </div>`
+    723 |            })
+ > formatter src/views/Backtest.vue:716:18
+ > TooltipView._showTooltipContent node_modules/echarts/lib/component/tooltip/TooltipView.js:585:15
+ > TooltipView.<anonymous> node_modules/echarts/lib/component/tooltip/TooltipView.js:440:13
+ > TooltipView._showOrMove node_modules/echarts/lib/component/tooltip/TooltipView.js:356:59
+ > TooltipView._showAxisTooltip node_modules/echarts/lib/component/tooltip/TooltipView.js:436:9
+ > TooltipView._tryShow node_modules/echarts/lib/component/tooltip/TooltipView.js:307:11
+ > TooltipView.manuallyShowTip node_modules/echarts/lib/component/tooltip/TooltipView.js:216:11
+ > callView node_modules/echarts/lib/core/echarts.js:1281:61
+
+11:43:30 PM [vite] (client) [console.error] Failed to fetch todays picks: AxiosError: Request failed with status code 500
+    at settle (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:1738:14)
+    at XMLHttpRequest.onloadend (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:2091:4)
+11:43:39 PM [vite] (client) [Unhandled error] TypeError: val.toFixed is not a function
+ > src/views/Backtest.vue:721:128
+    719 |              tooltipHtml += `<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; ma...
+    720 |                                <span>${p.marker} ${p.seriesName}</span>
+    721 |  ...nt-weight:bold; color:${color}">${val > 0 ? '+' : ''}${val.toFixed(2)}%</span>
+        |                                                                 ^
+    722 |                              </div>`
+    723 |            })
+ > formatter src/views/Backtest.vue:716:18
+ > TooltipView._showTooltipContent node_modules/echarts/lib/component/tooltip/TooltipView.js:585:15
+ > TooltipView.<anonymous> node_modules/echarts/lib/component/tooltip/TooltipView.js:440:13
+ > TooltipView._showOrMove node_modules/echarts/lib/component/tooltip/TooltipView.js:356:59
+ > TooltipView._showAxisTooltip node_modules/echarts/lib/component/tooltip/TooltipView.js:436:9
+ > TooltipView._tryShow node_modules/echarts/lib/component/tooltip/TooltipView.js:307:11
+ > TooltipView.manuallyShowTip node_modules/echarts/lib/component/tooltip/TooltipView.js:216:11
+ > callView node_modules/echarts/lib/core/echarts.js:1281:61
+
+11:44:20 PM [vite] (client) hmr update /src/views/Backtest.vue
+11:44:21 PM [vite] (client) [console.error] Failed to fetch todays picks: AxiosError: Request failed with status code 500
+    at settle (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:1738:14)
+    at XMLHttpRequest.onloadend (http://localhost:28457/node_modules/.vite/deps/axios.js?v=5dba4c6b:2091:4)
+11:46:52 PM [vite] (client) hmr update /src/views/Backtest.vue
+start.sh: line 65: 20371 Killed: 9               npm run dev

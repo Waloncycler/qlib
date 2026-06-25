@@ -30,6 +30,8 @@ class BacktestConfig:
     core_weight_multiplier: float = 2.0
     new_concept_multiplier: float = 1.5
     enable_ml_filter: bool = False
+    model_version: str = "v1_default"
+    exit_timing: str = "open" # "open" or "close"
     top_k: int = 10
 
 
@@ -212,13 +214,19 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
     ml_preds = None
     if config.enable_ml_filter:
         from core.config import WORKSPACE_DIR
-        pred_path = WORKSPACE_DIR / "data" / "cn_stock" / "ml_predictions.pkl"
+        pred_path = WORKSPACE_DIR / "data" / "cn_stock" / "predictions" / f"{config.model_version}.pkl"
         if pred_path.exists():
             logger.info("Loading ML predictions for filtering...")
             ml_preds = pd.read_pickle(pred_path)
             # Ensure it's a series or dataframe. Qlib pred.pkl is usually a pd.Series or pd.DataFrame with multi-index (datetime, instrument)
             if isinstance(ml_preds, pd.DataFrame) and ml_preds.shape[1] == 1:
                 ml_preds = ml_preds.iloc[:, 0]
+            
+            # Convert instrument index to uppercase to match signal_backtest logic
+            if isinstance(ml_preds.index, pd.MultiIndex):
+                # The second level is usually 'instrument'
+                new_idx = ml_preds.index.set_levels(ml_preds.index.levels[1].str.upper(), level=1)
+                ml_preds.index = new_idx
         else:
             logger.warning(f"ML filter enabled but {pred_path} not found. Skipping ML filter.")
             config.enable_ml_filter = False
@@ -251,7 +259,9 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
         if config.enable_ml_filter and ml_preds is not None:
             try:
                 available_dates = ml_preds.index.get_level_values(0).unique()
-                valid_dates = available_dates[available_dates <= date_ts]
+                # STRICTLY LESS THAN date_ts to prevent look-ahead bias (未来函数)
+                # We trade at the open of date_ts, so we can only use ML scores generated after the close of the PREVIOUS day.
+                valid_dates = available_dates[available_dates < date_ts]
                 
                 if not valid_dates.empty:
                     latest_ml_date = valid_dates.max()
@@ -262,13 +272,50 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                     valid_preds = day_preds.reindex(pool_syms).dropna()
                     
                     if not valid_preds.empty:
-                        # Sort by score descending and take Top K
-                        top_syms = valid_preds.sort_values(ascending=False).head(config.top_k).index.tolist()
+                        # Apply Historical Proxy Multipliers (Hybrid Scoring for Backtest)
+                        # We use LLM tags as a proxy for Popularity/Risk to avoid 10,000+ API calls during backtest
+                        adjusted_preds = valid_preds.copy()
+                        for sym in valid_preds.index:
+                            info = today_pool.get(sym, {})
+                            multiplier = 1.0
+                            if info.get("weight_type") == "core":
+                                multiplier += 0.5
+                            if info.get("is_new"):
+                                multiplier += 0.2
+                            adjusted_preds[sym] = adjusted_preds[sym] * multiplier
+                        
+                        # Sort by adjusted score descending and take Top K
+                        top_syms = adjusted_preds.sort_values(ascending=False).head(config.top_k).index.tolist()
+                        
+                        # --- OVERRIDE FOR THE FINAL DAY ---
+                        # To ensure the backtest's "today" perfectly matches the live "Today's Top Picks",
+                        # we fetch the real-time popularity-filtered picks on the very last day of the backtest.
+                        if day_idx == len(sorted_dates) - 1:
+                            logger.info(f"Checking override for final day: {date_str}, day_idx={day_idx}, len={len(sorted_dates)}")
+                            try:
+                                from modules.backtest.service import get_todays_picks_service
+                                live_res = get_todays_picks_service(model_version=config.model_version, top_k=config.top_k)
+                                logger.info(f"live_res: {str(live_res)[:500]}")
+                                if live_res.get("status") == "success" and "top_picks" in live_res:
+                                    live_syms = [p["symbol"] for p in live_res["top_picks"]]
+                                    if live_syms:
+                                        top_syms = live_syms
+                                        logger.info(f"Final day override: using {len(top_syms)} live picks for {date_str}: {top_syms}")
+                                    else:
+                                        logger.warning("live_syms is empty")
+                                else:
+                                    logger.warning(f"live_res is invalid: {str(live_res)[:500]}")
+                            except Exception as e:
+                                import traceback
+                                logger.error(f"Failed to override final day picks: {traceback.format_exc()}")
+                        
                         # Truncate today_pool to only include the top syms
                         today_pool = {s: info for s, info in today_pool.items() if s in top_syms}
                     else:
+                        logger.warning(f"valid_preds is empty for {date_str}")
                         today_pool = {}  # No ML scores available for today's pool
                 else:
+                    logger.warning(f"valid_dates is empty for {date_str}")
                     today_pool = {} # No ML predictions available before this date
             except Exception as e:
                 logger.error(f"Error applying ML filter on {date_str}: {e}")
@@ -308,10 +355,56 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                 "turnover": 0.0,
             })
             
+            synthetic_trades = []
+            live_quotes = {}
+            if date_str == pd.Timestamp.now().strftime("%Y-%m-%d"):
+                try:
+                    from modules.backtest.service import get_live_quotes_service
+                    all_query_syms = list(set(current_shares.keys()).union(set(intended_entries)).union(set(intended_exits)))
+                    res = get_live_quotes_service(all_query_syms)
+                    if res and res.get("status") == "success":
+                        live_quotes = res.get("data", {})
+                except Exception as e:
+                    logger.error(f"Failed to fetch live quotes for missing day fallback: {e}")
+
+            for sym in intended_exits:
+                if sym in live_quotes and live_quotes[sym].get("open_price", 0) > 0:
+                    shares = current_shares.get(sym, 0)
+                    oprice = live_quotes[sym]["open_price"]
+                    amount = shares * oprice
+                    fee = amount * config.sell_cost
+                    synthetic_trades.append({
+                        "symbol": sym,
+                        "action": "sell",
+                        "reason": "exit",
+                        "price": round(oprice, 3),
+                        "shares": round(shares, 2),
+                        "amount": round(amount, 2),
+                        "fee": round(fee, 2)
+                    })
+            for sym in intended_entries:
+                if sym in live_quotes and live_quotes[sym].get("open_price", 0) > 0:
+                    synthetic_trades.append({
+                        "symbol": sym,
+                        "action": "buy",
+                        "reason": "entry",
+                        "price": round(live_quotes[sym]["open_price"], 3),
+                        "shares": "-",
+                        "amount": "-",
+                        "fee": "-"
+                    })
+            
             holding_syms = []
-            all_involved = set(current_shares.keys()).union(set(intended_exits))
+            all_involved = set(current_shares.keys()).union(set(intended_exits)).union(set(intended_entries))
             for sym in sorted(all_involved):
-                info = today_pool.get(sym, {})
+                info = today_pool.get(sym)
+                if not info:
+                    info = daily_pools[date_str].get(sym)
+                if not info and day_idx > 0:
+                    info = daily_pools[sorted_dates[day_idx-1]].get(sym)
+                if not info:
+                    info = {"name": "", "weight_type": "", "concept": ""}
+                
                 score = None
                 if config.enable_ml_filter and ml_preds is not None and latest_ml_date is not None:
                     try:
@@ -321,7 +414,17 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                         pass
                 
                 ret = None
-                if sym in prices and date_ts in prices[sym].index:
+                if sym in live_quotes:
+                    lq = live_quotes[sym]
+                    if sym in intended_exits and lq.get("yesterday_close", 0) > 0:
+                        if config.exit_timing == "close" and lq.get("price", 0) > 0:
+                            ret = round((lq["price"] - lq["yesterday_close"]) / lq["yesterday_close"], 4)
+                        elif config.exit_timing == "open" and lq.get("open_price", 0) > 0:
+                            ret = round((lq["open_price"] - lq["yesterday_close"]) / lq["yesterday_close"], 4)
+                    elif sym in intended_holds and lq.get("pct_change") is not None:
+                        ret = round(float(lq["pct_change"]) / 100.0, 4)
+                        
+                if ret is None and sym in prices and date_ts in prices[sym].index:
                     try:
                         pct = float(prices[sym].loc[date_ts, "pct_change"])
                         if not math.isnan(pct):
@@ -344,7 +447,7 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                 "exits": intended_exits,
                 "holds": intended_holds,
                 "holdings": holding_syms,
-                "trades": [],
+                "trades": synthetic_trades,
                 "daily_return": 0.0,
             })
             continue
@@ -375,7 +478,10 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
         exit_symbols = []
         for sym in exits:
             if sym in prices and date_ts in prices[sym].index:
-                sell_price = prices[sym].loc[date_ts, "open"]
+                if config.exit_timing == "close":
+                    sell_price = prices[sym].loc[date_ts, "close"]
+                else:
+                    sell_price = prices[sym].loc[date_ts, "open"]
                 shares = current_shares.get(sym, 0)
                 gross_proceeds = shares * sell_price
                 fee = gross_proceeds * config.sell_cost
@@ -512,9 +618,16 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
 
         # Holdings log
         holding_syms = []
-        all_involved = set(current_shares.keys()).union(set(exits))
+        all_involved = set(current_shares.keys()).union(set(exits)).union(set(entry_symbols))
         for sym in sorted(all_involved):
-            info = today_pool.get(sym, {})
+            info = today_pool.get(sym)
+            if not info:
+                info = daily_pools[date_str].get(sym)
+            if not info and day_idx > 0:
+                info = daily_pools[sorted_dates[day_idx-1]].get(sym)
+            if not info:
+                info = {"name": "", "weight_type": "", "concept": ""}
+                
             score = None
             if config.enable_ml_filter and ml_preds is not None and latest_ml_date is not None:
                 try:
@@ -583,7 +696,34 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
     # Max drawdown
     running_max = strategy_cumulative.cummax()
     drawdown = (strategy_cumulative - running_max) / running_max
-    max_drawdown = drawdown.min()
+    
+    drawdown_periods = []
+    if len(drawdown) > 0 and not drawdown.isna().all():
+        end_idx = drawdown.idxmin()
+        max_drawdown = drawdown.min()
+        start_idx = strategy_cumulative.iloc[:end_idx + 1].idxmax()
+        max_dd_start = records[start_idx]["date"]
+        max_dd_end = records[end_idx]["date"]
+        
+        # Find all drawdowns > 20% + the max drawdown
+        underwater = drawdown < 0
+        blocks = (~underwater).cumsum()
+        for block_id, group in drawdown.groupby(blocks):
+            group_min = group.min()
+            if group_min < 0:
+                is_global_max = (group.idxmin() == end_idx)
+                if group_min <= -0.20 or is_global_max:
+                    trough_idx = group.idxmin()
+                    peak_idx = max(0, group.index[0] - 1)
+                    drawdown_periods.append({
+                        "start": records[peak_idx]["date"],
+                        "end": records[trough_idx]["date"],
+                        "drawdown": round(float(group_min), 4)
+                    })
+    else:
+        max_drawdown = 0.0
+        max_dd_start = ""
+        max_dd_end = ""
 
     # Sharpe ratio (annualized, rf=0)
     sharpe = (returns_series.mean() / returns_series.std() * np.sqrt(244)) if returns_series.std() > 0 else 0.0
@@ -610,6 +750,9 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
         "total_return": round(float(total_return), 4),
         "annualized_return": round(float(ann_return), 4),
         "max_drawdown": round(float(max_drawdown), 4),
+        "max_drawdown_start": max_dd_start,
+        "max_drawdown_end": max_dd_end,
+        "drawdown_periods": drawdown_periods,
         "sharpe_ratio": round(float(sharpe), 3),
         "information_ratio": round(float(ir), 3),
         "hit_rate": round(float(hit_rate), 4),

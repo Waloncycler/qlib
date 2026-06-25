@@ -1,0 +1,28 @@
+[27983:MainThread](2026-06-25 14:11:51,769) INFO - qlib.Initialization - [config.py:453] - default_conf: client.
+[27983:MainThread](2026-06-25 14:11:51,770) INFO - qlib.Initialization - [__init__.py:82] - qlib successfully initialized based on client settings.
+[27983:MainThread](2026-06-25 14:11:51,770) INFO - qlib.Initialization - [__init__.py:84] - data_path={'__DEFAULT_FREQ': PosixPath('/Users/walox/qlib/data/cn_stock/standard/qlib_data')}
+Qlib initialized. Starting V2 Open-to-Open Model Training...
+Initializing Dataset with custom Open2Open Label...
+[27983:MainThread](2026-06-25 14:12:15,027) INFO - qlib.timer - [log.py:127] - Time cost: 23.256s | Loading data Done
+[27983:MainThread](2026-06-25 14:12:15,505) INFO - qlib.timer - [log.py:127] - Time cost: 0.119s | DropnaLabel Done
+[27983:MainThread](2026-06-25 14:12:15,925) INFO - qlib.timer - [log.py:127] - Time cost: 0.420s | CSZScoreNorm Done
+[27983:MainThread](2026-06-25 14:12:15,930) INFO - qlib.timer - [log.py:127] - Time cost: 0.902s | fit & process data Done
+[27983:MainThread](2026-06-25 14:12:15,931) INFO - qlib.timer - [log.py:127] - Time cost: 24.160s | Init data Done
+[27983:MainThread](2026-06-25 14:12:16,576) INFO - qlib.workflow - [exp.py:258] - Experiment 111265248745621203 starts running ...
+[27983:MainThread](2026-06-25 14:12:16,916) INFO - qlib.workflow - [recorder.py:345] - Recorder ea160b2f8a8c41ed9646f87aa7826006 starts running under Experiment 111265248745621203 ...
+[27983:MainThread](2026-06-25 14:12:22,871) INFO - qlib.timer - [log.py:127] - Time cost: 0.000s | waiting `async_log` Done
+Initializing Model...
+ModuleNotFoundError. CatBoostModel are skipped. (optional: maybe installing CatBoostModel can fix it.)
+ModuleNotFoundError. XGBModel is skipped(optional: maybe installing xgboost can fix it).
+ModuleNotFoundError.  PyTorch models are skipped (optional: maybe installing pytorch can fix it).
+Starting Training (this may take a few minutes)...
+Training until validation scores don't improve for 50 rounds
+[20]	train's l2: 0.992801	valid's l2: 0.998632
+[40]	train's l2: 0.988213	valid's l2: 0.998631
+[60]	train's l2: 0.984294	valid's l2: 0.998759
+Early stopping, best iteration is:
+[27]	train's l2: 0.991048	valid's l2: 0.998562
+Training finished.
+Generating Predictions for Test Data...
+Predictions saved successfully to: /Users/walox/qlib/data/cn_stock/predictions/v2_open2open.pkl
+V2 Open2Open Pipeline Completed Successfully!

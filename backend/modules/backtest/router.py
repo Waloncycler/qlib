@@ -11,6 +11,7 @@ from modules.backtest.service import (
     get_signal_backtest_results,
     run_signal_backtest_service,
     run_data_download_service,
+    get_leaderboard_service,
 )
 
 router = APIRouter()
@@ -21,10 +22,10 @@ class SingleBacktestRequest(BaseModel):
     end_date: str
 
 @router.get("/api/backtest/results")
-def get_backtest_results_route(enable_ml_filter: bool = Query(False)):
+def get_backtest_results_route(enable_ml_filter: bool = Query(False), model_version: str = Query("v1_default"), top_k: int = Query(10)):
     """Returns the latest signal backtest results (new default)."""
     try:
-        data = get_signal_backtest_results(enable_ml_filter=enable_ml_filter)
+        data = get_signal_backtest_results(enable_ml_filter=enable_ml_filter, model_version=model_version, top_k=top_k)
         return {"status": "success", "data": data}
     except Exception as e:
         logger.error(f"Error fetching backtest results: {e}")
@@ -49,21 +50,30 @@ def run_single_stock_backtest_route(req: SingleBacktestRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/api/backtest/intelligent")
-def run_intelligent_backtest_route(enable_ml_filter: bool = Query(False)):
+def run_intelligent_backtest_route(enable_ml_filter: bool = Query(False), model_version: str = Query("v1_default"), top_k: int = Query(10)):
     """Run AI signal backtest (new default)."""
     try:
-        result = run_signal_backtest_service(enable_ml_filter=enable_ml_filter)
+        result = run_signal_backtest_service(enable_ml_filter=enable_ml_filter, model_version=model_version, top_k=top_k)
         return {"status": "success", "data": result}
     except Exception as e:
         logger.error(f"Error running signal backtest: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/api/backtest/leaderboard")
+def get_backtest_leaderboard_route():
+    """Returns the leaderboard of all backtest strategies."""
+    try:
+        return get_leaderboard_service()
+    except Exception as e:
+        logger.error(f"Error fetching leaderboard: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/api/backtest/todays-picks")
-def get_todays_picks_route():
+def get_todays_picks_route(model_version: str = Query("v3_open2close"), top_k: int = Query(10)):
     """Get the ML filtered picks for today's AI pre-market report."""
     try:
         from modules.backtest.service import get_todays_picks_service
-        return get_todays_picks_service()
+        return get_todays_picks_service(model_version=model_version, top_k=top_k)
     except Exception as e:
         logger.error(f"Error fetching today's picks: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -221,3 +231,18 @@ def get_strategy_pool(date: str = Query(..., description="Date in YYYY-MM-DD for
             logger.error(f"Error reading topics: {e}")
 
     return result
+
+from pydantic import BaseModel
+
+class LiveQuotesRequest(BaseModel):
+    symbols: list[str]
+
+@router.post("/api/backtest/live-quotes")
+def get_live_quotes(request: LiveQuotesRequest):
+    """Get real-time intraday quotes from Tencent Finance."""
+    try:
+        from modules.backtest.service import get_live_quotes_service
+        return get_live_quotes_service(request.symbols)
+    except Exception as e:
+        logger.error(f"Error fetching live quotes: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

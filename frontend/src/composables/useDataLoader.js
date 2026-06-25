@@ -154,6 +154,10 @@ export function useDataLoader() {
       const res = await api.get('/refresh/status')
       return res.data
     } catch (err) {
+      if (err.response && err.response.status === 502) {
+        // Suppress 502 errors during backend hot-reloads
+        return { running: false, last_result: 'error' }
+      }
       console.error('Failed to check refresh status:', err)
       return { running: false, last_result: 'error' }
     }
