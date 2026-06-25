@@ -33,6 +33,9 @@ class BacktestConfig:
     model_version: str = "v1_default"
     exit_timing: str = "open" # "open" or "close"
     top_k: int = 10
+    enable_market_timing: bool = True     # 是否开启大盘择时
+    market_timing_ma_days: int = 20       # 均线周期 (默认 20天)
+    market_timing_down_weight: float = 0.3 # 跌破均线后的目标总仓位 (30%)
 
 
 @dataclass
@@ -235,6 +238,10 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
     benchmark_df = load_benchmark()
     if not benchmark_df.empty:
         benchmark_df = benchmark_df.set_index("date").sort_index()
+        # Calculate Moving Average for Market Timing
+        if config.enable_market_timing:
+            ma_col = f"ma{config.market_timing_ma_days}"
+            benchmark_df[ma_col] = benchmark_df["close"].rolling(window=config.market_timing_ma_days).mean()
 
     # --- Core backtest loop ---
     capital = config.initial_capital
@@ -460,10 +467,19 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                 if date_ts in pdf.index:
                     tradeable_targets[sym] = w
 
-        # Re-normalize after filtering
+        # Calculate intended total weight (Market Timing Filter)
+        intended_total_weight = 1.0
+        if config.enable_market_timing and not benchmark_df.empty and date_ts in benchmark_df.index:
+            ma_col = f"ma{config.market_timing_ma_days}"
+            bench_close = benchmark_df.loc[date_ts, "close"]
+            bench_ma = benchmark_df.loc[date_ts, ma_col]
+            if pd.notna(bench_ma) and bench_close < bench_ma:
+                intended_total_weight = config.market_timing_down_weight
+
+        # Re-normalize after filtering, applying the intended total weight
         total_w = sum(tradeable_targets.values())
         if total_w > 0:
-            tradeable_targets = {s: w / total_w for s, w in tradeable_targets.items()}
+            tradeable_targets = {s: (w / total_w) * intended_total_weight for s, w in tradeable_targets.items()}
 
         # Identify entries and exits
         prev_symbols = set(current_holdings.keys())
