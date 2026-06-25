@@ -177,9 +177,17 @@
 
           <!-- Today's ML Top Picks (Chip Style, matching Daily Trades) -->
           <div v-if="todaysPicks" class="mb-2 p-2 bg-slate-800/50 rounded border border-slate-700/50">
-            <div class="text-xs text-gray-400 font-bold mb-1">
-              Today's Top Picks
-              <span class="text-gray-600">· {{ todaysPicks.date }}</span>
+            <div class="text-xs text-gray-400 font-bold mb-1" style="display: flex; justify-content: space-between; align-items: center;">
+              <span>Today's Top Picks · {{ todaysPicks.date }}</span>
+              <button 
+                @click="runPremarketSelection"
+                :disabled="isRefreshingPicks"
+                class="transition-colors ml-2"
+                style="background: transparent; border: none; padding: 0; outline: none; cursor: pointer; font-size: 1rem; color: #34d399;"
+                title="手动拉取最新早盘研报并生成金股"
+              >
+                <i class="fa-solid" :class="isRefreshingPicks ? 'fa-spinner fa-spin' : 'fa-rotate'"></i>
+              </button>
             </div>
             <div class="flex flex-wrap gap-1">
               <span v-for="(pick, idx) in todaysPicks.top_picks" :key="idx" class="stock-tag" 
@@ -1286,6 +1294,67 @@ const fetchTodaysPicks = async () => {
   } catch (err) {
     console.error("Failed to fetch todays picks:", err)
     todaysPicks.value = null
+  }
+}
+
+const todayStr = computed(() => {
+  const d = new Date()
+  const offset = d.getTimezoneOffset() * 60000
+  return (new Date(d.getTime() - offset)).toISOString().split('T')[0]
+})
+
+const canRefreshPicks = computed(() => {
+  if (!todaysPicks.value || !todaysPicks.value.date) return true
+  return todaysPicks.value.date !== todayStr.value
+})
+
+const isRefreshingPicks = ref(false)
+
+const runPremarketSelection = async () => {
+  if (isRefreshingPicks.value) return;
+  
+  if (!canRefreshPicks.value) {
+    const confirmForce = confirm("今日金股已经生成，确认要强制重新拉取最新研报吗？");
+    if (!confirmForce) return;
+  }
+  
+  isRefreshingPicks.value = true;
+  try {
+    const res = await axios.post('/api/refresh/reports');
+    if (res.data.status !== 'started' && res.data.status !== 'success' && res.data.status !== 'busy') {
+      alert(res.data.message || 'Failed to start selection');
+      isRefreshingPicks.value = false;
+      return;
+    }
+    
+    let attempts = 0;
+    const oldDate = todaysPicks.value?.date;
+    
+    const poll = async () => {
+      attempts++;
+      if (attempts > 30) {
+        alert("请求超时，请稍后再试");
+        isRefreshingPicks.value = false;
+        return;
+      }
+      
+      const statusRes = await axios.get('/api/refresh/reports/status');
+      if (statusRes.data.running) {
+        setTimeout(poll, 2000);
+      } else {
+        await fetchTodaysPicks();
+        if (todaysPicks.value?.date === oldDate) {
+          alert("上游数据源尚未发布今日最新的盘前研报数据，请稍后重试！");
+        }
+        isRefreshingPicks.value = false;
+      }
+    };
+    
+    setTimeout(poll, 2000);
+  } catch (err) {
+    console.error(err);
+    alert('请求错误: ' + (err.response?.data?.detail || err.message));
+    isRefreshingPicks.value = false;
   }
 }
 
