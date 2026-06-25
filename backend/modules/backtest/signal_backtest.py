@@ -656,12 +656,24 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                 except:
                     pass
                     
+            weight = 0.0
+            if eod_nav > 0 and sym in current_shares:
+                if sym in prices and date_ts in prices[sym].index:
+                    try:
+                        c_p = float(prices[sym].loc[date_ts, "close"])
+                        weight = round((current_shares[sym] * c_p) / eod_nav, 4)
+                    except:
+                        pass
+                else:
+                    weight = round((current_shares[sym] * current_entry_prices.get(sym, 0)) / eod_nav, 4)
+
             holding_syms.append({
                 "symbol": sym,
                 "name": info.get("name", ""),
                 "type": info.get("weight_type", ""),
                 "concept": info.get("concept", ""),
                 "score": score,
+                "weight": weight,
                 "ret": ret
             })
 

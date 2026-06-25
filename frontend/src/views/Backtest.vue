@@ -208,7 +208,7 @@
                 <span style="position: relative; display: inline-flex; border-radius: 9999px; height: 8px; width: 8px; background-color: #10b981;"></span>
               </template>
               <template v-else>
-                <span style="position: relative; display: inline-flex; border-radius: 9999px; height: 8px; width: 8px; background-color: #ef4444; opacity: 0.8;"></span>
+                <span class="animate-custom-breathe" style="position: relative; display: inline-flex; border-radius: 9999px; height: 8px; width: 8px; background-color: #ef4444;"></span>
               </template>
             </div>
           </div>
@@ -232,7 +232,7 @@
                 <div v-if="h.entries && h.entries.length" class="flex flex-wrap gap-1 mb-1">
                   <span v-for="sym in h.entries" :key="'e'+sym" class="stock-tag" style="padding: 1px 5px; font-size: 0.65rem; background: rgba(16,185,129,0.2); color: #34d399; border: 1px solid rgba(16,185,129,0.3);">
                     ▲ {{ getName(h.holdings, sym) || sym }} 
-                    <span v-if="getScore(h.holdings, sym)" class="text-sky-300 ml-1">({{ getScore(h.holdings, sym) }})</span>
+                    <span v-if="getWeight(h.holdings, sym) > 0" class="text-sky-300 ml-1">({{ (getWeight(h.holdings, sym) * 100).toFixed(1) }}%)</span>
                     <span v-if="liveQuotes[sym] && getLivePnL(sym, 'entry', h.date) !== null" class="ml-1 font-mono font-bold animate-pulse" :class="getLivePnL(sym, 'entry', h.date) >= 0 ? 'text-emerald-400' : 'text-red-400'">
                       PnL: {{ getLivePnL(sym, 'entry', h.date) >= 0 ? '+' : '' }}{{ getLivePnL(sym, 'entry', h.date).toFixed(2) }}%
                     </span>
@@ -246,7 +246,7 @@
                 <div v-if="h.holds && h.holds.length" class="flex flex-wrap gap-1 mb-1">
                   <span v-for="sym in h.holds" :key="'h'+sym" class="stock-tag" style="padding: 1px 5px; font-size: 0.65rem; background: rgba(100,116,139,0.2); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3);">
                     ● {{ getName(h.holdings, sym) || sym }} 
-                    <span v-if="getScore(h.holdings, sym)" class="text-sky-300/70 ml-1">({{ getScore(h.holdings, sym) }})</span>
+                    <span v-if="getWeight(h.holdings, sym) > 0" class="text-sky-300/70 ml-1">({{ (getWeight(h.holdings, sym) * 100).toFixed(1) }}%)</span>
                     <span v-if="liveQuotes[sym] && getLivePnL(sym, 'hold', h.date) !== null" class="ml-1 font-mono font-bold animate-pulse" :class="getLivePnL(sym, 'hold', h.date) >= 0 ? 'text-emerald-400' : 'text-red-400'">
                       PnL: {{ getLivePnL(sym, 'hold', h.date) >= 0 ? '+' : '' }}{{ getLivePnL(sym, 'hold', h.date).toFixed(2) }}%
                     </span>
@@ -1242,10 +1242,10 @@ const loadStrategy = (item) => {
   runIntelligentBacktest()
 }
 
-const getScore = (holdingsList, symbol) => {
-  if (!holdingsList) return null;
+const getWeight = (holdingsList, symbol) => {
+  if (!holdingsList) return 0;
   const item = holdingsList.find(h => h.symbol === symbol);
-  return item && item.score !== null ? item.score : null;
+  return item && item.weight !== undefined ? item.weight : 0;
 }
 
 const getReturn = (holdingsList, symbol) => {
@@ -1875,5 +1875,27 @@ onUnmounted(() => {
   justify-content: center;
   padding: 40px 0;
   color: #9ca3af;
+}
+
+@keyframes custom-breathe {
+  0% {
+    opacity: 0.3;
+    transform: scale(0.9);
+    box-shadow: 0 0 4px rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+    box-shadow: 0 0 12px rgba(239, 68, 68, 1);
+  }
+  100% {
+    opacity: 0.3;
+    transform: scale(0.9);
+    box-shadow: 0 0 4px rgba(239, 68, 68, 0.4);
+  }
+}
+
+.animate-custom-breathe {
+  animation: custom-breathe 2s infinite ease-in-out;
 }
 </style>
