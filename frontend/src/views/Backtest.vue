@@ -216,7 +216,7 @@
                 <span style="position: relative; display: inline-flex; border-radius: 9999px; height: 8px; width: 8px; background-color: #10b981;"></span>
               </template>
               <template v-else>
-                <span class="animate-custom-breathe" style="position: relative; display: inline-flex; border-radius: 9999px; height: 8px; width: 8px; background-color: #ef4444;"></span>
+                <span style="position: relative; display: inline-flex; border-radius: 9999px; height: 8px; width: 8px; background-color: #ef4444;"></span>
               </template>
             </div>
           </div>
@@ -380,7 +380,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 
@@ -1370,6 +1370,15 @@ const isMarketOpen = () => {
 const isMarketOpenRef = ref(isMarketOpen())
 let syncInterval = null
 
+// --- Watchers: auto-sync data when parameters change ---
+
+// rangePre / rangePost: re-trigger theme comparison when slider changes
+watch([rangePre, rangePost], () => {
+  if (isComparisonMode.value && selectedTheme.value) {
+    selectTheme(selectedTheme.value)
+  }
+})
+
 onMounted(() => {
   fetchResults()
   fetchValidDates()
@@ -1944,27 +1953,5 @@ onUnmounted(() => {
   justify-content: center;
   padding: 40px 0;
   color: #9ca3af;
-}
-
-@keyframes custom-breathe {
-  0% {
-    opacity: 0.3;
-    transform: scale(0.9);
-    box-shadow: 0 0 4px rgba(239, 68, 68, 0.4);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.2);
-    box-shadow: 0 0 12px rgba(239, 68, 68, 1);
-  }
-  100% {
-    opacity: 0.3;
-    transform: scale(0.9);
-    box-shadow: 0 0 4px rgba(239, 68, 68, 0.4);
-  }
-}
-
-.animate-custom-breathe {
-  animation: custom-breathe 2s infinite ease-in-out;
 }
 </style>

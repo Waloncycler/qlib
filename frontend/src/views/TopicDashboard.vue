@@ -6,6 +6,13 @@
         <p class="subtitle">Trending themes and their K-line trajectories.</p>
       </div>
       <div class="actions">
+        <!-- Frequency stats (shown when searching) -->
+        <div v-if="matchedStockStats.length > 0" class="freq-inline">
+          <span v-for="s in matchedStockStats.slice(0, 3)" :key="s.name" class="freq-inline-item" :title="`${s.name} appears in ${s.topicCount} topics`">
+            <span class="freq-inline-name">{{ s.name }}</span>
+            <span class="freq-badge freq-topics">{{ s.topicCount }}</span>
+          </span>
+        </div>
         <button class="filter-btn" :class="{ 'active': showStarredOnly }" @click="showStarredOnly = !showStarredOnly" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; height: 38px; border-radius: 8px;">
           <StarIcon class="icon-small" :fill="showStarredOnly ? 'currentColor' : 'none'" :class="{ 'text-yellow': showStarredOnly }" :style="{ color: showStarredOnly ? '#fbbf24' : 'inherit' }" />
           Starred
@@ -213,7 +220,7 @@ import axios from 'axios'
 import * as echarts from 'echarts/core'
 
 const router = useRouter()
-const { loading, error, fetchTopics, triggerTopicsRefresh, checkTopicsRefreshStatus, fetchCsv, triggerRealtimeFetch } = useDataLoader()
+const { loading, error, fetchTopics, triggerTopicsRefresh, fetchCsv, triggerRealtimeFetch } = useDataLoader()
 
 const backendUpdating = ref(false)
 const showStarredOnly = ref(false)
@@ -245,31 +252,21 @@ const handleRefresh = async () => {
   if (backendUpdating.value) return
   backendUpdating.value = true
   
-  const res = await triggerTopicsRefresh()
-  if (res && (res.status === 'started' || res.status === 'busy')) {
-    pollStatus()
-  } else {
+  try {
+    await triggerTopicsRefresh()
+    // Topics update once daily; no need to poll. Wait briefly for backend to finish writing, then reload.
+    await new Promise(resolve => setTimeout(resolve, 8000))
+  } finally {
     backendUpdating.value = false
     loadData()
   }
-}
-
-const pollStatus = () => {
-  const timer = setInterval(async () => {
-    const status = await checkTopicsRefreshStatus()
-    if (!status || !status.running) {
-      clearInterval(timer)
-      backendUpdating.value = false
-      loadData()
-    }
-  }, 2000)
 }
 
 const topicsList = ref([])
 const searchQuery = ref('')
 const filteredTopics = computed(() => {
   let list = topicsList.value
-  
+
   if (showStarredOnly.value) {
     list = list.filter(topic => {
       if (!topic.rows) return false
@@ -278,13 +275,38 @@ const filteredTopics = computed(() => {
   }
 
   if (!searchQuery.value.trim()) return list
-  
+
   const query = searchQuery.value.trim().toLowerCase()
   return list.filter(topic => {
     if (topic.name && topic.name.toLowerCase().includes(query)) return true
     if (topic.rows && Array.isArray(topic.rows) && topic.rows.some(row => row && row['个股'] && String(row['个股']).toLowerCase().includes(query))) return true
     return false
   })
+})
+
+// --- Stock frequency stats: how many topics each stock appears in ---
+const matchedStockStats = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase()
+  if (!query) return []
+
+  const stats = {}  // { stockName: Set of topic names }
+  for (const topic of topicsList.value) {
+    if (!topic.rows) continue
+    for (const row of topic.rows) {
+      const name = row['个股']
+      if (!name) continue
+      if (!stats[name]) stats[name] = new Set()
+      stats[name].add(topic.name)
+    }
+  }
+
+  const result = []
+  for (const [name, topicSet] of Object.entries(stats)) {
+    if (!name.toLowerCase().includes(query)) continue
+    result.push({ name, topicCount: topicSet.size })
+  }
+  result.sort((a, b) => b.topicCount - a.topicCount)
+  return result
 })
 
 const filteredTopicRows = computed(() => {
@@ -842,6 +864,14 @@ onMounted(() => {
 .title { font-size: 1.8rem; margin-bottom: 4px; background: linear-gradient(to right, #fff, #9ba1a6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 .subtitle { color: var(--text-secondary); margin: 0; }
 .actions { display: flex; align-items: center; gap: 16px; }
+
+/* Frequency stats (inline in header) */
+.freq-inline { display: flex; align-items: center; gap: 8px; }
+.freq-inline-item { display: inline-flex; align-items: center; gap: 4px; }
+.freq-inline-name { font-size: 0.8rem; font-weight: 600; color: var(--text-primary, #f8fafc); }
+.freq-badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 0.7rem; font-weight: 600; font-family: monospace; }
+.freq-topics { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+
 .search-box { position: relative; display: flex; align-items: center; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 4px 12px; transition: border-color 0.2s; height: 38px; box-sizing: border-box; }
 .search-box:focus-within { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
 .search-icon { width: 16px; height: 16px; color: #9ca3af; margin-right: 8px; flex-shrink: 0; }

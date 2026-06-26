@@ -139,7 +139,7 @@ const pollStatus = () => {
       backendUpdating.value = false
       loadData()
     }
-  }, 2000)
+  }, 5000)
 }
 
 const sentimentData = ref([])

@@ -123,13 +123,13 @@ def main():
         print("\n=====================================")
         print("3. Fetching Zizizaizai K-Lines...")
         print("=====================================")
-        subprocess.run([sys.executable, str(PROJECT_DIR / "modules/intelligence/zizizaizai/klines.py"), "--force", "--max-workers=5"], check=True)
+        subprocess.run([sys.executable, str(PROJECT_DIR / "modules/intelligence/zizizaizai/klines.py"), "--force", "--max-workers=2"], check=True)
     elif args.mode == "topics":
         print("\n=====================================")
         print("Running topics mode: Topics & K-lines...")
         print("=====================================")
         subprocess.run([sys.executable, str(PROJECT_DIR / "modules/intelligence/zizizaizai/topics.py")], check=True)
-        subprocess.run([sys.executable, str(PROJECT_DIR / "modules/intelligence/zizizaizai/klines.py"), "--force", "--max-workers=5"], check=True)
+        subprocess.run([sys.executable, str(PROJECT_DIR / "modules/intelligence/zizizaizai/klines.py"), "--force", "--max-workers=2"], check=True)
         print("Topics and K-lines updated. Exiting.")
         return
     elif args.mode == "morning":

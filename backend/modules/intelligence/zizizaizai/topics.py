@@ -3,10 +3,14 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import json
 import time
-import os
+import sys
 from pathlib import Path
 
-TOKEN = os.environ.get("ZIZIZAIZAI_TOKEN", "your_token_here")
+# Ensure backend/ is on sys.path for the shared auth module
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
+from modules.intelligence.zizizaizai.auth import get_token
+
+TOKEN = get_token() or ""
 
 HEADERS = {
     "accept": "application/json, text/plain, */*",
@@ -38,6 +42,10 @@ def fetch_topics():
         except requests.exceptions.RequestException as e:
             print(f"Failed to fetch page {page}: {e}")
             break
+        if res.status_code == 429:
+            print(f"Rate limited (429) on page {page}, waiting 30s...")
+            time.sleep(30)
+            continue
         if res.status_code != 200:
             print(f"Error {res.status_code}: {res.text}")
             break
@@ -57,20 +65,29 @@ def fetch_topics():
             break
             
         page += 1
-        time.sleep(0.5)
-        
+        time.sleep(3.5)  # Respect 20 req/min limit
+
     return topics
 
 def fetch_topic_details(topic_id, session):
     url = f"https://api.zizizaizai.com/v3/topic/table/{topic_id}"
-    try:
-        res = session.get(url, headers=HEADERS, timeout=20)
-        if res.status_code == 200:
-            data = res.json()
-            if data.get("code") == 20000:
-                return data["data"]
-    except requests.exceptions.RequestException as e:
-        print(f"  Timeout/Error for topic {topic_id}: {e}")
+    for attempt in range(1, 4):
+        try:
+            res = session.get(url, headers=HEADERS, timeout=20)
+            if res.status_code == 200:
+                data = res.json()
+                if data.get("code") == 20000:
+                    return data["data"]
+            elif res.status_code == 429:
+                wait = attempt * 10
+                print(f"  Rate limited (429) for topic {topic_id}, waiting {wait}s...")
+                time.sleep(wait)
+                continue
+            break  # Non-retryable error
+        except requests.exceptions.RequestException as e:
+            print(f"  Timeout/Error for topic {topic_id}: {e}")
+            if attempt < 3:
+                time.sleep(attempt * 5)
     return None
 
 def main():
@@ -78,7 +95,7 @@ def main():
     topics = fetch_topics()
     print(f"Fetched {len(topics)} topics. Now fetching details...")
     
-    save_dir = Path("/Users/walox/qlib/data/cn_stock/hierarchical/signals")
+    save_dir = Path(__file__).resolve().parent.parent.parent.parent.parent / "data" / "cn_stock" / "hierarchical" / "signals"
     save_dir.mkdir(parents=True, exist_ok=True)
     out_file = save_dir / "zizizaizai_topics.json"
     

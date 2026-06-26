@@ -57,7 +57,7 @@
     <main class="main-content" :class="{ 'expanded': !isSidebarOpen }">
       <router-view v-slot="{ Component }">
         <transition name="fade" mode="out-in">
-          <component :is="Component" />
+          <component :is="Component" :key="routeVersion" />
         </transition>
       </router-view>
     </main>
@@ -73,6 +73,7 @@ const isSidebarOpen = ref(true)
 const isMobileSidebarOpen = ref(false)
 const isMobileView = ref(false)
 const isSyncing = ref(false)
+const routeVersion = ref(0)
 const { triggerBackendRefresh, checkRefreshStatus } = useDataLoader()
 
 const checkMobileView = () => {
@@ -107,11 +108,11 @@ const startPolling = () => {
       clearInterval(timer)
       isSyncing.value = false
       if (status && status.last_result === 'success') {
-        // Optionally refresh current page data here by reloading or emitting an event
-        window.location.reload()
+        // Force re-mount current route component to reload fresh data
+        routeVersion.value++
       }
     }
-  }, 3000)
+  }, 5000)
 }
 
 onMounted(async () => {

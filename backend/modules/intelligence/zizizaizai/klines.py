@@ -5,7 +5,11 @@ from pathlib import Path
 import os
 import sys
 
-TOKEN = os.environ.get("ZIZIZAIZAI_TOKEN", "your_token_here")
+# Ensure backend/ is on sys.path for the shared auth module
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
+from modules.intelligence.zizizaizai.auth import get_token
+
+TOKEN = get_token() or ""
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -42,7 +46,7 @@ def fetch_kline(url, session):
     return None
 
 def main():
-    topics_file = Path("/Users/walox/qlib/data/cn_stock/hierarchical/signals/zizizaizai_topics.json")
+    topics_file = Path(__file__).resolve().parent.parent.parent.parent.parent / "data" / "cn_stock" / "hierarchical" / "signals" / "zizizaizai_topics.json"
     if not topics_file.exists():
         print(f"Error: {topics_file} not found.")
         return
@@ -125,10 +129,10 @@ def main():
         else:
             print(f"  Failed to fetch klines for {t_id}")
             
-        time.sleep(0.3)
+        time.sleep(3.5)  # Respect 20 req/min limit
             
-    # Allow passing max_workers via arguments, default 3
-    max_workers = 3
+    # Allow passing max-workers via arguments, default 2 to stay within rate limits
+    max_workers = 2
     for arg in sys.argv:
         if arg.startswith("--max-workers="):
             try:

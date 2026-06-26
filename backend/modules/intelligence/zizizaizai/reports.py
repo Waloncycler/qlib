@@ -5,8 +5,12 @@ import subprocess
 from pathlib import Path
 import re
 import html
+import sys
 
-_GLOBAL_TOKEN = None
+# Ensure backend/ is on sys.path for the shared auth module
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
+from modules.intelligence.zizizaizai.auth import get_token
+
 _STOCK_MAP = None
 
 def get_stock_map():
@@ -53,29 +57,6 @@ def get_stock_map():
             print(f"eastmoney fetch failed: {e}")
             
     return _STOCK_MAP
-
-def get_token():
-    global _GLOBAL_TOKEN
-    if _GLOBAL_TOKEN: return _GLOBAL_TOKEN
-    token = os.environ.get("ZIZIZAIZAI_TOKEN")
-    if not token:
-        import yaml
-        config_path = Path(__file__).resolve().parent.parent.parent.parent / "secret.yaml"
-        if config_path.exists():
-            with open(config_path, "r", encoding="utf-8") as f:
-                config = yaml.safe_load(f)
-                import requests
-                email = config.get("zizi_email")
-                password = config.get("zizi_password")
-                if email and password:
-                    res = requests.post("https://api.zizizaizai.com/v2/login/email/login", 
-                                      json={"email": email, "password": password},
-                                      headers={"User-Agent": "Mozilla/5.0", "Content-Type": "application/json"})
-                    if res.status_code == 200:
-                        data = res.json()
-                        token = data.get("data", {}).get("access_token") or data.get("token")
-    _GLOBAL_TOKEN = token
-    return token
 
 def run_curl(url):
     token = get_token()

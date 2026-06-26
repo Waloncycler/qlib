@@ -6,7 +6,21 @@
         <h1>AI Morning Reports</h1>
         <p class="subtitle">Daily AI market insights, summaries, and concepts</p>
       </div>
-      <div class="header-actions">
+      <div class="header-actions" style="display: flex; align-items: center; gap: 10px;">
+        <!-- Frequency stats (shown when searching) -->
+        <div v-if="matchedStockStats.length > 0" class="freq-inline">
+          <span v-for="s in matchedStockStats.slice(0, 3)" :key="s.symbol" class="freq-inline-item" :title="`${s.name} - 7d:${s.count7} 30d:${s.count30} Total:${s.total}`">
+            <span class="freq-inline-name">{{ s.name }}</span>
+            <span class="freq-badge freq-7">{{ s.count7 }}d</span>
+            <span class="freq-badge freq-30">{{ s.count30 }}d</span>
+            <span class="freq-badge freq-total">{{ s.total }}</span>
+          </span>
+        </div>
+        <div class="search-box" style="position: relative; display: flex; align-items: center;">
+          <SearchIcon style="position: absolute; left: 10px; width: 14px; height: 14px; opacity: 0.5;" />
+          <input type="text" v-model="searchQuery" placeholder="Search stock or report..." style="padding: 6px 8px 6px 30px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; color: inherit; font-size: 13px; width: 220px;" />
+          <button v-if="searchQuery" @click="searchQuery = ''" style="position: absolute; right: 6px; background: none; border: none; cursor: pointer; opacity: 0.5; padding: 2px; display: flex;"><XIcon style="width: 12px; height: 12px;" /></button>
+        </div>
         <button class="refresh-btn" @click="handleRefresh" :disabled="loading || backendUpdating">
           <RefreshCcwIcon class="icon" :class="{ 'spinning': loading || backendUpdating }" />
           {{ backendUpdating ? 'Updating Backend...' : (loading ? 'Loading...' : 'Refresh') }}
@@ -25,7 +39,7 @@
 
         <div class="report-list">
           <div 
-            v-for="report in reports" 
+            v-for="report in filteredReports" 
             :key="report.id"
             class="report-item"
             :class="{ 'active': selectedReport && selectedReport.id === report.id }"
@@ -39,6 +53,9 @@
               </span>
             </div>
           </div>
+          <div v-if="filteredReports.length === 0" style="padding: 20px; text-align: center; color: #9ca1a6; font-size: 13px;">
+            No reports match "{{ searchQuery }}"
+          </div>
         </div>
       </div>
 
@@ -51,11 +68,13 @@
           <div class="stock-pool-section" v-if="selectedReport.stock_pool && selectedReport.stock_pool.length > 0">
             <div class="stock-pool-title">
               <TrendingUpIcon class="pool-icon" /> Daily Strategy Pool
+              <span v-if="searchQuery.trim()" class="search-hint"> — filtered by "{{ searchQuery.trim() }}"</span>
             </div>
+
             <div class="stock-pool-groups">
               <div 
                 class="stock-pool-group"
-                v-for="(group, idx) in selectedReport.stock_pool"
+                v-for="(group, idx) in displayedStockPool"
                 :key="idx"
               >
                 <div class="group-concept-name">
@@ -70,6 +89,7 @@
                     :key="stock.symbol"
                     :to="'/stock/' + stock.symbol"
                     class="stock-tag core-tag"
+                    :class="{ 'stock-highlight': isStockMatched(stock) }"
                   >
                     <span class="stock-name">{{ stock.name }}</span>
                     <span class="stock-code">{{ stock.code }}</span>
@@ -83,11 +103,15 @@
                     :key="stock.symbol"
                     :to="'/stock/' + stock.symbol"
                     class="stock-tag other-tag"
+                    :class="{ 'stock-highlight': isStockMatched(stock) }"
                   >
                     <span class="stock-name">{{ stock.name }}</span>
                     <span class="stock-code">{{ stock.code }}</span>
                   </router-link>
                 </div>
+              </div>
+              <div v-if="searchQuery.trim() && displayedStockPool.length === 0" style="padding: 20px; text-align: center; color: #9ca1a6; font-size: 13px;">
+                No stocks match "{{ searchQuery }}" in this report
               </div>
             </div>
           </div>
@@ -112,14 +136,122 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { RefreshCcwIcon, BookOpenIcon, UserIcon, ClockIcon, TrendingUpIcon } from 'lucide-vue-next'
+import { ref, onMounted, computed, watch, nextTick } from 'vue'
+import { RefreshCcwIcon, BookOpenIcon, UserIcon, ClockIcon, TrendingUpIcon, SearchIcon, XIcon } from 'lucide-vue-next'
 import { useDataLoader } from '../composables/useDataLoader'
 
-const { fetchReports, loading, triggerReportsRefresh, checkReportsRefreshStatus, error } = useDataLoader()
+const { fetchReports, loading, triggerReportsRefresh, error } = useDataLoader()
 const reports = ref([])
 const selectedReport = ref(null)
 const backendUpdating = ref(false)
+const searchQuery = ref('')
+
+const filteredReports = computed(() => {
+  if (!searchQuery.value.trim()) return reports.value
+  const query = searchQuery.value.trim().toLowerCase()
+  const matched = reports.value.filter(report => {
+    // Match report title
+    if (report.title && report.title.toLowerCase().includes(query)) return true
+    // Match concept names and stock code/name within stock_pool
+    if (report.stock_pool && Array.isArray(report.stock_pool)) {
+      return report.stock_pool.some(group => {
+        if (group.concept && group.concept.toLowerCase().includes(query)) return true
+        const core = group.core_stocks || []
+        const other = group.other_stocks || []
+        return [...core, ...other].some(s => {
+          const name = (s.name || '').toLowerCase()
+          const symbol = (s.symbol || '').toLowerCase()
+          const code = (s.code || '').toLowerCase()
+          return name.includes(query) || symbol.includes(query) || code.includes(query)
+        })
+      })
+    }
+    return false
+  })
+  return matched
+})
+
+// Auto-select first matching report when search changes
+watch(filteredReports, (newVal) => {
+  if (newVal.length > 0) {
+    if (!selectedReport.value || !newVal.find(r => r.id === selectedReport.value.id)) {
+      selectedReport.value = newVal[0]
+    }
+  }
+})
+
+const isStockMatched = (stock) => {
+  const query = searchQuery.value.trim().toLowerCase()
+  if (!query) return false
+  const name = (stock.name || '').toLowerCase()
+  const symbol = (stock.symbol || '').toLowerCase()
+  const code = (stock.code || '').toLowerCase()
+  return name.includes(query) || symbol.includes(query) || code.includes(query)
+}
+
+// When searching, only show concept groups that contain matching stocks
+const displayedStockPool = computed(() => {
+  const pool = selectedReport.value?.stock_pool
+  if (!pool || !Array.isArray(pool)) return []
+  const query = searchQuery.value.trim().toLowerCase()
+  if (!query) return pool
+  return pool.filter(group => {
+    if (group.concept && group.concept.toLowerCase().includes(query)) return true
+    const all = [...(group.core_stocks || []), ...(group.other_stocks || [])]
+    return all.some(s => isStockMatched(s))
+  })
+})
+
+// --- Stock frequency statistics across all reports ---
+// Cache: { symbol -> { name, code, dates: Set of "YYYY-MM-DD" } }
+const stockStats = computed(() => {
+  const stats = {}
+  const now = new Date()
+  for (const report of reports.value) {
+    // Extract date from title or created_time
+    let dateStr = ''
+    const m = (report.title || '').match(/(\d{4})(\d{2})(\d{2})/)
+    if (m) {
+      dateStr = `${m[1]}-${m[2]}-${m[3]}`
+    } else if (report.created_time) {
+      dateStr = report.created_time.split('T')[0]
+    }
+    if (!dateStr) continue
+
+    const pool = report.stock_pool || []
+    for (const group of pool) {
+      for (const s of [...(group.core_stocks || []), ...(group.other_stocks || [])]) {
+        if (!s.symbol) continue
+        if (!stats[s.symbol]) {
+          stats[s.symbol] = { name: s.name || '', code: s.code || '', dates: new Set() }
+        }
+        stats[s.symbol].dates.add(dateStr)
+      }
+    }
+  }
+
+  // Convert Sets to counts
+  const result = []
+  for (const [symbol, info] of Object.entries(stats)) {
+    const dates = info.dates
+    let count7 = 0, count30 = 0
+    for (const d of dates) {
+      const diff = (now - new Date(d)) / (1000 * 60 * 60 * 24)
+      if (diff <= 7) count7++
+      if (diff <= 30) count30++
+    }
+    result.push({ symbol, name: info.name, code: info.code, total: dates.size, count7, count30 })
+  }
+  // Sort by total appearances descending
+  result.sort((a, b) => b.total - a.total)
+  return result
+})
+
+// Stats for stocks matching the current search query
+const matchedStockStats = computed(() => {
+  if (!searchQuery.value.trim()) return []
+  return stockStats.value.filter(s => isStockMatched(s))
+})
 
 const loadData = async () => {
   const data = await fetchReports()
@@ -138,24 +270,14 @@ const handleRefresh = async () => {
   if (backendUpdating.value) return
   backendUpdating.value = true
   
-  const res = await triggerReportsRefresh()
-  if (res && (res.status === 'started' || res.status === 'busy')) {
-    startPolling()
-  } else {
+  try {
+    await triggerReportsRefresh()
+    // Reports update once daily (trading day mornings); no need to poll.
+    await new Promise(resolve => setTimeout(resolve, 8000))
+  } finally {
     backendUpdating.value = false
     loadData()
   }
-}
-
-const startPolling = () => {
-  const timer = setInterval(async () => {
-    const status = await checkReportsRefreshStatus()
-    if (!status || !status.running) {
-      clearInterval(timer)
-      backendUpdating.value = false
-      loadData()
-    }
-  }, 2000)
 }
 
 onMounted(() => {
@@ -510,6 +632,55 @@ const formattedContent = computed(() => {
   color: var(--text-secondary);
   font-size: 0.8rem;
   font-family: monospace;
+}
+
+/* Search highlight */
+.stock-highlight {
+  background: rgba(250, 204, 21, 0.15) !important;
+  border-color: rgba(250, 204, 21, 0.5) !important;
+  box-shadow: 0 0 8px rgba(250, 204, 21, 0.2);
+}
+.search-hint {
+  color: #facc15;
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+/* Frequency statistics (inline in header) */
+.freq-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.freq-inline-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.freq-inline-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.freq-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: monospace;
+}
+.freq-7 {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+.freq-30 {
+  background: rgba(250, 204, 21, 0.15);
+  color: #facc15;
+}
+.freq-total {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
 }
 
 .detail-content-scroll {

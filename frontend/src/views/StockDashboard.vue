@@ -34,10 +34,10 @@
             class="search-input-inline"
             @keyup.enter="handleSearch"
           />
-          <button class="btn-search-inline" @click="handleSearch" :disabled="loading">
-            <SearchIcon v-if="!loading" class="icon-small" />
-            <RefreshCwIcon v-else class="icon-small spin" />
-            Fetch
+          <button class="btn-search-inline" @click="handleSearch" :disabled="loading || isBackgroundFetching">
+            <RefreshCwIcon v-if="loading || isBackgroundFetching" class="icon-small spin" />
+            <SearchIcon v-else class="icon-small" />
+            {{ loading ? 'Resolving...' : (isBackgroundFetching ? 'Fetching...' : 'Fetch') }}
           </button>
         </div>
         
@@ -125,9 +125,15 @@
       :nlpSummaries="nlpSummaries"
     />
     
-    <div v-if="!hasData && !loading && !error" class="empty-state glass-panel">
+    <div v-if="!hasData && !loading && !isBackgroundFetching && !error" class="empty-state glass-panel">
       <TrendingUpIcon class="empty-icon" />
       <p>Enter a symbol and fetch its real-time hierarchical data layers</p>
+    </div>
+
+    <!-- Initial fetch loading state -->
+    <div v-if="!hasData && (loading || isBackgroundFetching)" class="empty-state glass-panel">
+      <RefreshCwIcon class="empty-icon spin" />
+      <p>{{ loading ? 'Resolving symbol...' : `Fetching data layers for ${symbol}...` }}</p>
     </div>
   </div>
 </template>
