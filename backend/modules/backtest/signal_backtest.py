@@ -482,18 +482,19 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
 
         if config.exit_timing == "close":
             # === 半仓滚动模式 ===
-            # exits = 持仓超过1天的股票（昨天买的，今天收盘卖）
-            # entries = 今天的 Top K 信号（全部都是新买入，因为旧仓今天收盘全清）
-            # holds = 今天买的（还没满一天）
+            # 规则：
+            # 1. 昨天买的股票如果今天还在 ML Top K → 继续持有（holds），不卖不买，省手续费
+            # 2. 昨天买的股票如果今天不在 ML Top K → 收盘卖出（exits）
+            # 3. 今天 ML Top K 中的新股票 → 开盘买入（entries）
             exits = set()
             for sym in prev_symbols:
                 entry_date = current_entry_dates.get(sym, "")
-                if entry_date != date_str:  # 不是今天买的 → 持了一天以上 → 卖出
-                    exits.add(sym)
-            # 在半仓滚动模式下，所有 target_symbols 都是全新买入
-            # （因为旧仓要么在 exits 里卖了，要么如果信号重叠也是先卖后重新买）
-            new_entries = target_symbols.copy()
-            holds = prev_symbols - exits  # 今天买的（还没满一天）
+                if entry_date != date_str:  # 不是今天买的 → 持了一天以上
+                    if sym not in target_symbols:
+                        exits.add(sym)  # 不在今天的信号里 → 卖出
+                    # else: 信号重叠 → 继续持有，省手续费
+            new_entries = target_symbols - prev_symbols  # 只有全新的才买入
+            holds = prev_symbols - exits  # 继续持有的（今天买的 + 信号重叠的）
         else:
             # === 开盘卖出模式 ===
             new_entries = target_symbols - prev_symbols
