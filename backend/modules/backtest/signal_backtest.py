@@ -483,14 +483,16 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
         if config.exit_timing == "close":
             # === 半仓滚动模式 ===
             # exits = 持仓超过1天的股票（昨天买的，今天收盘卖）
-            # entries = 今天的 Top K 信号（无论是否与昨天重叠）
-            # holds = 不在 exits 里的持仓（理论上不存在，因为一天就卖）
+            # entries = 今天的 Top K 信号（全部都是新买入，因为旧仓今天收盘全清）
+            # holds = 今天买的（还没满一天）
             exits = set()
             for sym in prev_symbols:
                 entry_date = current_entry_dates.get(sym, "")
                 if entry_date != date_str:  # 不是今天买的 → 持了一天以上 → 卖出
                     exits.add(sym)
-            new_entries = target_symbols - prev_symbols
+            # 在半仓滚动模式下，所有 target_symbols 都是全新买入
+            # （因为旧仓要么在 exits 里卖了，要么如果信号重叠也是先卖后重新买）
+            new_entries = target_symbols.copy()
             holds = prev_symbols - exits  # 今天买的（还没满一天）
         else:
             # === 开盘卖出模式 ===
