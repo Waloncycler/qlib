@@ -6,9 +6,16 @@ from loguru import logger
 from core.config import WORKSPACE_DIR, resolver, PROJECT_DIR
 
 
-def get_signal_backtest_results(enable_ml_filter: bool = False, model_version: str = "v1_default", top_k: int = 10):
+def _cache_name(enable_ml_filter, model_version, top_k, enable_market_timing):
+    """生成缓存文件名，区分择时/无择时"""
+    ml_prefix = "_ml" if enable_ml_filter else "_signal"
+    timing_suffix = "_timed" if enable_market_timing else "_raw"
+    return f"{ml_prefix}_{model_version}_top{top_k}{timing_suffix}_backtest_cache.json"
+
+
+def get_signal_backtest_results(enable_ml_filter: bool = False, model_version: str = "v1_default", top_k: int = 10, enable_market_timing: bool = True):
     """Returns cached signal backtest results, or runs the backtest if no cache exists."""
-    cache_name = f"_ml_{model_version}_top{top_k}_backtest_cache.json" if enable_ml_filter else f"_signal_top{top_k}_backtest_cache.json"
+    cache_name = _cache_name(enable_ml_filter, model_version, top_k, enable_market_timing)
     cache_path = WORKSPACE_DIR / "data" / "cn_stock" / "backtest_ohlcv" / cache_name
 
     if cache_path.exists():
@@ -20,10 +27,10 @@ def get_signal_backtest_results(enable_ml_filter: bool = False, model_version: s
 
     # No cache — auto-run the backtest
     logger.info(f"No cache found at {cache_name}, auto-running backtest...")
-    return run_signal_backtest_service(enable_ml_filter=enable_ml_filter, model_version=model_version, top_k=top_k)
+    return run_signal_backtest_service(enable_ml_filter=enable_ml_filter, model_version=model_version, top_k=top_k, enable_market_timing=enable_market_timing)
 
 
-def run_signal_backtest_service(enable_ml_filter: bool = False, model_version: str = "v1_default", top_k: int = 10):
+def run_signal_backtest_service(enable_ml_filter: bool = False, model_version: str = "v1_default", top_k: int = 10, enable_market_timing: bool = True):
     """
     Runs the signal backtest and caches results.
     This is the main entry point called from the router.
@@ -31,12 +38,12 @@ def run_signal_backtest_service(enable_ml_filter: bool = False, model_version: s
     from modules.backtest.signal_backtest import run_signal_backtest, BacktestConfig
 
     exit_timing = "close" if model_version == "v3_open2close" else "open"
-    logger.info(f"Running AI signal backtest... (ML Filter: {enable_ml_filter}, Model: {model_version}, Top K: {top_k}, Exit: {exit_timing})")
-    config = BacktestConfig(enable_ml_filter=enable_ml_filter, model_version=model_version, top_k=top_k, exit_timing=exit_timing)
+    logger.info(f"Running AI signal backtest... (ML Filter: {enable_ml_filter}, Model: {model_version}, Top K: {top_k}, Exit: {exit_timing}, Timing: {enable_market_timing})")
+    config = BacktestConfig(enable_ml_filter=enable_ml_filter, model_version=model_version, top_k=top_k, exit_timing=exit_timing, enable_market_timing=enable_market_timing)
     result = run_signal_backtest(config)
 
-    # Cache to disk (separate caches)
-    cache_name = f"_ml_{model_version}_top{top_k}_backtest_cache.json" if enable_ml_filter else f"_signal_top{top_k}_backtest_cache.json"
+    # Cache to disk (separate caches for timing on/off)
+    cache_name = _cache_name(enable_ml_filter, model_version, top_k, enable_market_timing)
     cache_path = WORKSPACE_DIR / "data" / "cn_stock" / "backtest_ohlcv" / cache_name
     cache_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -214,13 +221,23 @@ def get_leaderboard_service():
     for file_path in glob.glob(search_pattern):
         try:
             filename = os.path.basename(file_path)
-            # Parse filename format: _ml_{model_version}_top{top_k}_backtest_cache.json
-            parts = filename.replace("_ml_", "").replace("_backtest_cache.json", "").split("_top")
+            # Parse filename: _ml_{model}_top{k}{_timed|_raw}_backtest_cache.json
+            core = filename.replace("_ml_", "").replace("_backtest_cache.json", "")
+            parts = core.split("_top")
             if len(parts) != 2:
                 continue
-                
+
             model_version = parts[0]
-            top_k = int(parts[1])
+            rest = parts[1]  # e.g. "4_timed" or "4_raw" or "4" (legacy)
+            if "_timed" in rest:
+                top_k = int(rest.replace("_timed", ""))
+                timed_label = "择时"
+            elif "_raw" in rest:
+                top_k = int(rest.replace("_raw", ""))
+                timed_label = "无择时"
+            else:
+                top_k = int(rest)
+                timed_label = ""
             
             with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -232,6 +249,8 @@ def get_leaderboard_service():
             leaderboard.append({
                 "model_version": model_version,
                 "top_k": top_k,
+                "enable_market_timing": timed_label == "择时",
+                "timing_label": timed_label,
                 "annual_return": f"{metrics.get('annualized_return', 0) * 100:.2f}%",
                 "max_drawdown": f"{metrics.get('max_drawdown', 0) * 100:.2f}%",
                 "sharpe_ratio": f"{metrics.get('sharpe_ratio', 0):.3f}",

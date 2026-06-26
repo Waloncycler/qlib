@@ -47,22 +47,59 @@ deepseek_api_key: "YOUR_DEEPSEEK_KEY"  # 用于 YMOS 风控审计
 
 > **注**：如果你希望手动分步启动，可以分别进入 `backend/` 运行 `python api_server.py`，以及在 `frontend/` 下运行 `npm run dev`。
 
-### 4. 数据更新（可选）
+### 4. 数据更新
 
 ```bash
-# 手动触发全量数据刷新（情绪、题材、个股行情）
+# 全量数据刷新（题材、报告、K线、OHLCV、分层行情）
 cd backend
-python update_all_data.py --force
+python tasks/update_daily.py --mode all --force
 
-# 或设置定时任务（参考 crontab.example）
+# 仅刷新题材和 K 线
+python tasks/update_daily.py --mode topics --force
+
+# 定时任务参考 backend/crontab.example
 ```
 
-### 5. 运行回测（可选）
+数据管道流程：
+1. 登录 ZIZIZAIZAI 获取 token
+2. 并行抓取：题材热点 / 情绪信号 / AI 早报
+3. 回填历史情绪和增强数据
+4. **Baostock OHLCV 下载**（回测引擎所需日 K 数据）
+5. 分层行情数据下载（market_data/collector.py，如存在）
+
+### 5. 模型训练与回测
 
 ```bash
-# 在项目根目录运行
-python custom_workflow.py
+# 训练 AlphaShortLine v3 模型（Alpha158 + 短线特征）
+python scripts/train_v3_shortline.py
+
+# 生成回测报告（K=2,3,4 对比）
+python scripts/report_v3_shortline.py
+
+# 全面系统审计
+python scripts/full_audit.py
 ```
+
+### 策略模型
+
+| 模型 | Label | 交易模式 | 说明 |
+|------|-------|---------|------|
+| v1_default | T收盘→T+1收盘 | 开盘卖+开盘买，100%仓位 | Alpha158 基础模型 |
+| v2_open2open | T开盘→T+1开盘 | 开盘卖+开盘买，100%仓位 | Alpha158 变体 |
+| v3_open2close | T开盘→T+1收盘 | **半仓滚动**，最多持 2K 只 | Alpha158 + 12短线特征 |
+
+**v3_open2close 半仓滚动模式**：
+- 每天开盘用 50% 资金买入 K 只新股
+- 次日收盘卖出上一交易日的仓位
+- 同时持有两批股票（昨天的 K + 今天的 K = 最多 2K）
+- 资金无穿越，实盘可复现
+
+### 回测引擎特性
+
+- **大盘择时**：跌破 N 日均线时降低仓位（可开关，MA5/10/15/20 可选）
+- **半仓滚动**：open2close 模式下自动半仓运行（修复了时间穿越 bug）
+- **Stock Pool 保护**：防止回测 override 覆盖正常 AI 报告数据
+- **缓存系统**：按 模型+K+择时 分离缓存，Leaderboard 自动聚合
 
 ## 📁 项目结构
 
@@ -119,9 +156,17 @@ qlib/
 │   └── standard/                  # Qlib 标准格式
 │       └── qlib_data/             # Qlib 二进制数据库
 │
-├── custom_workflow.py             # 自定义回测工作流入口
-├── timing_strategy.py             # 择时增强 TopK 策略
-├── examples/                      # Qlib 官方示例
+├── scripts/                      # 📌 模型训练与工具脚本
+│   ├── train_v3_shortline.py     # AlphaShortLine v3 训练（主力模型）
+│   ├── train_v3_sortino.py       # Sortino 加权变体（实验）
+│   ├── report_v3_shortline.py    # 回测报告生成
+│   ├── generate_shortline_pool.py # 短线子池生成（300只高活跃股）
+│   ├── generate_llm_pool.py      # LLM 池生成
+│   ├── full_audit.py             # 全面系统审计
+│   ├── check_data_health.py      # 数据健康检查
+│   ├── dump_bin.py               # Qlib 数据格式化
+│   ├── get_data.py               # 数据获取工具
+│   └── data_collector/           # 各数据源采集器
 ├── docs/                          # 文档
 │   └── QLIB_UPSTREAM_README.md    # Qlib 上游原版 README 备份
 ├── tests/                         # 测试

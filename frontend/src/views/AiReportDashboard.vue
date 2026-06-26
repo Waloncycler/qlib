@@ -342,6 +342,8 @@ const formattedContent = computed(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
   padding: 0 10px;
 }
 

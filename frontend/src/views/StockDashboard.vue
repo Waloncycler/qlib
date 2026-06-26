@@ -402,7 +402,7 @@ onMounted(() => {
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 16px;
   width: 100%;
   overflow-x: auto;
@@ -424,7 +424,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 16px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 .search-section-inline { 

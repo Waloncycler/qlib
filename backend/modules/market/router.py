@@ -184,6 +184,32 @@ def get_trading_days(date: str, n: int = 5, pre_n: int = None, post_n: int = Non
         logger.error(f"Error getting trading days: {e}")
         return {"status": "error", "message": str(e)}
 
+@router.get("/api/market/pulse")
+def get_market_pulse():
+    """获取最新的市场体检快照。"""
+    try:
+        from modules.market.market_pulse import load_latest_pulse
+        snapshot = load_latest_pulse()
+        if snapshot:
+            return {"status": "success", "data": snapshot}
+        return {"status": "success", "data": None, "message": "尚无体检数据，请等待定时任务或手动触发。"}
+    except Exception as e:
+        logger.error(f"Error loading market pulse: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/market/pulse/scan")
+def trigger_market_pulse_scan():
+    """手动触发现市场体检扫描。"""
+    try:
+        from modules.market.market_pulse import run_market_pulse_scan
+        snapshot = run_market_pulse_scan()
+        return {"status": "success", "data": snapshot}
+    except Exception as e:
+        logger.error(f"Error running market pulse scan: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/api/resolve_symbol/{query}")
 def resolve_symbol(query: str):
     query = query.strip()

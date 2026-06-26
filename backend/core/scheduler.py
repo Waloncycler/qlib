@@ -49,6 +49,24 @@ def run_post_market_routine():
     except Exception as e:
         logger.error(f"Error in post-market routine: {e}")
 
+def run_market_pulse_routine():
+    """
+    Market Pulse routine: 收盘后执行 iWencai 市场体检扫描。
+    拉取市场整体维度的结构化数据，生成 DeepSeek 摘要。
+    """
+    if not is_trading_day():
+        logger.info("Today is not a trading day. Skipping market pulse.")
+        return
+
+    logger.info("Executing Market Pulse scan...")
+    try:
+        from modules.market.market_pulse import run_market_pulse_scan
+        run_market_pulse_scan()
+        logger.info("Market Pulse scan completed successfully.")
+    except Exception as e:
+        logger.error(f"Error in market pulse routine: {e}")
+
+
 def start_scheduler():
     """
     Initializes and starts the APScheduler.
@@ -69,9 +87,17 @@ def start_scheduler():
         id="post_market_routine",
         replace_existing=True
     )
+
+    # Register market pulse scan at 15:10 PM every trading day
+    scheduler.add_job(
+        run_market_pulse_routine,
+        CronTrigger(hour=15, minute=10),
+        id="market_pulse_routine",
+        replace_existing=True
+    )
     
     scheduler.start()
-    logger.info("Automated Scheduler started: Morning @ 09:00, Post-Market @ 16:00")
+    logger.info("Automated Scheduler started: Morning @ 09:00, Market Pulse @ 15:10, Post-Market @ 16:00")
 
 def stop_scheduler():
     """

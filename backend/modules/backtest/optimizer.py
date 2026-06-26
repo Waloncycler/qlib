@@ -5,10 +5,13 @@ from loguru import logger
 from core.config import config, WORKSPACE_DIR
 from modules.backtest.service import run_signal_backtest_service
 
-def optimize_top_k(model_version: str = "v3_open2close", k_values: list = [3, 5, 8, 10, 15]):
+def optimize_top_k(model_version: str = "v3_open2close", k_values: list = None):
     """
     Grid search for the optimal Top K parameter by running historical backtests.
     """
+    if k_values is None:
+        k_values = list(range(2, 11))  # 2~10
+
     logger.info(f"Starting Top K Grid Search for model: {model_version} with Ks: {k_values}")
     
     results_summary = []

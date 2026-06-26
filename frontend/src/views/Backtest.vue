@@ -48,6 +48,14 @@
                  :style="{ transform: enableMlFilter ? 'translateX(14px)' : 'translateX(0)' }"></div>
           </div>
         </div>
+        <div v-if="enableMlFilter" class="control-item" style="margin-right: 8px; display: flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap;" @click="enableMarketTiming = !enableMarketTiming; fetchResults()" title="大盘均线择时：跌破20日线时降仓">
+          <span style="font-size: 0.75rem; font-weight: bold; transition: color 0.3s; white-space: nowrap; flex-shrink: 0;" :style="{ color: enableMarketTiming ? '#fbbf24' : '#94a3b8' }">择时</span>
+          <div style="position: relative; display: inline-flex; height: 14px; width: 28px; border-radius: 9999px; align-items: center; padding: 0 2px; transition: all 0.3s;"
+               :style="{ background: enableMarketTiming ? '#f59e0b' : '#334155', border: enableMarketTiming ? 'none' : '1px solid #475569', boxShadow: enableMarketTiming ? '0 0 8px rgba(245,158,11,0.5)' : 'none' }">
+            <div style="height: 10px; width: 10px; border-radius: 9999px; background-color: white; transition: transform 0.3s;"
+                 :style="{ transform: enableMarketTiming ? 'translateX(14px)' : 'translateX(0)' }"></div>
+          </div>
+        </div>
         <button class="mini-btn" @click="downloadData" :disabled="downloading" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 4px 10px; font-size: 0.75rem; white-space: nowrap; font-weight: bold;" title="Download Data">
           <i class="fa-solid fa-download"></i>
           <span style="margin-left: 6px;">{{ downloading ? '...' : 'Data' }}</span>
@@ -348,16 +356,17 @@
             <thead>
               <tr>
                 <th>Rank</th>
-                <th>Model Version</th>
-                <th>Top K</th>
+                <th>Model</th>
+                <th>K</th>
+                <th>择时</th>
                 <th>Annual Return</th>
                 <th>Max Drawdown</th>
-                <th>Sharpe Ratio</th>
+                <th>Sharpe</th>
                 <th>Win Rate</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in leaderboardData" :key="item.model_version + item.top_k" :class="{'top-3': item.rank <= 3, 'clickable-row': true}" @click="loadStrategy(item)">
+              <tr v-for="item in leaderboardData" :key="item.model_version + '_' + item.top_k + '_' + (item.enable_market_timing !== undefined ? item.enable_market_timing : 'legacy')" :class="{'top-3': item.rank <= 3, 'clickable-row': true}" @click="loadStrategy(item)">
                 <td>
                   <span v-if="item.rank === 1" style="color: #facc15;">1</span>
                   <span v-else-if="item.rank === 2" style="color: #94a3b8;">2</span>
@@ -366,6 +375,11 @@
                 </td>
                 <td style="font-weight: 600; color: #e0f2fe;">{{ item.model_version }}</td>
                 <td style="color: #38bdf8;">{{ item.top_k }}</td>
+                <td style="font-size: 0.75rem;">
+                  <span v-if="item.timing_label === '择时'" style="color: #fbbf24;">择时</span>
+                  <span v-else-if="item.timing_label === '无择时'" style="color: #94a3b8;">无</span>
+                  <span v-else style="color: #475569;">-</span>
+                </td>
                 <td :style="{color: parseFloat(item.annual_return) > 0 ? '#34d399' : '#f87171', fontWeight: 'bold'}">{{ item.annual_return }}</td>
                 <td style="color: #f87171;">{{ item.max_drawdown }}</td>
                 <td style="color: #a78bfa;">{{ item.sharpe_ratio }}</td>
@@ -414,6 +428,7 @@ const loading = ref(false)
 const enableMlFilter = ref(true)
 const selectedModelVersion = ref('v1_default')
 const topK = ref(10)
+const enableMarketTiming = ref(true)
 const showLeaderboard = ref(false)
 const leaderboardLoading = ref(false)
 const leaderboardData = ref([])
@@ -1156,7 +1171,7 @@ const fetchResults = async () => {
   loadingMsg.value = 'Loading cached results...'
   error.value = null
   try {
-    const res = await axios.get(`/api/backtest/results?enable_ml_filter=${enableMlFilter.value}&model_version=${selectedModelVersion.value}&top_k=${topK.value}`)
+    const res = await axios.get(`/api/backtest/results?enable_ml_filter=${enableMlFilter.value}&model_version=${selectedModelVersion.value}&top_k=${topK.value}&enable_market_timing=${enableMarketTiming.value}`)
     if (res.data.status === 'success') {
       metrics.value = res.data.data.metrics || null
       curveData.value = res.data.data.curve || null
@@ -1198,7 +1213,7 @@ const runIntelligentBacktest = async () => {
   loadingMsg.value = enableMlFilter.value ? 'Running ML Hybrid Backtest...' : 'Running Signal Backtest...'
   error.value = null
   try {
-    const res = await axios.post(`/api/backtest/intelligent?enable_ml_filter=${enableMlFilter.value}&model_version=${selectedModelVersion.value}&top_k=${topK.value}`, {}, { timeout: 600000 })
+    const res = await axios.post(`/api/backtest/intelligent?enable_ml_filter=${enableMlFilter.value}&model_version=${selectedModelVersion.value}&top_k=${topK.value}&enable_market_timing=${enableMarketTiming.value}`, {}, { timeout: 600000 })
     if (res.data.status === 'success') {
       metrics.value = res.data.data.metrics
       curveData.value = res.data.data.curve
@@ -1236,18 +1251,17 @@ const openLeaderboard = async () => {
 }
 
 const loadStrategy = (item) => {
-  // Check if it's ML or Signal
-  // The filename format from service: "_ml_{model_version}_top{top_k}"
-  // Wait, the API only lists ML models for now since we only saved _ml_*
+  // 同步所有控制变量，确保加载的数据与 leaderboard 行完全一致
   enableMlFilter.value = true
   selectedModelVersion.value = item.model_version
   topK.value = item.top_k
-  
-  // Close leaderboard modal
+  enableMarketTiming.value = item.enable_market_timing !== undefined ? item.enable_market_timing : true
+
+  // 关闭 leaderboard 弹窗
   showLeaderboard.value = false
-  
-  // Automatically trigger fetch/backtest for this strategy
-  runIntelligentBacktest()
+
+  // 加载对应的回测数据
+  fetchResults()
 }
 
 const getWeight = (holdingsList, symbol) => {
@@ -1413,7 +1427,7 @@ onUnmounted(() => {
 .top-control-bar {
   padding: 6px 12px;
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 8px;
   justify-content: space-between;
   align-items: center;
@@ -1431,10 +1445,13 @@ onUnmounted(() => {
 
 .controls-left, .controls-right {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  flex-shrink: 0;
+}
+
+.controls-right {
+  justify-content: flex-end;
 }
 
 .control-item {

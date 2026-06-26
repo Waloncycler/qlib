@@ -885,7 +885,7 @@ onMounted(() => {
 @keyframes spin { 100% { transform: rotate(360deg); } }
 
 .layout { display: flex; flex-direction: column; gap: 16px; flex: 1; min-height: 0; overflow: hidden; }
-.topic-top-bar { display: flex; align-items: center; padding: 12px 16px; gap: 12px; overflow: hidden; flex-shrink: 0; border-radius: 12px; }
+.topic-top-bar { display: flex; align-items: center; padding: 12px 16px; gap: 12px; flex-wrap: wrap; flex-shrink: 0; border-radius: 12px; }
 
 .scroll-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-secondary); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
 .scroll-btn:hover:not(:disabled) { background: rgba(59, 130, 246, 0.15); color: var(--accent-color); border-color: rgba(59, 130, 246, 0.3); }

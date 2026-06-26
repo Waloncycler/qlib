@@ -207,6 +207,7 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
     current_holdings: Dict[str, float] = {}  # symbol -> weight
     current_shares: Dict[str, float] = {}    # symbol -> num_shares
     current_entry_prices: Dict[str, float] = {}  # symbol -> entry open price
+    current_entry_dates: Dict[str, str] = {}  # symbol -> 买入日期（用于判断持仓天数）
 
     records: List[dict] = []
     concept_returns: Dict[str, List[float]] = {}  # concept -> [daily_returns]
@@ -272,19 +273,34 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                                         try:
                                             from core.config import WORKSPACE_DIR
                                             fpath = WORKSPACE_DIR / "data" / "cn_stock" / "stock_pools" / f"stock_pool_{date_str}.json"
-                                            pool_data_to_save = {
-                                                "date": f"{date_str} 09:00:00",
-                                                "stocks": [
-                                                    {
-                                                        "code": p["symbol"].replace("SH", "").replace("SZ", "").replace("BJ", ""),
-                                                        "name": p["name"],
-                                                        "theme": p.get("popularity", "人气热点叠加")
-                                                    } for p in live_res["top_picks"]
-                                                ]
-                                            }
-                                            with open(fpath, "w", encoding="utf-8") as f:
-                                                json.dump(pool_data_to_save, f, ensure_ascii=False, indent=2)
-                                            logger.info(f"Persisted final day override to {fpath}")
+                                            
+                                            # 安全检查：如果已有 pool 文件包含更多股票，不要覆盖
+                                            skip_write = False
+                                            if fpath.exists():
+                                                try:
+                                                    with open(fpath, "r", encoding="utf-8") as ef:
+                                                        existing = json.load(ef)
+                                                    existing_count = len(existing.get("stocks", []))
+                                                    if existing_count > len(live_res["top_picks"]):
+                                                        logger.info(f"Skip override: existing pool has {existing_count} stocks > live {len(live_res['top_picks'])} picks")
+                                                        skip_write = True
+                                                except Exception:
+                                                    pass
+                                            
+                                            if not skip_write:
+                                                pool_data_to_save = {
+                                                    "date": f"{date_str} 09:00:00",
+                                                    "stocks": [
+                                                        {
+                                                            "code": p["symbol"].replace("SH", "").replace("SZ", "").replace("BJ", ""),
+                                                            "name": p["name"],
+                                                            "theme": p.get("popularity", "人气热点叠加")
+                                                        } for p in live_res["top_picks"]
+                                                    ]
+                                                }
+                                                with open(fpath, "w", encoding="utf-8") as f:
+                                                    json.dump(pool_data_to_save, f, ensure_ascii=False, indent=2)
+                                                logger.info(f"Persisted final day override to {fpath}")
                                         except Exception as write_err:
                                             logger.error(f"Failed to persist final day override: {write_err}")
                                             
@@ -463,9 +479,24 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
         # Identify entries and exits
         prev_symbols = set(current_holdings.keys())
         target_symbols = set(tradeable_targets.keys())
-        new_entries = target_symbols - prev_symbols
-        exits = prev_symbols - target_symbols
-        holds = prev_symbols & target_symbols
+
+        if config.exit_timing == "close":
+            # === 半仓滚动模式 ===
+            # exits = 持仓超过1天的股票（昨天买的，今天收盘卖）
+            # entries = 今天的 Top K 信号（无论是否与昨天重叠）
+            # holds = 不在 exits 里的持仓（理论上不存在，因为一天就卖）
+            exits = set()
+            for sym in prev_symbols:
+                entry_date = current_entry_dates.get(sym, "")
+                if entry_date != date_str:  # 不是今天买的 → 持了一天以上 → 卖出
+                    exits.add(sym)
+            new_entries = target_symbols - prev_symbols
+            holds = prev_symbols - exits  # 今天买的（还没满一天）
+        else:
+            # === 开盘卖出模式 ===
+            new_entries = target_symbols - prev_symbols
+            exits = prev_symbols - target_symbols
+            holds = prev_symbols & target_symbols
 
         # --- Process exits: sell at today's open ---
         daily_trades = []
@@ -494,76 +525,146 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                         "fee": round(fee, 2)
                     })
 
-        # Remove exited positions
-        for sym in exits:
-            current_holdings.pop(sym, None)
-            current_shares.pop(sym, None)
-            current_entry_prices.pop(sym, None)
+        # Remove exited positions from tracking (but capital not yet available if close exit)
+        # For exit_timing="close": 固定半仓滚动模式
+        #   - 开盘买入只用 50% 总资金
+        #   - 收盘卖出上一交易日的仓位（资金次日才可用）
+        # For exit_timing="open": 开盘卖出+开盘买入，资金立即可用，100%仓位
+        close_exit_pending_proceeds = 0.0
+        if config.exit_timing == "close":
+            # === 固定半仓滚动模式 ===
+            # 收盘卖出旧仓的资金要到收盘才到账
+            close_exit_pending_proceeds = exit_proceeds
+            for sym in exits:
+                current_holdings.pop(sym, None)
+                current_shares.pop(sym, None)
+                current_entry_prices.pop(sym, None)
+                current_entry_dates.pop(sym, None)
+
+            # 计算当前总资产（开盘价）
+            portfolio_value_at_open = cash
+            for sym in holds:
+                if sym in prices and date_ts in prices[sym].index:
+                    portfolio_value_at_open += current_shares[sym] * prices[sym].loc[date_ts, "open"]
+                else:
+                    portfolio_value_at_open += current_shares.get(sym, 0) * current_entry_prices.get(sym, 0)
+
+            # 半仓买入：只用 50% 的总资产分配给新目标
+            # 大盘择时：跌破均线时降低仓位（intended_total_weight 已在上面计算）
+            available_capital = portfolio_value_at_open * 0.5 * intended_total_weight
+
+            # 重新分配权重：只在新 entries 之间分配 available_capital
+            entry_targets = {s: w for s, w in tradeable_targets.items() if s in new_entries}
+            hold_targets = {s: w for s, w in tradeable_targets.items() if s in holds}
+
+            # 合并：holds 保持原仓位不变，entries 用半仓资金分配
+            # 重写 tradeable_targets，让 entries 用半仓资金等权分配
+            if entry_targets:
+                entry_total = sum(entry_targets.values())
+                for s in entry_targets:
+                    entry_targets[s] = (entry_targets[s] / entry_total) * available_capital  # 绝对金额
+        else:
+            # === 开盘卖出模式（100% 仓位）===
+            for sym in exits:
+                current_holdings.pop(sym, None)
+                current_shares.pop(sym, None)
+                current_entry_prices.pop(sym, None)
+            portfolio_value_at_open = cash + exit_proceeds
+            for sym in holds:
+                if sym in prices and date_ts in prices[sym].index:
+                    portfolio_value_at_open += current_shares[sym] * prices[sym].loc[date_ts, "open"]
+                else:
+                    portfolio_value_at_open += current_shares.get(sym, 0) * current_entry_prices.get(sym, 0)
+            entry_targets = None  # 使用默认逻辑
 
         # --- Rebalance: We rebalance all holdings to target weights ---
-        # First, calculate total portfolio value at today's OPEN
-        portfolio_value_at_open = cash + exit_proceeds
-        for sym in holds:
-            if sym in prices and date_ts in prices[sym].index:
-                portfolio_value_at_open += current_shares[sym] * prices[sym].loc[date_ts, "open"]
-            else:
-                portfolio_value_at_open += current_shares.get(sym, 0) * current_entry_prices.get(sym, 0)
-
-        # Re-allocate all capital according to new target weights
         entry_symbols = []
         new_shares = {}
         new_entry_prices = {}
-        new_cash = portfolio_value_at_open
 
-        for sym, weight in tradeable_targets.items():
-            if sym in prices and date_ts in prices[sym].index:
-                buy_price = prices[sym].loc[date_ts, "open"]
-                if buy_price > 0:
-                    allocated = portfolio_value_at_open * weight
-                    # If this is a hold, we are adjusting position (buy or sell diff). 
-                    # For simplicity, we assume we sell everything and buy it back (rebalance),
-                    # BUT we only charge cost on the NEW capital entering the position to avoid massive costs.
-                    current_val = 0
-                    if sym in holds:
-                        current_val = current_shares[sym] * buy_price
-                    diff = allocated - current_val
-                    trade_action = ""
-                    trade_fee = 0.0
-                    trade_amount = abs(diff)
-                    if diff > 0:
-                        # Buying
-                        trade_fee = diff * config.buy_cost
-                        allocated -= trade_fee
-                        trade_action = "buy"
-                    elif diff < 0:
-                        # Selling
-                        trade_fee = abs(diff) * config.sell_cost
-                        allocated += trade_fee
-                        trade_action = "sell"
+        if config.exit_timing == "close" and entry_targets is not None:
+            # === 半仓滚动模式 ===
+            # holds 保持原仓位不变，entries 用半仓资金买入
+            new_cash = cash  # 初始 cash（不含收盘到账的 exit_proceeds）
+            new_entry_dates = {}
+            for sym in list(current_shares.keys()):
+                new_shares[sym] = current_shares[sym]  # 保持 holds
+                new_entry_prices[sym] = current_entry_prices.get(sym, 0)
+                new_entry_dates[sym] = current_entry_dates.get(sym, "")
 
-                    if sym in new_entries:
+            for sym, allocated_amount in entry_targets.items():
+                if sym in prices and date_ts in prices[sym].index:
+                    buy_price = prices[sym].loc[date_ts, "open"]
+                    if buy_price > 0:
+                        trade_fee = allocated_amount * config.buy_cost
+                        net_allocated = allocated_amount - trade_fee
+                        shares = net_allocated / buy_price
+                        new_shares[sym] = shares
+                        new_entry_prices[sym] = buy_price
+                        new_entry_dates[sym] = date_str  # 记录买入日期
+                        new_cash -= allocated_amount
                         entry_symbols.append(sym)
 
-                    shares = allocated / buy_price
-                    new_shares[sym] = shares
-                    new_entry_prices[sym] = buy_price
-                    new_cash -= allocated
-                    
-                    if trade_amount > 100:  # Ignore tiny rounding rebalances
                         daily_trades.append({
                             "symbol": sym,
-                            "action": trade_action,
-                            "reason": "entry" if sym in new_entries else "rebalance",
+                            "action": "buy",
+                            "reason": "entry",
                             "price": round(buy_price, 3),
-                            "shares": round(trade_amount / buy_price, 2),
-                            "amount": round(trade_amount, 2),
+                            "shares": round(allocated_amount / buy_price, 2),
+                            "amount": round(allocated_amount, 2),
                             "fee": round(trade_fee, 2)
                         })
+        else:
+            # === 100% 仓位模式（open2open）===
+            new_cash = portfolio_value_at_open
+            for sym, weight in tradeable_targets.items():
+                if sym in prices and date_ts in prices[sym].index:
+                    buy_price = prices[sym].loc[date_ts, "open"]
+                    if buy_price > 0:
+                        allocated = portfolio_value_at_open * weight
+                        current_val = 0
+                        if sym in holds:
+                            current_val = current_shares[sym] * buy_price
+                        diff = allocated - current_val
+                        trade_action = ""
+                        trade_fee = 0.0
+                        trade_amount = abs(diff)
+                        if diff > 0:
+                            trade_fee = diff * config.buy_cost
+                            allocated -= trade_fee
+                            trade_action = "buy"
+                        elif diff < 0:
+                            trade_fee = abs(diff) * config.sell_cost
+                            allocated += trade_fee
+                            trade_action = "sell"
+
+                        if sym in new_entries:
+                            entry_symbols.append(sym)
+
+                        shares = allocated / buy_price
+                        new_shares[sym] = shares
+                        new_entry_prices[sym] = buy_price
+                        new_cash -= allocated
+
+                        if trade_amount > 100:
+                            daily_trades.append({
+                                "symbol": sym,
+                                "action": trade_action,
+                                "reason": "entry" if sym in new_entries else "rebalance",
+                                "price": round(buy_price, 3),
+                                "shares": round(trade_amount / buy_price, 2),
+                                "amount": round(trade_amount, 2),
+                                "fee": round(trade_fee, 2)
+                            })
 
         current_shares = new_shares
-        current_holdings = tradeable_targets.copy()
+        # current_holdings 应反映所有持仓（holds + entries），不只 targets
+        current_holdings = {sym: 1.0 for sym in new_shares.keys()}
         current_entry_prices.update(new_entry_prices)
-        cash = max(0, new_cash)  # Avoid precision issues making cash slightly negative
+        if config.exit_timing == "close":
+            current_entry_dates = new_entry_dates
+        # 收盘卖出资金到账 + 扣除买入支出
+        cash = max(0, new_cash + close_exit_pending_proceeds)
 
         # --- Calculate end-of-day NAV (mark to close) ---
         eod_nav = cash

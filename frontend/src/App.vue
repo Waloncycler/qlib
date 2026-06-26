@@ -37,10 +37,6 @@
           <BookOpenIcon class="icon" />
           <span v-if="isSidebarOpen || isMobileView">AI Reports</span>
         </router-link>
-        <router-link to="/wencai" class="nav-item" :title="!isSidebarOpen ? 'AI Wencai' : ''" @click="closeMobileSidebar">
-          <BotIcon class="icon" />
-          <span v-if="isSidebarOpen || isMobileView">AI Wencai</span>
-        </router-link>
         <router-link to="/backtest" class="nav-item" :title="!isSidebarOpen ? 'Backtest' : ''" @click="closeMobileSidebar">
           <LineChartIcon class="icon" />
           <span v-if="isSidebarOpen || isMobileView">Backtest</span>
@@ -66,7 +62,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { ActivityIcon, HashIcon, TrendingUpIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, BotIcon, LineChartIcon, BookOpenIcon, RefreshCwIcon, MenuIcon } from 'lucide-vue-next'
+import { ActivityIcon, HashIcon, TrendingUpIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, LineChartIcon, BookOpenIcon, RefreshCwIcon, MenuIcon } from 'lucide-vue-next'
 import { useDataLoader } from './composables/useDataLoader'
 
 const isSidebarOpen = ref(true)

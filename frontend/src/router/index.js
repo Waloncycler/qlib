@@ -28,8 +28,7 @@ const routes = [
   },
   {
     path: '/wencai',
-    name: 'Wencai',
-    component: () => import('../views/IwencaiDashboard.vue')
+    redirect: '/market'
   },
   {
     path: '/backtest',

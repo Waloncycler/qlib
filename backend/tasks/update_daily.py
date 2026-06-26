@@ -5,6 +5,7 @@ import requests
 import subprocess
 import argparse
 import time
+import pandas as pd
 from pathlib import Path
 
 # Add current directory to path
@@ -138,11 +139,26 @@ def main():
         print("=====================================")
         return
     
-    # Step 4: Layer downloads can run in parallel
+    # Step 4: Update OHLCV data via Baostock (for backtest engine)
     print("\n=====================================")
-    print("4. Fetching Individual Stock Layers concurrently (Dynamic Watchlist)...")
+    print("4. Updating OHLCV data via Baostock...")
     print("=====================================")
-    
+    try:
+        from modules.backtest.data_downloader import download_all
+        from modules.backtest.pool_generator import get_topic_universe
+        universe, min_date, max_date = get_topic_universe()
+        print(f"Universe: {len(universe)} symbols, {min_date} → {max_date}")
+        today = pd.Timestamp.now().strftime("%Y-%m-%d")
+        success, fail_count, failed_syms = download_all(universe, min_date, today, max_workers=4)
+        print(f"OHLCV update: {success} success, {fail_count} failed")
+    except Exception as e:
+        print(f"OHLCV update failed: {e}")
+
+    # Step 5: Fetch hierarchical layers for dynamic watchlist
+    print("\n=====================================")
+    print("5. Fetching Individual Stock Layers (Dynamic Watchlist)...")
+    print("=====================================")
+
     # Get dynamic watchlist
     try:
         from core.data_resolver import DataResolver
@@ -151,7 +167,7 @@ def main():
     except Exception as e:
         print(f"Warning: Failed to get dynamic watchlist ({e}). Falling back to SH600519.")
         target_symbols = ["SH600519"]
-        
+
     if not target_symbols:
         target_symbols = ["SH600519"]
         
@@ -167,16 +183,23 @@ def main():
         
         def run_layer(layer):
             print(f"→ Starting layer: {layer}...")
+            collector_path = PROJECT_DIR / "market_data" / "collector.py"
+            if not collector_path.exists():
+                print(f"  Skip layer {layer}: collector.py not found")
+                return
             for sym in target_symbols:
                 cmd = [
                     sys.executable,
-                    str(PROJECT_DIR / "market_data/collector.py"),
+                    str(collector_path),
                     "download_layer",
                     "--layer", layer,
                     "--symbol", sym,
                     "--save_dir", str(save_dir)
                 ]
-                subprocess.run(cmd, check=True)
+                try:
+                    subprocess.run(cmd, check=True)
+                except Exception as e:
+                    print(f"  Failed {layer} for {sym}: {e}")
             print(f"✓ Finished layer: {layer}")
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=len(layers)) as executor:
