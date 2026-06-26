@@ -64,6 +64,10 @@
           <i class="fa-solid fa-trophy"></i>
           <span style="margin-left: 6px;">Rank</span>
         </button>
+        <button class="mini-btn" @click="openCompareModal" style="background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); padding: 4px 10px; font-size: 0.75rem; white-space: nowrap; font-weight: bold;" title="Compare Strategies">
+          <i class="fa-solid fa-chart-line"></i>
+          <span style="margin-left: 6px;">Compare</span>
+        </button>
         <button class="mini-btn" @click="runIntelligentBacktest" :disabled="loading" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 4px 10px; font-size: 0.75rem; white-space: nowrap; font-weight: bold;" title="Run Backtest">
           <i class="fa-solid fa-play"></i>
           <span style="margin-left: 6px;">{{ loading ? '...' : 'Run' }}</span>
@@ -111,6 +115,9 @@
         </div>
         <button v-if="isComparisonMode" @click="isComparisonMode = false" class="close-comparison-btn">
           ✕ Return to Backtest
+        </button>
+        <button v-if="compareCurves && compareCurves.length > 0" @click="compareCurves = null" class="close-comparison-btn" style="background: rgba(34,197,94,0.2); color: #4ade80; border-color: rgba(34,197,94,0.3);">
+          ✕ Exit Compare
         </button>
         <v-chart class="chart" :option="chartOption" :update-options="{ notMerge: true }" autoresize @click="onChartClick" />
       </div>
@@ -390,6 +397,53 @@
         </div>
       </div>
     </div>
+
+    <!-- Compare Strategies Modal -->
+    <div v-if="showCompareModal" class="modal-overlay" @click.self="showCompareModal = false">
+      <div class="leaderboard-modal glass-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h3 style="color: #4ade80; font-weight: bold;">Compare Strategies</h3>
+          <button @click="showCompareModal = false" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.2rem;">✕</button>
+        </div>
+        <p style="color: #94a3b8; font-size: 0.8rem; margin-bottom: 12px;">Select strategies to overlay on the chart (including current).</p>
+        <div style="max-height: 400px; overflow-y: auto;">
+          <table class="leaderboard-table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="border-bottom: 1px solid #334155;">
+                <th style="padding: 8px; text-align: left; color: #94a3b8; font-size: 0.75rem;"></th>
+                <th style="padding: 8px; text-align: left; color: #94a3b8; font-size: 0.75rem;">Model</th>
+                <th style="padding: 8px; text-align: left; color: #94a3b8; font-size: 0.75rem;">K</th>
+                <th style="padding: 8px; text-align: left; color: #94a3b8; font-size: 0.75rem;">择时</th>
+                <th style="padding: 8px; text-align: right; color: #94a3b8; font-size: 0.75rem;">Annual</th>
+                <th style="padding: 8px; text-align: right; color: #94a3b8; font-size: 0.75rem;">Drawdown</th>
+                <th style="padding: 8px; text-align: right; color: #94a3b8; font-size: 0.75rem;">Sharpe</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in leaderboardData" :key="item.rank" style="border-bottom: 1px solid rgba(51,65,85,0.5); cursor: pointer;" @click="toggleCompareItem(item)">
+                <td style="padding: 8px;">
+                  <input type="checkbox" :checked="isCompareSelected(item)" @click.stop="toggleCompareItem(item)" style="accent-color: #22c55e; cursor: pointer;" />
+                </td>
+                <td style="padding: 8px; color: #e0f2fe; font-weight: 600;">{{ item.model_version }}</td>
+                <td style="padding: 8px; color: #38bdf8;">{{ item.top_k }}</td>
+                <td style="padding: 8px; font-size: 0.75rem;">
+                  <span v-if="item.timing_label === '择时'" style="color: #fbbf24;">择时</span>
+                  <span v-else-if="item.timing_label === '无择时'" style="color: #94a3b8;">无</span>
+                  <span v-else style="color: #475569;">-</span>
+                </td>
+                <td style="padding: 8px; text-align: right; color: #34d399; font-weight: bold;">{{ item.annual_return }}</td>
+                <td style="padding: 8px; text-align: right; color: #f87171;">{{ item.max_drawdown }}</td>
+                <td style="padding: 8px; text-align: right; color: #a78bfa;">{{ item.sharpe_ratio }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top: 12px; display: flex; justify-content: flex-end; gap: 8px;">
+          <button @click="showCompareModal = false" style="background: rgba(100,116,139,0.2); color: #94a3b8; border: 1px solid #475569; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;">Cancel</button>
+          <button @click="executeCompare" :disabled="compareSelected.length === 0" style="background: rgba(34,197,94,0.2); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: bold;" :style="{ opacity: compareSelected.length === 0 ? 0.5 : 1 }">Compare ({{ compareSelected.length }})</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -430,6 +484,9 @@ const selectedModelVersion = ref('v1_default')
 const topK = ref(10)
 const enableMarketTiming = ref(true)
 const showLeaderboard = ref(false)
+const showCompareModal = ref(false)
+const compareSelected = ref([])
+const compareCurves = ref(null) // [{label, curve, color}]
 const leaderboardLoading = ref(false)
 const leaderboardData = ref([])
 const showTopConcepts = ref(false)
@@ -764,6 +821,90 @@ const getLiveDailyReturn = (h) => {
   return h.daily_return
 }
 
+const getCompareChartOption = () => {
+  const curves = compareCurves.value
+  if (!curves || curves.length === 0) return {}
+
+  // 收集所有日期（取并集）
+  const allDates = new Set()
+  curves.forEach(c => {
+    c.curve.forEach(d => allDates.add(d.date))
+  })
+  const sortedDates = [...allDates].sort()
+
+  // 为每条曲线构建日期→收益率的映射
+  const series = curves.map(c => {
+    const dateMap = {}
+    c.curve.forEach(d => {
+      dateMap[d.date] = (d.strategy || 0) * 100
+    })
+    return {
+      name: c.label,
+      type: 'line',
+      data: sortedDates.map(d => dateMap[d] !== undefined ? dateMap[d].toFixed(2) : null),
+      smooth: true,
+      symbol: 'none',
+      lineStyle: { width: 2, color: c.color },
+      itemStyle: { color: c.color },
+      connectNulls: true
+    }
+  })
+
+  return {
+    title: {
+      text: 'Strategy Comparison',
+      left: 'center',
+      top: 5,
+      textStyle: { color: '#4ade80', fontSize: 14, fontWeight: 'bold' }
+    },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(15, 23, 42, 0.9)',
+      borderColor: 'rgba(56, 189, 248, 0.4)',
+      textStyle: { color: '#e2e8f0' },
+      formatter: function(params) {
+        if (!params || params.length === 0) return ''
+        const date = params[0].name
+        let html = `<div style="font-weight:bold;margin-bottom:4px;color:#38bdf8;">${date}</div>`
+        params.forEach(p => {
+          if (p.value === null || p.value === undefined) return
+          const val = Number(p.value)
+          const color = val >= 0 ? '#ef4444' : '#10b981'
+          html += `<div style="display:flex;justify-content:space-between;gap:12px;margin-top:3px;">
+            <span>${p.marker} ${p.seriesName}</span>
+            <span style="font-family:monospace;font-weight:bold;color:${color}">${val > 0 ? '+' : ''}${val.toFixed(2)}%</span>
+          </div>`
+        })
+        return html
+      }
+    },
+    legend: {
+      data: curves.map(c => c.label),
+      textStyle: { color: '#e5e7eb', fontSize: 11 },
+      top: 30,
+      type: 'scroll'
+    },
+    grid: { left: '5%', right: '4%', top: '20%', bottom: '15%' },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: sortedDates,
+      axisLabel: { color: '#9ca3af', fontSize: 10 },
+      axisLine: { lineStyle: { color: '#374151' } }
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { color: '#9ca3af', formatter: '{value} %' },
+      splitLine: { lineStyle: { color: '#374151', type: 'dashed' } }
+    },
+    dataZoom: [
+      { type: 'inside', start: 0, end: 100 },
+      { show: true, type: 'slider', bottom: '3%', start: 0, end: 100 }
+    ],
+    series
+  }
+}
+
 const getComparisonOption = () => {
   const allData = themeStocksData.value
   const series = []
@@ -920,6 +1061,9 @@ const getComparisonOption = () => {
 }
 
 const chartOption = computed(() => {
+  if (compareCurves.value && compareCurves.value.length > 0) {
+    return getCompareChartOption()
+  }
   if (isComparisonMode.value) {
     return getComparisonOption()
   }
@@ -1262,6 +1406,75 @@ const loadStrategy = (item) => {
 
   // 加载对应的回测数据
   fetchResults()
+}
+
+// === Strategy Compare ===
+const compareColors = ['#38bdf8', '#fbbf24', '#a78bfa', '#34d399', '#f87171', '#fb923c', '#22d3ee', '#e879f9']
+
+const openCompareModal = async () => {
+  // 确保 leaderboard 数据已加载
+  if (leaderboardData.value.length === 0) {
+    leaderboardLoading.value = true
+    try {
+      const res = await axios.get('/api/backtest/leaderboard')
+      leaderboardData.value = res.data.data || []
+    } catch (e) {
+      console.error('Failed to load leaderboard', e)
+    }
+    leaderboardLoading.value = false
+  }
+  // 默认选中当前策略
+  compareSelected.value = [{
+    model_version: selectedModelVersion.value,
+    top_k: topK.value,
+    enable_market_timing: enableMarketTiming.value,
+    timing_label: enableMarketTiming.value ? '择时' : '无择时'
+  }]
+  showCompareModal.value = true
+}
+
+const compareItemKey = (item) => `${item.model_version}_${item.top_k}_${item.enable_market_timing !== undefined ? item.enable_market_timing : true}`
+
+const isCompareSelected = (item) => {
+  return compareSelected.value.some(s => compareItemKey(s) === compareItemKey(item))
+}
+
+const toggleCompareItem = (item) => {
+  const key = compareItemKey(item)
+  const idx = compareSelected.value.findIndex(s => compareItemKey(s) === key)
+  if (idx >= 0) {
+    compareSelected.value.splice(idx, 1)
+  } else {
+    compareSelected.value.push(item)
+  }
+}
+
+const executeCompare = async () => {
+  showCompareModal.value = false
+  if (compareSelected.value.length === 0) return
+
+  loading.value = true
+  compareCurves.value = []
+
+  for (let i = 0; i < compareSelected.value.length; i++) {
+    const item = compareSelected.value[i]
+    const timing = item.enable_market_timing !== undefined ? item.enable_market_timing : true
+    try {
+      const res = await axios.get(`/api/backtest/results?enable_ml_filter=true&model_version=${item.model_version}&top_k=${item.top_k}&enable_market_timing=${timing}`)
+      const curve = res.data.data.curve || []
+      const tLabel = item.timing_label || (timing ? '择时' : '无择时')
+      const label = `${item.model_version} K=${item.top_k} ${tLabel}`
+      compareCurves.value.push({
+        label,
+        curve,
+        color: compareColors[i % compareColors.length]
+      })
+    } catch (e) {
+      console.error(`Failed to load ${item.model_version} K=${item.top_k}`, e)
+    }
+  }
+
+  loading.value = false
 }
 
 const getWeight = (holdingsList, symbol) => {
