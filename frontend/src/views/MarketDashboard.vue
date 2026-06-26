@@ -155,6 +155,7 @@
 
 <script setup>
 import { ref, onMounted, computed, shallowRef, watch } from 'vue'
+import html2canvas from 'html2canvas'
 import * as echarts from 'echarts/core'
 import {
   RefreshCwIcon, AlertTriangleIcon, LoaderIcon, ZapIcon,
@@ -379,7 +380,6 @@ const triggerScan = async () => {
 const exportReportImage = async () => {
   exporting.value = true
   try {
-    const { default: html2canvas } = await import('html2canvas')
     const el = document.getElementById('report-card')
     if (!el) return
     const canvas = await html2canvas(el, {
