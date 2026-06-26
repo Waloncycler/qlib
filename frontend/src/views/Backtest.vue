@@ -119,16 +119,13 @@
         <button v-if="compareCurves && compareCurves.length > 0" @click="compareCurves = null" class="close-comparison-btn" style="background: rgba(34,197,94,0.2); color: #4ade80; border-color: rgba(34,197,94,0.3);">
           ✕ Exit Compare
         </button>
-        <v-chart class="chart" :option="chartOption" :update-options="{ notMerge: true }" autoresize @click="onChartClick" />
+        <v-chart ref="chartRef" class="chart" :option="chartOption" :update-options="{ notMerge: true }" autoresize @click="onChartClick" />
       </div>
 
       <!-- Analysis Side Panel -->
       <div class="side-panel-right" v-if="!isComparisonMode">
         <div class="glass-panel p-4 info-card" style="height: 100%; display: flex; flex-direction: column; overflow-y: auto;">
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-            <h4 class="text-sky-400 font-bold">Signal Backtest Metrics</h4>
-            <span v-if="compareCurves && compareCurves.length > 0 && compareSelectedStrategy" :style="{ color: compareSelectedStrategy.color, fontSize: '0.7rem', fontWeight: 'bold' }">{{ compareSelectedStrategy.label }}</span>
-          </div>
+          <h4 class="text-sky-400 font-bold">Signal Backtest Metrics</h4>
           
           <div class="metrics-row mb-3" v-if="metrics && metrics.total_return !== undefined">
             <div class="mini-metric">
@@ -491,6 +488,7 @@ const showCompareModal = ref(false)
 const compareSelected = ref([])
 const compareCurves = ref(null) // [{label, curve, color}]
 const compareSelectedIndex = ref(-1)
+const chartRef = ref(null)
 const compareSelectedStrategy = computed(() => {
   if (!compareCurves.value || compareSelectedIndex.value < 0) return null
   return compareCurves.value[compareSelectedIndex.value]
@@ -636,8 +634,11 @@ const hoveredDate = ref(null)
 
 const onChartClick = (params) => {
   // 对比模式下：点击曲线选中对应策略
-  if (compareCurves.value && compareCurves.value.length > 0 && params && params.seriesIndex !== undefined) {
-    selectCompareStrategy(params.seriesIndex)
+  if (compareCurves.value && compareCurves.value.length > 0) {
+    console.log('[Compare] chart click:', params)
+    if (params && params.seriesIndex !== undefined) {
+      selectCompareStrategy(params.seriesIndex)
+    }
     return
   }
 
@@ -865,7 +866,7 @@ const getCompareChartOption = () => {
 
   return {
     title: {
-      text: 'Strategy Comparison',
+      text: 'Strategy Comparison — Click a curve to view details',
       left: 'center',
       top: 5,
       textStyle: { color: '#4ade80', fontSize: 14, fontWeight: 'bold' }
