@@ -639,20 +639,21 @@ onMounted(() => {
 .finance-chart { width: 100%; height: 180px; }
 
 /* Report */
-.report-panel { padding: 20px 24px; border-radius: 12px; flex: 1; overflow-y: auto; }
-.report-header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.08); }
-.report-header h3 { margin: 0; font-size: 1.05rem; color: #facc15; }
-.report-date { font-size: 0.8rem; color: var(--text-secondary); margin-left: auto; }
-.report-content { font-size: 0.85rem; line-height: 1.8; color: var(--text-primary); }
-.report-content :deep(h3) { font-size: 0.95rem; color: #38bdf8; margin: 16px 0 8px; font-weight: 600; }
-.report-content :deep(h4) { font-size: 0.88rem; color: #7dd3fc; margin: 12px 0 6px; font-weight: 600; }
-.report-content :deep(h5) { font-size: 0.82rem; color: #7dd3fc; margin: 8px 0 4px; font-weight: 500; }
+.report-panel { padding: 16px 20px; border-radius: 12px; flex: 1; overflow-y: auto; }
+.report-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.report-header h3 { margin: 0; font-size: 1rem; color: #facc15; }
+.report-date { font-size: 0.75rem; color: var(--text-secondary); margin-left: auto; }
+.report-content { font-size: 0.82rem; line-height: 1.5; color: var(--text-primary); }
+.report-content :deep(h1), .report-content :deep(h2) { font-size: 0.92rem; color: #38bdf8; margin: 10px 0 4px; font-weight: 600; }
+.report-content :deep(h3) { font-size: 0.88rem; color: #38bdf8; margin: 8px 0 3px; font-weight: 600; }
+.report-content :deep(h4) { font-size: 0.82rem; color: #7dd3fc; margin: 6px 0 2px; font-weight: 600; }
+.report-content :deep(h5) { font-size: 0.78rem; color: #7dd3fc; margin: 4px 0 2px; font-weight: 500; }
 .report-content :deep(strong) { color: #fff; }
-.report-content :deep(code) { background: rgba(56,189,248,0.15); color: #7dd3fc; padding: 1px 4px; border-radius: 3px; font-size: 0.8rem; }
-.report-content :deep(ul) { padding-left: 20px; margin: 6px 0; }
-.report-content :deep(li) { margin: 4px 0; }
-.report-content :deep(hr) { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 12px 0; }
-.report-content :deep(p) { margin: 0; }
+.report-content :deep(code) { background: rgba(56,189,248,0.15); color: #7dd3fc; padding: 1px 4px; border-radius: 3px; font-size: 0.78rem; }
+.report-content :deep(ul), .report-content :deep(ol) { padding-left: 18px; margin: 2px 0; }
+.report-content :deep(li) { margin: 1px 0; }
+.report-content :deep(hr) { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 8px 0; }
+.report-content :deep(p) { margin: 0 0 2px; }
 
 .val-up { color: #ef4444; }
 .val-down { color: #22c55e; }
