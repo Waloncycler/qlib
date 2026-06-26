@@ -896,13 +896,7 @@ const getCompareChartOption = () => {
         return html
       }
     },
-    legend: {
-      data: curves.map(c => c.label),
-      textStyle: { color: '#e5e7eb', fontSize: 11 },
-      top: 30,
-      type: 'scroll'
-    },
-    grid: { left: '5%', right: '4%', top: '20%', bottom: '15%' },
+    grid: { left: '5%', right: '4%', top: '12%', bottom: '15%' },
     xAxis: {
       type: 'category',
       boundaryGap: false,
