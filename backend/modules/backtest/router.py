@@ -72,7 +72,7 @@ def get_backtest_leaderboard_route():
 def get_todays_picks_route(model_version: str = Query("v3_open2close"), top_k: int = Query(10)):
     """Get the ML filtered picks for today's AI pre-market report."""
     try:
-        from modules.backtest.service import get_todays_picks_service
+        from modules.backtest.scoring import get_todays_picks_service
         return get_todays_picks_service(model_version=model_version, top_k=top_k)
     except Exception as e:
         logger.error(f"Error fetching today's picks: {e}")
@@ -241,7 +241,7 @@ class LiveQuotesRequest(BaseModel):
 def get_live_quotes(request: LiveQuotesRequest):
     """Get real-time intraday quotes from Tencent Finance."""
     try:
-        from modules.backtest.service import get_live_quotes_service
+        from modules.backtest.live_quotes import get_live_quotes_service
         return get_live_quotes_service(request.symbols)
     except Exception as e:
         logger.error(f"Error fetching live quotes: {e}")

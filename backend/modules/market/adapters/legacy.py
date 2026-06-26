@@ -23,10 +23,10 @@ class ZizizaizaiAdapter(BaseSourceAdapter):
 
     def __init__(self, config: dict):
         super().__init__(config)
-        self.email = config.get("zizi_email", "waloncycler@163.com")
+        self.email = config.get("zizi_email", "")
         self.password = config.get("zizi_password", "")
         # The user provided token is an SDK key
-        self.token = config.get("zzshare_token", "08afc8f2a1ef2ee3cba15c85bad7f3ced2f120005f3d4bed9efc2d65d9fc5d7d")
+        self.token = config.get("zzshare_token", "")
         self.base_url = "https://api.zizizaizai.com"
         self._token: Optional[str] = None
         self._token_expiry: Optional[datetime.datetime] = None
@@ -189,7 +189,7 @@ class ZzshareAdapter(BaseSourceAdapter):
 
     def __init__(self, config: dict):
         super().__init__(config)
-        self.token = config.get("zzshare_token", "08afc8f2a1ef2ee3cba15c85bad7f3ced2f120005f3d4bed9efc2d65d9fc5d7d")
+        self.token = config.get("zzshare_token", "")
         self.client = None
         self._init_client()
 

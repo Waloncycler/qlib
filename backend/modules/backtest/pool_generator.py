@@ -1,6 +1,8 @@
 import json
+import glob
 from loguru import logger
-from core.config import DATA_DIR, resolver
+from core.config import DATA_DIR, WORKSPACE_DIR, resolver
+from modules.market.adapters.base import to_qlib_symbol
 
 def get_topic_universe():
     """
@@ -69,6 +71,53 @@ def get_topic_universe():
     
     # Sort for deterministic output
     return list(sorted(unique_symbols)), min_date, max_date
+
+def apply_curated_overrides(daily_pools: dict) -> dict:
+    """
+    Override daily pools with curated stock pools from stock_pools/ directory.
+
+    For each date that has a curated pool file (stock_pool_{date}.json),
+    the AI report pool is replaced entirely by the curated picks.
+    This ensures today's trades match the manually curated Top Picks,
+    while preserving all historical backtest data unchanged.
+
+    Args:
+        daily_pools: {date -> {symbol -> {weight_type, is_new, concept, name}}}
+
+    Returns:
+        The same dict, with applicable dates overridden.
+    """
+    stock_pools_dir = WORKSPACE_DIR / "data" / "cn_stock" / "stock_pools"
+    if not stock_pools_dir.exists():
+        return daily_pools
+
+    pool_files = sorted(glob.glob(str(stock_pools_dir / "stock_pool_*.json")))
+    for fpath in pool_files:
+        try:
+            with open(fpath, "r", encoding="utf-8") as f:
+                pool_data = json.load(f)
+            raw_date = pool_data.get("date", "")
+            if not raw_date:
+                continue
+            date = raw_date.split(" ")[0]
+            curated = {}
+            for stock in pool_data.get("stocks", []):
+                sym = to_qlib_symbol(stock.get("code", ""))
+                if sym and not sym.startswith("BJ"):
+                    curated[sym] = {
+                        "weight_type": "core",
+                        "is_new": False,
+                        "concept": stock.get("theme", "Unknown"),
+                        "name": stock.get("name", ""),
+                    }
+            if curated:
+                daily_pools[date] = curated
+                logger.info(f"Overrode pool for {date} with curated {len(curated)} stocks")
+        except Exception as e:
+            logger.error(f"Error parsing curated pool {fpath}: {e}")
+
+    return daily_pools
+
 
 if __name__ == "__main__":
     universe, min_d, max_d = get_topic_universe()

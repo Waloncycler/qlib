@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Set, Optional, Tuple
 
 from core.config import DATA_DIR
-from modules.backtest.data_downloader import load_ohlcv, load_benchmark, OHLCV_DIR
+from modules.backtest.data_downloader import load_ohlcv, load_benchmark
 
 
 @dataclass
@@ -104,50 +104,9 @@ def _parse_reports() -> Dict[str, dict]:
                             "name": stock.get("name", ""),
                         }
 
-    # --- Override ONLY the latest few days with curated pools ---
-    # This ensures today's and yesterday's trades match the curated Top Picks,
-    # while preserving all historical backtest data unchanged.
-    import glob
-    from core.config import WORKSPACE_DIR
-    stock_pools_dir = WORKSPACE_DIR / "data" / "cn_stock" / "stock_pools"
-    if stock_pools_dir.exists():
-        def to_qlib_symbol(code):
-            code = str(code)
-            if code.startswith('6'):
-                return 'SH' + code
-            elif code.startswith('0') or code.startswith('3'):
-                return 'SZ' + code
-            else:
-                return 'BJ' + code
-
-        pool_files = sorted(glob.glob(str(stock_pools_dir / "stock_pool_*.json")))
-        # Only override TODAY (the single latest pool file)
-        recent_files = pool_files[-1:] if pool_files else []
-        for fpath in recent_files:
-            try:
-                with open(fpath, "r", encoding="utf-8") as f:
-                    pool_data = json.load(f)
-                raw_date = pool_data.get("date", "")
-                if not raw_date:
-                    continue
-                date = raw_date.split(" ")[0]
-                curated = {}
-                for stock in pool_data.get("stocks", []):
-                    sym = to_qlib_symbol(stock.get("code", ""))
-                    if sym and not sym.startswith("BJ"):
-                        curated[sym] = {
-                            "weight_type": "core",
-                            "is_new": False,
-                            "concept": stock.get("theme", "Unknown"),
-                            "name": stock.get("name", ""),
-                        }
-                if curated:
-                    daily_pools[date] = curated
-                    logger.info(f"Overrode pool for {date} with curated {len(curated)} stocks")
-            except Exception as e:
-                logger.error(f"Error parsing curated pool {fpath}: {e}")
-
-    return daily_pools
+    # --- Apply curated pool overrides (moved to pool_generator) ---
+    from modules.backtest.pool_generator import apply_curated_overrides
+    return apply_curated_overrides(daily_pools)
 
 
 def _compute_target_weights(
@@ -308,6 +267,27 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                                     if live_syms:
                                         top_syms = live_syms
                                         logger.info(f"Final day override: using {len(top_syms)} live picks for {date_str}: {top_syms}")
+                                        
+                                        # SAVE TO FILE SO IT IS NOT WIPED OUT TOMORROW
+                                        try:
+                                            from core.config import WORKSPACE_DIR
+                                            fpath = WORKSPACE_DIR / "data" / "cn_stock" / "stock_pools" / f"stock_pool_{date_str}.json"
+                                            pool_data_to_save = {
+                                                "date": f"{date_str} 09:00:00",
+                                                "stocks": [
+                                                    {
+                                                        "code": p["symbol"].replace("SH", "").replace("SZ", "").replace("BJ", ""),
+                                                        "name": p["name"],
+                                                        "theme": p.get("popularity", "人气热点叠加")
+                                                    } for p in live_res["top_picks"]
+                                                ]
+                                            }
+                                            with open(fpath, "w", encoding="utf-8") as f:
+                                                json.dump(pool_data_to_save, f, ensure_ascii=False, indent=2)
+                                            logger.info(f"Persisted final day override to {fpath}")
+                                        except Exception as write_err:
+                                            logger.error(f"Failed to persist final day override: {write_err}")
+                                            
                                     else:
                                         logger.warning("live_syms is empty")
                                 else:
@@ -315,7 +295,6 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                             except Exception as e:
                                 import traceback
                                 logger.error(f"Failed to override final day picks: {traceback.format_exc()}")
-                        
                         # Truncate today_pool to only include the top syms
                         today_pool = {s: info for s, info in today_pool.items() if s in top_syms}
                     else:

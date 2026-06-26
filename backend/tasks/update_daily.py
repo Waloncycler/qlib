@@ -145,8 +145,8 @@ def main():
     
     # Get dynamic watchlist
     try:
-        from core.stock_resolver import StockResolver
-        resolver = StockResolver(config_path=str(config_path))
+        from core.data_resolver import DataResolver
+        resolver = DataResolver(config_path=str(config_path))
         target_symbols = resolver.get_dynamic_watchlist()
     except Exception as e:
         print(f"Warning: Failed to get dynamic watchlist ({e}). Falling back to SH600519.")

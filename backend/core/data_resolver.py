@@ -1,3 +1,11 @@
+"""
+Data Resolver — orchestrates multi-source data fetching for individual stocks
+and aggregates the dynamic watchlist (hot stocks from dragon-tiger, limit-up, etc.).
+
+Despite the original name 'StockResolver', this module's primary responsibility
+is data collection orchestration, not stock code resolution (which lives in
+adapters/base.py). Renamed to reflect actual职责.
+"""
 import os
 import sys
 import yaml
@@ -21,54 +29,61 @@ from modules.market.adapters import (
     to_qlib_symbol
 )
 from modules.market.collector import CnStockCollector
+from core.trading_calendar import is_trading_hours
 
-class StockResolver:
-    def __init__(self, config_path=None):
-        self.config_path = config_path or str(PROJECT_DIR / "secret.yaml")
-        self.watchlist_path = str(PROJECT_DIR / "watchlist.yaml")
-        
-        # Load configs
-        self.secret = self._load_yaml(self.config_path)
-        self.watchlist = self._load_yaml(self.watchlist_path)
-        
+
+class DataResolver:
+    """Orchestrates multi-layer data fetching for stocks and manages the dynamic watchlist."""
+
+    def __init__(self, config: dict = None, watchlist: dict = None, config_path: str = None):
+        # Prefer pre-loaded dicts from core.config; fall back to loading from path
+        if config is not None:
+            self.secret = config
+        else:
+            cfg_path = config_path or str(PROJECT_DIR / "secret.yaml")
+            self.secret = self._load_yaml(cfg_path)
+
+        self.watchlist = watchlist if watchlist is not None else self._load_yaml(str(PROJECT_DIR / "watchlist.yaml"))
+
         # Simple cache for single stock resolution
         self._resolve_cache = {}
-        
-    def _load_yaml(self, path):
+
+    @staticmethod
+    def _load_yaml(path):
         if os.path.exists(path):
             with open(path, "r", encoding="utf-8") as f:
                 return yaml.safe_load(f) or {}
         return {}
-        
+
     def get_dynamic_watchlist(self) -> list:
         """Aggregates static symbols and dynamic hot stocks based on watchlist.yaml."""
         symbols_set = set()
-        
+
         # 1. Static symbols
         static = self.watchlist.get("static_symbols", [])
         for sym in static:
             symbols_set.add(to_qlib_symbol(clean_symbol(sym)))
-            
+
         # 2. Dynamic hot stocks
         if self.watchlist.get("auto_hot_stocks"):
             sources = self.watchlist.get("hot_stock_sources", {})
             logger.info("Aggregating dynamic hot stocks...")
-            
+
             with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
                 futures = []
-                
+
                 if sources.get("dragon_tiger_top_n", 0) > 0:
                     futures.append(executor.submit(self._get_dragon_tiger, sources["dragon_tiger_top_n"]))
-                    
+
                 if sources.get("limit_up_leaders"):
                     futures.append(executor.submit(self._get_limit_up_leaders))
-                    
+
                 if sources.get("northbound_top_n", 0) > 0:
                     futures.append(executor.submit(self._get_northbound, sources["northbound_top_n"]))
-                    
+
                 if sources.get("broken_limit_up"):
                     futures.append(executor.submit(self._get_broken_limit_up))
-                    
+
                 # Collect results
                 for future in concurrent.futures.as_completed(futures):
                     try:
@@ -77,7 +92,7 @@ class StockResolver:
                             symbols_set.add(to_qlib_symbol(clean_symbol(sym)))
                     except Exception as e:
                         logger.error(f"Error fetching hot stocks: {e}")
-                        
+
         final_list = sorted(list(symbols_set))
         logger.info(f"Final dynamic watchlist contains {len(final_list)} symbols.")
         return final_list
@@ -112,7 +127,7 @@ class StockResolver:
         except Exception as e:
             logger.warning(f"Dragon tiger aggregation failed: {e}")
             return []
-            
+
     def _get_limit_up_leaders(self) -> list:
         # Fetch from MarketSentimentAdapter zt_pool
         try:
@@ -154,19 +169,9 @@ class StockResolver:
             logger.warning(f"Broken limit up aggregation failed: {e}")
             return []
 
-    @staticmethod
-    def _is_trading_hours() -> bool:
-        """Check if current time is within A-share trading session (09:15 - 15:30 on weekdays)."""
-        from datetime import datetime
-        now = datetime.now()
-        if now.weekday() >= 5:  # Saturday/Sunday
-            return False
-        hour_min = now.hour * 100 + now.minute
-        return 915 <= hour_min <= 1530
-
     def _get_cache_ttl(self) -> int:
         """Return cache TTL in seconds based on market hours."""
-        if self._is_trading_hours():
+        if is_trading_hours():
             return 180   # 3 minutes during trading
         else:
             return 21600  # 6 hours after market close
@@ -174,7 +179,7 @@ class StockResolver:
     def resolve_single_stock(self, symbol: str, layer: str = None):
         """Fetch all or specific layers for a single stock synchronously. Used by frontend API."""
         symbol = to_qlib_symbol(clean_symbol(symbol))
-        
+
         # Time-aware cache: short during trading hours, long after hours
         cache_key = f"{symbol}_{layer}" if layer else symbol
         now = time.time()
@@ -194,7 +199,7 @@ class StockResolver:
                 def _update_signals():
                     try:
                         from modules.market.runners.signals_runner import SignalsRunner
-                        SignalsRunner(self.config_path)._run_market_wide(save_dir / "signals")
+                        SignalsRunner(self.secret)._run_market_wide(save_dir / "signals")
                     except Exception as e:
                         logger.error(f"Auto-refresh signals failed: {e}")
                 threading.Thread(target=_update_signals, daemon=True).start()
@@ -206,13 +211,13 @@ class StockResolver:
                 def _update_news():
                     try:
                         from modules.market.runners.news_runner import NewsRunner
-                        NewsRunner(self.config_path)._run_market_wide(save_dir / "news")
+                        NewsRunner(self.secret)._run_market_wide(save_dir / "news")
                     except Exception as e:
                         logger.error(f"Auto-refresh news failed: {e}")
                 threading.Thread(target=_update_news, daemon=True).start()
 
         # If market is closed and data files already exist on disk AND are fresh, skip network fetch
-        if not self._is_trading_hours():
+        if not is_trading_hours():
             check_file = save_dir / "market" / f"{symbol}_tencent_sina_kline.csv"
             if layer == "news":
                 check_file = save_dir / "news" / f"{symbol}_eastmoney_news.json"
@@ -229,24 +234,24 @@ class StockResolver:
                     logger.info(f"Market closed & data on disk for {symbol}_{layer} is fresh. Skipping network fetch.")
                     self._resolve_cache[cache_key] = now
                     return True
-                
+
         logger.info(f"Real-time fetching layer(s) for {symbol}: {layer or 'ALL'}...")
-        
+
         collector = CnStockCollector(
             save_dir=str(CUR_DIR),
             limit_nums=None,
             source="akshare",
-            config_path=self.config_path
+            config_path=str(PROJECT_DIR / "secret.yaml")
         )
         # We omit 'research' and 'filings' because downloading PDF reports takes >10 seconds and is not used in UI.
         layers = [layer] if layer else ["market", "signals", "capital", "fundamentals", "news"]
-        
+
         # When fetching a single stock via frontend API, we only need ~180 days of history for speed
         start_date = pd.Timestamp.now() - pd.Timedelta(days=180)
-        
+
         def run_layer(l):
             collector.download_layer(layer=l, symbol=symbol, save_dir=save_dir, start_date=start_date)
-            
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=len(layers)) as executor:
             futures = {executor.submit(run_layer, l): l for l in layers}
             for future in concurrent.futures.as_completed(futures):
@@ -254,11 +259,12 @@ class StockResolver:
                     future.result()
                 except Exception as e:
                     logger.error(f"Error fetching layer: {e}")
-                    
+
         self._resolve_cache[cache_key] = now
         return True
 
+
 if __name__ == "__main__":
-    resolver = StockResolver()
+    resolver = DataResolver()
     symbols = resolver.get_dynamic_watchlist()
     print("Watchlist symbols:", symbols)

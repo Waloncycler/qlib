@@ -17,17 +17,16 @@ This tool provides a unified, pluggable, and highly extensible pipeline to inges
    *Note: If you use `zzshare`, ensure the custom `zzshare` package is installed in your python environment.*
 
 2. **Configure Secrets**:
-   Create a file named `secret.yaml` in this directory (`backend/secret.yaml`) to specify API credentials:
-   ```yaml
-   zizi_email: "waloncycler@163.com"
-   zizi_password: "YOUR_ZIZIZAIZAI_PASSWORD"
-   zzshare_token: "08afc8f2a1ef2ee3cba15c85bad7f3ced2f120005f3d4bed9efc2d65d9fc5d7d"
-   ```
-   Alternatively, you can expose these as environment variables:
+   Copy the template and fill in your credentials:
    ```bash
-   export ZIZI_EMAIL="waloncycler@163.com"
-   export ZIZI_PASSWORD="YOUR_ZIZIZAIZAI_PASSWORD"
-   export ZZSHARE_TOKEN="08afc8f2a1ef2ee3cba15c85bad7f3ced2f120005f3d4bed9efc2d65d9fc5d7d"
+   cp secret.yaml.example secret.yaml
+   ```
+   Then edit `secret.yaml` with your actual API keys (ZIZIZAIZAI, ZZSHARE, DeepSeek, iWencai).
+   Alternatively, you can expose these as environment variables (uppercase names):
+   ```bash
+   export ZIZI_EMAIL="your@email.com"
+   export ZIZI_PASSWORD="your_password"
+   export ZZSHARE_TOKEN="your_token"
    ```
 
 ## Usage Examples

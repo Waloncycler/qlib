@@ -6,9 +6,9 @@ PROJECT_DIR = Path("/Users/walox/qlib/backend")
 sys.path.append(str(PROJECT_DIR))
 sys.path.append(str(PROJECT_DIR.parent / "scripts"))
 
-from core.stock_resolver import StockResolver
+from core.data_resolver import DataResolver
 
-resolver = StockResolver()
+resolver = DataResolver()
 
 t0 = time.time()
 print("Fetching market...")

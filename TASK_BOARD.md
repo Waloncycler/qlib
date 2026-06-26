@@ -16,6 +16,7 @@
 - [x] 优化前端回测图表，自动截断前端无数据区间并重新校准基准 (Re-baseline)
 - [x] 提取并渲染图表多次超 20% 的水下回撤区间 (Drawdown annotations)
 - [x] 优化前端版面、添加数据看板图标注入及模块折叠交互
+- [x] 文档校准：将 PROJECT_CONTEXT / ARCHITECTURE_INDEX 对齐实际 `backend/modules/*` 模块化结构
 
 ## 当前 / 待做
 - [ ] 添加更多 ML 模型（LightGBM, GRU 等）替代 LinearModel

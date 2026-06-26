@@ -92,7 +92,7 @@ class CnStockCollector(BaseCollector):
 
     def get_instrument_list(self) -> list:
         # If standard source directory contains existing files, only update those to save time and API quota
-        for path_str in [getattr(self, "save_dir", ""), "/Users/walox/qlib/data/cn_stock/standard/source"]:
+        for path_str in [getattr(self, "save_dir", ""), str(PROJECT_DIR.parent / "data" / "cn_stock" / "standard" / "source")]:
             if path_str:
                 p = Path(path_str)
                 if p.exists():
