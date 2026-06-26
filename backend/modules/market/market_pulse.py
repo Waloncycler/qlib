@@ -524,7 +524,7 @@ def _build_ai_report_replay_10d(today: str) -> str:
 
 
 def _build_topic_rotation_10d(today: str) -> str:
-    """近 10 日题材轮动追踪（基于 stock pool 的题材标签）"""
+    """近 10 日题材轮动追踪（结合 stock_pool + zizizaizai_topics 详细逻辑）"""
     try:
         import sys as _sys
         from pathlib import Path as P
@@ -547,7 +547,6 @@ def _build_topic_rotation_10d(today: str) -> str:
         topic_dates = defaultdict(list)
         for d in sorted_dates:
             pool = pools[d]
-            # 收集当天的所有题材
             day_topics = set()
             for sym, info in pool.items():
                 concept = info.get("concept", "")
@@ -556,33 +555,82 @@ def _build_topic_rotation_10d(today: str) -> str:
             for t in day_topics:
                 topic_dates[t].append(d)
 
-        # 分类
         persistent = {k: v for k, v in topic_dates.items() if len(v) >= 2}
         one_shot = {k: v for k, v in topic_dates.items() if len(v) == 1}
+
+        # 加载 zizizaizai_topics.json 获取详细题材逻辑
+        topics_file = DATA_DIR / "signals" / "zizizaizai_topics.json"
+        topics_detail = {}
+        if topics_file.exists():
+            with open(topics_file, "r", encoding="utf-8") as f:
+                all_topics = json.load(f)
+            for t in all_topics:
+                name = t.get("name", "")
+                # 去掉名称中的日期后缀（如 "存储芯片(250921)" → "存储芯片"）
+                clean_name = name.split("(")[0].strip()
+                topics_detail[clean_name] = t
+                topics_detail[name] = t
 
         lines = ["# 近 10 日题材轮动追踪\n"]
 
         if persistent:
             lines.append(f"**持续发酵题材（≥2天，共{len(persistent)}个）:**")
             for topic, dates in sorted(persistent.items(), key=lambda x: -len(x[1])):
-                lines.append(f"  - {topic} ({len(dates)}天: {', '.join(dates[-3:])})")
+                # 查找详细逻辑
+                detail = topics_detail.get(topic)
+                if detail:
+                    content = detail.get("content", "")
+                    # 截取前 200 字的催化事件
+                    logic = content[:200].replace("\n", " ").strip() if content else ""
+                    lines.append(f"  - **{topic}** ({len(dates)}天)")
+                    if logic:
+                        lines.append(f"    催化: {logic}...")
+                else:
+                    lines.append(f"  - {topic} ({len(dates)}天)")
 
         if one_shot:
             lines.append(f"\n**一日游题材（{len(one_shot)}个）:**")
 
-        # 最新一天的题材详情
+        # 最新一天的题材详情（含个股相关性）
         latest_date = sorted_dates[-1]
         latest_pool = pools[latest_date]
         lines.append(f"\n**最新题材详情（{latest_date}）:**")
-        # 按题材分组
         topic_stocks = defaultdict(list)
         for sym, info in latest_pool.items():
             concept = info.get("concept", "其他")
-            topic_stocks[concept].append((info.get("name", sym), info.get("weight_type", "other")))
+            topic_stocks[concept].append((info.get("name", sym), info.get("weight_type", "other"), sym))
 
         for concept, stocks in topic_stocks.items():
-            core = [n for n, w in stocks if w == "core"][:5]
-            lines.append(f"  - {concept}: 核心={', '.join(core)}" if core else f"  - {concept}")
+            core = [(n, s) for n, w, s in stocks if w == "core"][:5]
+            other = [(n, s) for n, w, s in stocks if w != "core"]
+
+            # 查找题材详细逻辑
+            detail = topics_detail.get(concept)
+            logic = ""
+            if detail and detail.get("content"):
+                logic = detail["content"][:300].replace("\n", " ").strip()
+
+            lines.append(f"\n  ### {concept}")
+            if logic:
+                lines.append(f"  逻辑: {logic}...")
+
+            if core:
+                # 查找每只核心股票在 topics 中的相关性
+                for name, sym in core:
+                    relevance = ""
+                    if detail and detail.get("rows"):
+                        for row in detail["rows"]:
+                            if row.get("个股") == name:
+                                relevance = row.get("相关性", "")
+                                source = row.get("信息源", "")
+                                if relevance:
+                                    relevance = f" [{source}: {relevance[:80]}]"
+                                break
+                    lines.append(f"  - **{name}({sym})** [核心]{relevance}")
+
+            if other:
+                other_names = [n for n, s in other[:5]]
+                lines.append(f"  - 其他: {', '.join(other_names)}")
 
         return "\n".join(lines)
     except Exception as e:
