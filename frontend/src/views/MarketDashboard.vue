@@ -155,7 +155,6 @@
 
 <script setup>
 import { ref, onMounted, computed, shallowRef, watch } from 'vue'
-import html2canvas from 'html2canvas'
 import * as echarts from 'echarts/core'
 import {
   RefreshCwIcon, AlertTriangleIcon, LoaderIcon, ZapIcon,
@@ -380,16 +379,119 @@ const triggerScan = async () => {
 const exportReportImage = async () => {
   exporting.value = true
   try {
-    const el = document.getElementById('report-card')
-    if (!el) return
-    const canvas = await html2canvas(el, {
-      backgroundColor: '#0f172a',
-      scale: 2,
-      useCORS: true,
-      logging: false,
-    })
-    const link = document.createElement('a')
+    const report = pulseData.value?.report || ''
     const date = pulseData.value?.date || new Date().toISOString().slice(0, 10)
+
+    // 用 Canvas 绘制专业报告图片
+    const W = 800
+    const padding = 40
+    const lineHeight = 22
+    const ctxW = W - padding * 2
+
+    // 先测量高度
+    const lines = []
+    // 标题
+    lines.push({ type: 'title', text: '每日市场策略简报' })
+    lines.push({ type: 'date', text: date })
+    lines.push({ type: 'spacer', h: 12 })
+
+    // 解析 markdown
+    const rawLines = report.split('\n')
+    for (const raw of rawLines) {
+      const trimmed = raw.trim()
+      if (!trimmed) continue
+      if (trimmed.startsWith('---')) {
+        lines.push({ type: 'spacer', h: 8 })
+        continue
+      }
+      if (trimmed.startsWith('## ')) {
+        lines.push({ type: 'h2', text: trimmed.slice(3) })
+      } else if (trimmed.startsWith('### ')) {
+        lines.push({ type: 'h3', text: trimmed.slice(4) })
+      } else if (trimmed.startsWith('#### ')) {
+        lines.push({ type: 'h4', text: trimmed.slice(5) })
+      } else if (trimmed.startsWith('- ')) {
+        lines.push({ type: 'li', text: trimmed.slice(2) })
+      } else {
+        lines.push({ type: 'p', text: trimmed })
+      }
+    }
+
+    lines.push({ type: 'spacer', h: 16 })
+    lines.push({ type: 'disclaimer', text: '⚠️ 风险提示：股市有风险，投资需谨慎。本报告由 AI 基于系统数据自动生成，仅供参考研究使用，不构成任何投资建议。据此操作，风险自担。' })
+
+    // 计算总高度
+    let totalH = padding * 2 + 20
+    for (const l of lines) {
+      if (l.type === 'spacer') { totalH += l.h; continue }
+      const fontSize = l.type === 'title' ? 22 : l.type === 'date' ? 13 : l.type === 'h2' ? 15 : l.type === 'h3' ? 13 : l.type === 'h4' ? 12 : 11.5
+      const isBold = ['title', 'h2', 'h3', 'h4'].includes(l.type)
+      // 估算行数
+      const charsPerLine = Math.floor(ctxW / (fontSize * 0.95))
+      const text = l.text.replace(/\*\*/g, '').replace(/`/g, '')
+      const numLines = Math.max(1, Math.ceil(text.length / charsPerLine))
+      totalH += numLines * (lineHeight - (l.type === 'li' ? 4 : 0)) + 4
+    }
+
+    // 绘制
+    const canvas = document.createElement('canvas')
+    canvas.width = W * 2
+    canvas.height = totalH * 2
+    const ctx = canvas.getContext('2d')
+    ctx.scale(2, 2)
+
+    // 背景
+    const grad = ctx.createLinearGradient(0, 0, 0, totalH)
+    grad.addColorStop(0, '#0f172a')
+    grad.addColorStop(1, '#1e293b')
+    ctx.fillStyle = grad
+    ctx.fillRect(0, 0, W, totalH)
+
+    // 顶部装饰线
+    ctx.fillStyle = '#38bdf8'
+    ctx.fillRect(padding, padding - 16, 4, 28)
+
+    // 绘制文本
+    let y = padding
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'top'
+
+    for (const l of lines) {
+      if (l.type === 'spacer') { y += l.h; continue }
+
+      const fontSize = l.type === 'title' ? 22 : l.type === 'date' ? 13 : l.type === 'h2' ? 15 : l.type === 'h3' ? 13 : l.type === 'h4' ? 12 : 11.5
+      ctx.font = `${['title', 'h2', 'h3', 'h4'].includes(l.type) ? 'bold' : 'normal'} ${fontSize}px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif`
+
+      let color = '#e2e8f0'
+      if (l.type === 'title') color = '#facc15'
+      else if (l.type === 'date') color = '#64748b'
+      else if (l.type === 'h2') color = '#38bdf8'
+      else if (l.type === 'h3') color = '#7dd3fc'
+      else if (l.type === 'h4') color = '#94a3b8'
+      else if (l.type === 'disclaimer') color = '#fca5a5'
+      else if (l.type === 'li') color = '#cbd5e1'
+
+      ctx.fillStyle = color
+
+      const text = l.text.replace(/\*\*/g, '').replace(/`/g, '')
+      const charsPerLine = Math.floor(ctxW / (fontSize * 0.95))
+      const indent = l.type === 'li' ? 16 : 0
+
+      // 自动换行
+      for (let i = 0; i < text.length; i += charsPerLine) {
+        const chunk = text.slice(i, i + charsPerLine)
+        if (l.type === 'li' && i === 0) {
+          ctx.fillText('• ' + chunk, padding + indent, y)
+        } else {
+          ctx.fillText(chunk, padding + indent + (i > 0 && l.type === 'li' ? 12 : 0), y)
+        }
+        y += lineHeight - (l.type === 'li' ? 4 : 0)
+      }
+      y += 4
+    }
+
+    // 下载
+    const link = document.createElement('a')
     link.download = `市场策略简报_${date}.png`
     link.href = canvas.toDataURL('image/png')
     link.click()
@@ -684,10 +786,10 @@ onMounted(() => {
 .btn-export:disabled { opacity: 0.5; cursor: not-allowed; }
 .report-date { font-size: 0.75rem; color: var(--text-secondary); }
 .report-content { font-size: 0.82rem; line-height: 1.5; color: var(--text-primary); }
-.report-content :deep(h1), .report-content :deep(h2) { font-size: 0.92rem; color: #38bdf8; margin: 10px 0 4px; font-weight: 600; }
-.report-content :deep(h3) { font-size: 0.88rem; color: #38bdf8; margin: 8px 0 3px; font-weight: 600; }
-.report-content :deep(h4) { font-size: 0.82rem; color: #7dd3fc; margin: 6px 0 2px; font-weight: 600; }
-.report-content :deep(h5) { font-size: 0.78rem; color: #7dd3fc; margin: 4px 0 2px; font-weight: 500; }
+.report-content :deep(h1), .report-content :deep(h2) { font-size: 0.92rem; color: #38bdf8; margin: 6px 0 2px; font-weight: 600; }
+.report-content :deep(h3) { font-size: 0.86rem; color: #38bdf8; margin: 4px 0 1px; font-weight: 600; }
+.report-content :deep(h4) { font-size: 0.82rem; color: #7dd3fc; margin: 3px 0 1px; font-weight: 600; }
+.report-content :deep(h5) { font-size: 0.78rem; color: #7dd3fc; margin: 2px 0 1px; font-weight: 500; }
 .report-content :deep(strong) { color: #fff; }
 .report-content :deep(code) { background: rgba(56,189,248,0.15); color: #7dd3fc; padding: 1px 4px; border-radius: 3px; font-size: 0.78rem; }
 .report-content :deep(ul), .report-content :deep(ol) { padding-left: 18px; margin: 2px 0; }
