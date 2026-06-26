@@ -138,6 +138,9 @@
           </button>
         </div>
         <div class="report-content" v-html="renderMarkdown(pulseData.report)"></div>
+        <div class="report-disclaimer">
+          ⚠️ 风险提示：股市有风险，投资需谨慎。本报告由 AI 基于系统数据自动生成，仅供参考研究使用，不构成任何投资建议。据此操作，风险自担。
+        </div>
       </div>
       <div v-else class="empty-panel glass-panel">
         <div class="empty-content">
@@ -376,7 +379,6 @@ const triggerScan = async () => {
 const exportReportImage = async () => {
   exporting.value = true
   try {
-    // 动态加载 html2canvas
     const { default: html2canvas } = await import('html2canvas')
     const el = document.getElementById('report-card')
     if (!el) return
@@ -386,7 +388,6 @@ const exportReportImage = async () => {
       useCORS: true,
       logging: false,
     })
-    // 下载
     const link = document.createElement('a')
     const date = pulseData.value?.date || new Date().toISOString().slice(0, 10)
     link.download = `市场策略简报_${date}.png`
@@ -693,6 +694,12 @@ onMounted(() => {
 .report-content :deep(li) { margin: 1px 0; }
 .report-content :deep(hr) { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 8px 0; }
 .report-content :deep(p) { margin: 0 0 2px; }
+.report-disclaimer {
+  margin-top: 10px; padding: 8px 12px;
+  background: rgba(239, 68, 68, 0.08); border-radius: 6px;
+  font-size: 0.7rem; color: #fca5a5; line-height: 1.4;
+  border-left: 3px solid rgba(239, 68, 68, 0.4);
+}
 
 .val-up { color: #ef4444; }
 .val-down { color: #22c55e; }
