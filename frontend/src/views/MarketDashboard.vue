@@ -128,11 +128,14 @@
 
     <!-- ========== Tab: AI 策略报告 ========== -->
     <template v-if="activeTab === 'report'">
-      <div v-if="pulseData?.report" class="report-panel glass-panel">
+      <div v-if="pulseData?.report" class="report-panel glass-panel" id="report-card">
         <div class="report-header">
           <SparklesIcon class="icon-accent" />
           <h3>每日市场策略简报</h3>
           <span class="report-date">{{ pulseData.date }}</span>
+          <button class="btn-export" @click="exportReportImage" :disabled="exporting">
+            {{ exporting ? '导出中...' : '导出图片' }}
+          </button>
         </div>
         <div class="report-content" v-html="renderMarkdown(pulseData.report)"></div>
       </div>
@@ -343,6 +346,7 @@ const pulseData = ref(null)
 const loadingPulse = ref(false)
 const pulseError = ref(null)
 const scanning = ref(false)
+const exporting = ref(false)
 
 const loadPulse = async () => {
   loadingPulse.value = true
@@ -367,6 +371,33 @@ const triggerScan = async () => {
     else throw new Error(data.detail || data.message || 'Scan failed')
   } catch (e) { pulseError.value = e.message }
   finally { scanning.value = false }
+}
+
+const exportReportImage = async () => {
+  exporting.value = true
+  try {
+    // 动态加载 html2canvas
+    const { default: html2canvas } = await import('html2canvas')
+    const el = document.getElementById('report-card')
+    if (!el) return
+    const canvas = await html2canvas(el, {
+      backgroundColor: '#0f172a',
+      scale: 2,
+      useCORS: true,
+      logging: false,
+    })
+    // 下载
+    const link = document.createElement('a')
+    const date = pulseData.value?.date || new Date().toISOString().slice(0, 10)
+    link.download = `市场策略简报_${date}.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+  } catch (e) {
+    console.error('Export failed:', e)
+    alert('导出失败: ' + e.message)
+  } finally {
+    exporting.value = false
+  }
 }
 
 const formatTime = (iso) => {
@@ -642,7 +673,15 @@ onMounted(() => {
 .report-panel { padding: 16px 20px; border-radius: 12px; flex: 1; overflow-y: auto; }
 .report-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); }
 .report-header h3 { margin: 0; font-size: 1rem; color: #facc15; }
-.report-date { font-size: 0.75rem; color: var(--text-secondary); margin-left: auto; }
+.btn-export {
+  margin-left: auto; padding: 4px 12px; font-size: 0.72rem;
+  background: rgba(34,197,94,0.15); color: #4ade80;
+  border: 1px solid rgba(34,197,94,0.3); border-radius: 6px;
+  cursor: pointer; transition: all 0.2s; white-space: nowrap;
+}
+.btn-export:hover { background: rgba(34,197,94,0.25); }
+.btn-export:disabled { opacity: 0.5; cursor: not-allowed; }
+.report-date { font-size: 0.75rem; color: var(--text-secondary); }
 .report-content { font-size: 0.82rem; line-height: 1.5; color: var(--text-primary); }
 .report-content :deep(h1), .report-content :deep(h2) { font-size: 0.92rem; color: #38bdf8; margin: 10px 0 4px; font-weight: 600; }
 .report-content :deep(h3) { font-size: 0.88rem; color: #38bdf8; margin: 8px 0 3px; font-weight: 600; }
