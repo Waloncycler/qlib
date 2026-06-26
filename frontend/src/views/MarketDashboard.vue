@@ -123,12 +123,6 @@
             <v-chart class="bar-chart" :option="conceptBarOption" autoresize />
           </div>
         </div>
-
-        <!-- Finance -->
-        <div v-if="hasFinance" class="chart-card glass-panel">
-          <h4 class="card-title">大金融板块追踪</h4>
-          <v-chart class="finance-chart" :option="financeBarOption" autoresize />
-        </div>
       </div>
     </template>
 
