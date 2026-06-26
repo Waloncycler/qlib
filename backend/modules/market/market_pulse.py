@@ -680,22 +680,25 @@ def _build_macro_indicators() -> str:
         macro_data = {}
         for key, code, label in indicators:
             try:
-                # 东方财富中国宏观指标接口
                 url = f"https://datacenter-web.eastmoney.com/api/data/v1/get"
+                report_name = "RPT_ECONOMY_CPI"
+                yoy_col = "NATIONAL_SAME"
+                if key == "PPI":
+                    report_name = "RPT_ECONOMY_PPI"
+                    yoy_col = "BASE_SAME"
+                elif key == "PMI":
+                    report_name = "RPT_ECONOMY_PMI"
+                    yoy_col = "MAKE_INDEX"
+
                 params = {
-                    "reportName": "RPT_ECONOMY_CPI",
-                    "columns": "REPORT_DATE,OPERATE_CODE,OPERATE_NAME,NATIONAL_SAME,NATIONAL_SEQUENTIAL",
-                    "pageSize": "3",
+                    "reportName": report_name,
+                    "columns": f"REPORT_DATE,{yoy_col}",
+                    "pageSize": "1",
                     "sortColumns": "REPORT_DATE",
                     "sortTypes": "-1",
                     "source": "WEB",
                     "client": "WEB",
                 }
-                if key == "PPI":
-                    params["reportName"] = "RPT_ECONOMY_PPI"
-                elif key == "PMI":
-                    params["reportName"] = "RPT_ECONOMY_PMI"
-                    params["columns"] = "REPORT_DATE,MAKE_INDEX,MAKE_SAME,MAKE_SEQUENTIAL"
 
                 r = _req.get(url, params=params, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
                 if r.status_code == 200:
@@ -707,25 +710,24 @@ def _build_macro_indicators() -> str:
                             macro_data[key] = {
                                 "label": label,
                                 "date": latest.get("REPORT_DATE", "")[:10],
-                                "yoy": latest.get("NATIONAL_SAME") or latest.get("MAKE_SAME"),
-                                "mom": latest.get("NATIONAL_SEQUENTIAL") or latest.get("MAKE_SEQUENTIAL"),
-                                "value": latest.get("OPERATE_CODE") or latest.get("MAKE_INDEX"),
+                                "value": latest.get(yoy_col),
                             }
             except Exception as e:
                 logger.warning(f"Failed to fetch {key}: {e}")
 
         if macro_data:
             for key, d in macro_data.items():
-                yoy = d["yoy"]
-                if yoy is not None:
-                    yoy_str = f"+{yoy}" if float(yoy) > 0 else str(yoy)
-                    lines.append(f"- **{d['label']}** ({d['date']}): 同比 {yoy_str}%")
-                else:
-                    val = d.get("value")
-                    if val:
-                        lines.append(f"- **{d['label']}** ({d['date']}): {val}%")
+                val = d.get("value")
+                if val is not None:
+                    val_f = float(val)
+                    if key == "PMI":
+                        lines.append(f"- **{d['label']}** ({d['date']}): {val_f:.1f}%"
+                                     f"（{'扩张' if val_f >= 50 else '收缩'}区间）")
+                    else:
+                        sign = "+" if val_f > 0 else ""
+                        lines.append(f"- **{d['label']}** ({d['date']}): {sign}{val_f:.1f}%")
         else:
-            return ""  # 没数据就不输出这个板块
+            return ""
 
         return "\n".join(lines)
     except Exception as e:
