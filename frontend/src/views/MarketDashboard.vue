@@ -3,7 +3,7 @@
     <header class="header">
       <div>
         <h1 class="title">Market Dashboard</h1>
-        <p class="subtitle">市场总览 · 历史趋势 + 当日快照 + AI 策略</p>
+        <p class="subtitle">市场总览 · 历史趋势 + 当日数据 + AI 策略</p>
       </div>
       <div class="actions">
         <!-- Tabs -->
@@ -19,13 +19,10 @@
           <RefreshCwIcon class="icon" :class="{ 'spin': loading || backendUpdating }" />
           {{ backendUpdating ? 'Updating...' : 'Refresh' }}
         </button>
-        <button v-if="activeTab === 'pulse'" class="btn-refresh" @click="triggerScan" :disabled="scanning">
+        <button v-if="activeTab === 'trend'" class="btn-refresh" @click="triggerScan" :disabled="scanning">
           <LoaderIcon v-if="scanning" class="icon spin" />
           <ZapIcon v-else class="icon" />
           {{ scanning ? '分析中...' : '扫描' }}
-        </button>
-        <button v-if="activeTab === 'pulse'" class="btn-refresh" @click="loadPulse" :disabled="loadingPulse">
-          <RefreshCwIcon class="icon" :class="{ 'spin': loadingPulse }" />
         </button>
       </div>
     </header>
@@ -110,65 +107,10 @@
           <v-chart class="chart" :option="opts.c10" group="market" autoresize />
         </div>
       </div>
-    </template>
 
-    <!-- ========== Tab: 当日快照 (Market Pulse) ========== -->
-    <template v-if="activeTab === 'pulse'">
-      <div v-if="pulseError" class="error-panel glass-panel">
-        <AlertTriangleIcon class="icon error-icon" />
-        <p>{{ pulseError }}</p>
-      </div>
-
-      <div v-if="pulseData" class="pulse-scroll custom-scrollbar">
-        <!-- Date + Sentiment tag -->
-        <div class="pulse-meta glass-panel">
-          <CalendarIcon class="icon-sm" />
-          <span>{{ pulseData.date }}</span>
-          <span class="dot">·</span>
-          <ClockIcon class="icon-sm" />
-          <span>{{ formatTime(pulseData.timestamp) }}</span>
-          <template v-if="pulseData.structured?.sentiment?.sentiment_label">
-            <span class="dot">·</span>
-            <span class="sentiment-tag" :class="sentimentClass">{{ pulseData.structured.sentiment.sentiment_label }}</span>
-          </template>
-        </div>
-
-        <!-- Metrics Row -->
-        <div v-if="pulseData.structured?.market_breadth" class="metrics-row">
-          <div class="metric-card glass-panel" v-for="m in breadthMetrics" :key="m.label">
-            <div class="metric-label">{{ m.label }}</div>
-            <div class="metric-value" :class="m.cls">{{ m.value }}</div>
-          </div>
-        </div>
-
-        <!-- Sentiment & Capital -->
-        <div class="two-col" v-if="hasSentimentOrCapital">
-          <div v-if="pulseData.structured?.sentiment" class="chart-card glass-panel">
-            <h4 class="card-title">打板情绪</h4>
-            <div class="sentiment-grid">
-              <div class="sent-item" v-for="s in sentimentItems" :key="s.label">
-                <div class="sent-num" :class="s.cls">{{ s.value }}</div>
-                <div class="sent-label">{{ s.label }}</div>
-              </div>
-            </div>
-            <div v-if="pulseData.structured.sentiment.sentiment_score != null" class="score-bar-wrapper">
-              <div class="score-bar-label">情绪评分</div>
-              <div class="score-bar">
-                <div class="score-bar-fill" :style="{ width: pulseData.structured.sentiment.sentiment_score + '%' }" :class="sentimentClass"></div>
-                <span class="score-num">{{ pulseData.structured.sentiment.sentiment_score }}</span>
-              </div>
-            </div>
-          </div>
-          <div v-if="hasCapital" class="chart-card glass-panel">
-            <h4 class="card-title">资金面</h4>
-            <div class="capital-grid">
-              <div class="cap-item" v-for="c in capitalItems" :key="c.label">
-                <div class="cap-label">{{ c.label }}</div>
-                <div class="cap-value" :class="c.cls">{{ c.value }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <!-- Pulse Snapshot (merged into trend tab) -->
+      <div v-if="pulseData" class="pulse-section">
+        <h3 class="section-divider">当日快照 · {{ pulseData.date }}</h3>
 
         <!-- Sector & Concept -->
         <div class="two-col" v-if="hasCharts">
@@ -186,14 +128,6 @@
         <div v-if="hasFinance" class="chart-card glass-panel">
           <h4 class="card-title">大金融板块追踪</h4>
           <v-chart class="finance-chart" :option="financeBarOption" autoresize />
-        </div>
-      </div>
-
-      <div v-else-if="!loadingPulse && !pulseError" class="empty-panel glass-panel">
-        <div class="empty-content">
-          <ActivityIcon class="icon-large" />
-          <h3>暂无当日快照</h3>
-          <p>点击右上角「扫描」生成今日市场体检</p>
         </div>
       </div>
     </template>
@@ -231,8 +165,7 @@ import { useDataLoader } from '../composables/useDataLoader'
 // ===== Tab 管理 =====
 const tabs = [
   { key: 'trend', label: '趋势图表' },
-  { key: 'pulse', label: '当日快照' },
-  { key: 'report', label: 'AI 策略' },
+  { key: 'report', label: 'AI 策略报告' },
 ]
 const activeTab = ref('trend')
 
@@ -594,9 +527,9 @@ const renderMarkdown = (md) => {
   return `<p>${html}</p>`
 }
 
-// 切换到 pulse/report tab 时自动加载
+// 切换到 report tab 或首次加载时自动加载 pulse 数据
 watch(activeTab, (tab) => {
-  if ((tab === 'pulse' || tab === 'report') && !pulseData.value && !pulseError.value) {
+  if (tab === 'report' && !pulseData.value && !pulseError.value) {
     loadPulse()
   }
 })
@@ -604,6 +537,7 @@ watch(activeTab, (tab) => {
 onMounted(() => {
   echarts.connect('market')
   loadData()
+  loadPulse()  // 趋势图表 Tab 也需要 pulse 数据（板块/金融图表）
 })
 </script>
 
@@ -648,6 +582,13 @@ onMounted(() => {
 
 /* Charts Grid */
 .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 580px), 1fr)); gap: 16px; overflow-y: auto; flex: 1; }
+
+.pulse-section { margin-top: 20px; }
+.section-divider {
+  color: #38bdf8; font-size: 1rem; font-weight: bold;
+  margin: 20px 0 12px; padding-bottom: 8px;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+}
 .chart-panel { padding: 14px; display: flex; flex-direction: column; }
 .chart-title { font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px; }
 .chart { width: 100%; height: 300px; min-height: 300px; }
