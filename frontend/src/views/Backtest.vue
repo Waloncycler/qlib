@@ -119,6 +119,33 @@
         <button v-if="compareCurves && compareCurves.length > 0" @click="compareCurves = null" class="close-comparison-btn" style="background: rgba(34,197,94,0.2); color: #4ade80; border-color: rgba(34,197,94,0.3);">
           ✕ Exit Compare
         </button>
+        <div v-if="compareCurves && compareCurves.length > 0 && compareSelectedStrategy" class="compare-info-panel">
+          <div style="margin-bottom: 8px;">
+            <span style="font-size: 0.8rem; color: #64748b;">Selected:</span>
+            <span :style="{ color: compareSelectedStrategy.color, fontWeight: 'bold', marginLeft: '6px', fontSize: '0.8rem' }">{{ compareSelectedStrategy.label }}</span>
+          </div>
+          <div v-if="compareSelectedMetrics" style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px;">
+            <div><span style="color:#64748b;font-size:0.7rem;">Ann.Return</span> <span style="color:#34d399;font-weight:bold;font-size:0.8rem;">{{ (compareSelectedMetrics.annualized_return * 100).toFixed(2) }}%</span></div>
+            <div><span style="color:#64748b;font-size:0.7rem;">Max DD</span> <span style="color:#f87171;font-weight:bold;font-size:0.8rem;">{{ (compareSelectedMetrics.max_drawdown * 100).toFixed(2) }}%</span></div>
+            <div><span style="color:#64748b;font-size:0.7rem;">Sharpe</span> <span style="color:#60a5fa;font-weight:bold;font-size:0.8rem;">{{ compareSelectedMetrics.sharpe_ratio?.toFixed(3) }}</span></div>
+            <div><span style="color:#64748b;font-size:0.7rem;">Hit Rate</span> <span style="color:#fbbf24;font-weight:bold;font-size:0.8rem;">{{ ((compareSelectedMetrics.hit_rate || 0) * 100).toFixed(1) }}%</span></div>
+          </div>
+          <div v-if="compareSelectedHoldings && compareSelectedHoldings.length > 0" style="margin-top: 8px; max-height: 300px; overflow-y: auto;">
+            <div style="color:#64748b;font-size:0.7rem;margin-bottom:4px;">Recent Trades (last 5 days):</div>
+            <div v-for="h in compareSelectedHoldings.slice(-5).reverse()" :key="h.date" style="margin-bottom: 6px; padding: 4px 6px; background: rgba(15,23,42,0.5); border-radius: 4px;">
+              <div style="font-size:0.7rem;color:#94a3b8;">{{ h.date }} · {{ h.holdings?.length || 0 }} held</div>
+              <div v-for="item in (h.holdings || [])" :key="item.symbol" style="display:flex;justify-content:space-between;font-size:0.7rem;margin-top:2px;">
+                <span :style="{ color: item.type === 'entry' ? '#34d399' : item.type === 'exit' ? '#f87171' : '#94a3b8' }">
+                  {{ item.type === 'entry' ? '▲' : item.type === 'exit' ? '▼' : '●' }} {{ item.name || item.symbol }}
+                </span>
+                <span v-if="item.ret !== null && item.ret !== undefined" :style="{ color: item.ret >= 0 ? '#34d399' : '#f87171', fontFamily: 'monospace' }">
+                  {{ item.ret >= 0 ? '+' : '' }}{{ (item.ret * 100).toFixed(2) }}%
+                </span>
+              </div>
+            </div>
+          </div>
+          <div v-else style="color:#64748b;font-size:0.75rem;margin-top:8px;">Click a curve to see details</div>
+        </div>
         <v-chart class="chart" :option="chartOption" :update-options="{ notMerge: true }" autoresize @click="onChartClick" />
       </div>
 
@@ -487,6 +514,13 @@ const showLeaderboard = ref(false)
 const showCompareModal = ref(false)
 const compareSelected = ref([])
 const compareCurves = ref(null) // [{label, curve, color}]
+const compareSelectedIndex = ref(-1)
+const compareSelectedStrategy = computed(() => {
+  if (!compareCurves.value || compareSelectedIndex.value < 0) return null
+  return compareCurves.value[compareSelectedIndex.value]
+})
+const compareSelectedMetrics = ref(null)
+const compareSelectedHoldings = ref(null)
 const leaderboardLoading = ref(false)
 const leaderboardData = ref([])
 const showTopConcepts = ref(false)
@@ -627,10 +661,16 @@ const activeDate = ref(null)
 const hoveredDate = ref(null)
 
 const onChartClick = (params) => {
+  // 对比模式下：点击曲线选中对应策略
+  if (compareCurves.value && compareCurves.value.length > 0 && params && params.seriesIndex !== undefined) {
+    selectCompareStrategy(params.seriesIndex)
+    return
+  }
+
   if (params && params.name) {
     const date = params.name
     activeDate.value = date
-    
+
     // Clear the active highlight after 2.5 seconds
     setTimeout(() => {
       if (activeDate.value === date) {
@@ -639,7 +679,6 @@ const onChartClick = (params) => {
     }, 2500)
 
     // Scroll to the card
-    // Give Vue a tick to apply the active class, though scrollIntoView works regardless
     setTimeout(() => {
       const el = document.getElementById('trade-card-' + date)
       if (el) {
@@ -1455,26 +1494,45 @@ const executeCompare = async () => {
 
   loading.value = true
   compareCurves.value = []
+  compareSelectedIndex.value = -1
+  compareSelectedMetrics.value = null
+  compareSelectedHoldings.value = null
 
   for (let i = 0; i < compareSelected.value.length; i++) {
     const item = compareSelected.value[i]
     const timing = item.enable_market_timing !== undefined ? item.enable_market_timing : true
     try {
       const res = await axios.get(`/api/backtest/results?enable_ml_filter=true&model_version=${item.model_version}&top_k=${item.top_k}&enable_market_timing=${timing}`)
-      const curve = res.data.data.curve || []
+      const data = res.data.data || {}
+      const curve = data.curve || []
       const tLabel = item.timing_label || (timing ? '择时' : '无择时')
       const label = `${item.model_version} K=${item.top_k} ${tLabel}`
       compareCurves.value.push({
         label,
         curve,
-        color: compareColors[i % compareColors.length]
+        color: compareColors[i % compareColors.length],
+        metrics: data.metrics || null,
+        holdings: data.holdings || []
       })
     } catch (e) {
       console.error(`Failed to load ${item.model_version} K=${item.top_k}`, e)
     }
   }
 
+  // 默认选中第一条曲线
+  if (compareCurves.value.length > 0) {
+    selectCompareStrategy(0)
+  }
+
   loading.value = false
+}
+
+const selectCompareStrategy = (index) => {
+  if (!compareCurves.value || index < 0 || index >= compareCurves.value.length) return
+  compareSelectedIndex.value = index
+  const s = compareCurves.value[index]
+  compareSelectedMetrics.value = s.metrics
+  compareSelectedHoldings.value = s.holdings
 }
 
 const getWeight = (holdingsList, symbol) => {
@@ -2046,6 +2104,21 @@ onUnmounted(() => {
   background: rgba(239, 68, 68, 0.2);
   color: #ef4444;
   border-color: rgba(239, 68, 68, 0.3);
+}
+
+.compare-info-panel {
+  position: absolute;
+  top: 50px;
+  right: 15px;
+  width: 260px;
+  max-height: 500px;
+  overflow-y: auto;
+  z-index: 99;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+  backdrop-filter: blur(10px);
 }
 
 .comparison-overlay {
