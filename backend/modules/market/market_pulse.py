@@ -842,7 +842,16 @@ def _build_core_stock_details(today: str) -> str:
 # ============================================================
 
 def _build_dormant_candidates(today: str) -> str:
-    """筛选题材持续发酵但个股滞涨的标的（潜在补涨机会）"""
+    """筛选题材强但个股滞涨的蓄势待发标的
+
+    筛选条件：
+    1. 所属题材在 zizizaizai_topics.json 中有详细数据（强题材）
+    2. 近10个交易日内该股至少有1次涨停（有过异动）
+    3. 近5日涨幅在 [-3%, +5%] 之间（滞涨）
+    4. 当日跌幅 >= -3%（未破异动）
+    5. 5日均线走平或上升（未破趋势）
+    6. 非 ST、非科创板 688（基本面门槛）
+    """
     try:
         import pandas as pd
         import sys as _sys
@@ -855,32 +864,50 @@ def _build_dormant_candidates(today: str) -> str:
 
         pools = _parse_reports()
 
-        # 获取近 10 个交易日的题材出现频次
-        sorted_dates = sorted([d for d in pools.keys() if d <= today and len(pools[d]) > 0], reverse=True)[:10]
-        topic_freq = defaultdict(int)
-        for d in sorted_dates:
-            day_topics = set()
-            for sym, info in pools[d].items():
-                concept = info.get("concept", "")
-                if concept:
-                    day_topics.add(concept)
-            for t in day_topics:
-                topic_freq[t] += 1
+        # 加载题材热度数据
+        topics_file = DATA_DIR / "signals" / "zizizaizai_topics.json"
+        topic_strength = {}  # topic_name -> {strength_score, stock_names}
+        if topics_file.exists():
+            with open(topics_file, "r", encoding="utf-8") as f:
+                all_topics = json.load(f)
+            for t in all_topics:
+                name = t.get("name", "")
+                clean_name = name.split("(")[0].strip()
+                rows = t.get("rows", [])
+                content = t.get("content", "")
+                # 题材强度 = rows 数量 × content 长度（信息越丰富越强）
+                strength = len(rows) + min(len(content) / 100, 10)
+                stock_names = {r.get("个股", "") for r in rows if r.get("个股")}
+                topic_strength[clean_name] = {
+                    "strength": strength,
+                    "stock_names": stock_names,
+                    "rows": rows,
+                }
 
-        # 持续≥3天的题材为"强题材"
-        strong_topics = {t for t, f in topic_freq.items() if f >= 3}
-        if not strong_topics:
+        # 获取近10日 pool 数据
+        sorted_dates = sorted([d for d in pools.keys() if d <= today and len(pools[d]) > 0], reverse=True)[:10]
+        if not sorted_dates:
             return ""
 
-        # 检查当前 pool 中属于强题材的个股
-        latest_date = sorted_dates[0] if sorted_dates else today
+        latest_date = sorted_dates[0]
         pool = pools.get(latest_date, {})
         ohlcv_dir = DATA_DIR.parent / "backtest_ohlcv"
 
+        # 获取每只股票近10日的涨停信息
         candidates = []
         for sym, info in pool.items():
+            # 排除科创板
+            if sym.startswith("SH688") or sym.startswith("SZ30"):
+                pass  # 创业板保留，只排除688
+            if sym.startswith("SH688"):
+                continue
+
             concept = info.get("concept", "")
-            if concept not in strong_topics:
+            name = info.get("name", sym)
+
+            # 检查题材强度
+            topic_data = topic_strength.get(concept)
+            if not topic_data or topic_data["strength"] < 5:
                 continue
 
             csv_file = ohlcv_dir / f"{sym}.csv"
@@ -889,54 +916,103 @@ def _build_dormant_candidates(today: str) -> str:
             try:
                 df_s = pd.read_csv(csv_file)
                 df_s["date"] = df_s["date"].astype(str)
-                recent = df_s[df_s["date"] <= today].tail(5)
-                if len(recent) < 3:
+                recent_10 = df_s[df_s["date"] <= today].tail(10)
+                recent_5 = recent_10.tail(5)
+                if len(recent_5) < 3:
                     continue
 
-                ret_5d = (recent.iloc[-1]["close"] - recent.iloc[0]["close"]) / recent.iloc[0]["close"] * 100
-                ret_1d = ((recent.iloc[-1]["close"] - recent.iloc[-1]["open"]) / recent.iloc[-1]["open"] * 100) if recent.iloc[-1]["open"] > 0 else 0
+                # 1. 近10日是否有涨停（涨幅 >= 9.5%）
+                recent_10["pct"] = recent_10["close"].pct_change() * 100
+                has_limit_up = (recent_10["pct"] >= 9.5).any()
+                if not has_limit_up:
+                    continue
 
-                # 筛选条件：5日涨幅在 [-3%, +3%] 之间（滞涨），当日跌幅不超过 -2%（未破趋势）
-                if -3 <= ret_5d <= 3 and ret_1d >= -2:
-                    # 检查均线趋势（5日均线是否还在上升）
-                    ma5_now = recent["close"].mean()
-                    if len(recent) >= 4:
-                        ma5_prev = recent.iloc[:-1]["close"].mean()
-                        trend_up = ma5_now >= ma5_prev * 0.99  # 均线基本走平或微升
-                    else:
-                        trend_up = True
+                # 2. 近5日涨幅（滞涨）
+                ret_5d = (recent_5.iloc[-1]["close"] - recent_5.iloc[0]["close"]) / recent_5.iloc[0]["close"] * 100
+                if not (-3 <= ret_5d <= 5):
+                    continue
 
-                    if trend_up:
-                        candidates.append({
-                            "name": info.get("name", sym),
-                            "sym": sym,
-                            "concept": concept,
-                            "weight": info.get("weight_type", "other"),
-                            "ret_5d": ret_5d,
-                            "ret_1d": ret_1d,
-                            "close": recent.iloc[-1]["close"],
-                            "topic_days": topic_freq[concept],
-                        })
+                # 3. 当日跌幅（未破异动）
+                last = recent_5.iloc[-1]
+                ret_1d = ((last["close"] - last["open"]) / last["open"] * 100) if last["open"] > 0 else 0
+                prev_close = recent_5.iloc[-2]["close"] if len(recent_5) >= 2 else last["open"]
+                ret_1d_pct = ((last["close"] - prev_close) / prev_close * 100) if prev_close > 0 else 0
+                if ret_1d_pct < -3:
+                    continue
+
+                # 4. 5日均线趋势（未破趋势）
+                ma5_now = recent_5["close"].mean()
+                if len(recent_5) >= 4:
+                    ma5_prev = recent_5.iloc[:-1]["close"].mean()
+                    trend_ok = ma5_now >= ma5_prev * 0.98  # 均线最多微跌2%
+                else:
+                    trend_ok = True
+                if not trend_ok:
+                    continue
+
+                # 5. 从题材数据中获取个股产业链位置
+                relevance = ""
+                info_source = ""
+                category = ""
+                for r in topic_data["rows"]:
+                    if r.get("个股") == name:
+                        relevance = r.get("相关性", "")[:80]
+                        info_source = r.get("信息源", "")
+                        cat1 = r.get("一级大类", "")
+                        cat2 = r.get("二级小类", "")
+                        cat3 = r.get("三级细分", "")
+                        category = f"{cat1}/{cat2}/{cat3}"
+                        break
+
+                # 6. 涨停距今天数
+                limit_up_days_ago = None
+                for i in range(len(recent_10) - 1, -1, -1):
+                    if pd.notna(recent_10.iloc[i].get("pct")) and recent_10.iloc[i]["pct"] >= 9.5:
+                        limit_up_days_ago = len(recent_10) - 1 - i
+                        break
+
+                candidates.append({
+                    "name": name,
+                    "sym": sym,
+                    "concept": concept,
+                    "weight": info.get("weight_type", "other"),
+                    "ret_5d": ret_5d,
+                    "ret_1d": ret_1d_pct,
+                    "close": last["close"],
+                    "topic_strength": topic_data["strength"],
+                    "category": category,
+                    "relevance": relevance,
+                    "info_source": info_source,
+                    "limit_up_days_ago": limit_up_days_ago,
+                })
             except:
                 pass
 
         if not candidates:
             return ""
 
-        lines = [f"# 蓄势待发标的（题材≥3天 + 个股滞涨 + 趋势未破）\n"]
-        lines.append(f"以下标的所属题材已持续发酵，但个股本身涨幅有限（5日±3%以内），且当日未出现破位下跌，可能存在补涨机会：\n")
+        # 按题材强度排序
+        candidates.sort(key=lambda x: (-x["topic_strength"], x["ret_5d"]))
 
-        # 按题材分组
+        lines = ["# 蓄势待发标的（强题材 + 近10日有涨停 + 滞涨 + 趋势未破）\n"]
+        lines.append("筛选条件: 题材信息丰富(≥5分) | 近10日有涨停 | 5日涨幅[-3%,+5%] | 当日未破异动(>-3%) | 均线趋势完整\n")
+
         by_topic = defaultdict(list)
         for c in candidates:
             by_topic[c["concept"]].append(c)
 
-        for topic, stocks in sorted(by_topic.items(), key=lambda x: -x[1][0]["topic_days"]):
-            lines.append(f"- **{topic}**（题材持续{stocks[0]['topic_days']}天）:")
-            for s in sorted(stocks, key=lambda x: x["ret_5d"]):
+        for topic, stocks in sorted(by_topic.items(), key=lambda x: -x[1][0]["topic_strength"]):
+            lines.append(f"\n**{topic}**（题材强度{stocks[0]['topic_strength']:.0f}分）:")
+            for s in stocks:
                 tag = "[核心]" if s["weight"] == "core" else ""
-                lines.append(f"  - {s['name']}({s['sym']}){tag} 5日{s['ret_5d']:+.1f}% 当日{s['ret_1d']:+.1f}% 收盘{s['close']:.0f}")
+                lu_info = f"涨停于{s['limit_up_days_ago']}日前" if s["limit_up_days_ago"] is not None else ""
+                lines.append(f"  - {s['name']}({s['sym']}){tag} 收盘{s['close']:.0f} 5日{s['ret_5d']:+.1f}% 当日{s['ret_1d']:+.1f}% {lu_info}")
+                if s["category"]:
+                    lines.append(f"    产业链: {s['category']} [{s['info_source']}: {s['relevance']}...]")
+                else:
+                    lines.append(f"    (未找到个股在题材中的详细归属)")
 
+        lines.append(f"\n注: 以上{len(candidates)}只标的均满足题材强+滞涨+趋势完整条件。建议结合排雷审查后决策。")
         return "\n".join(lines)
     except Exception as e:
         logger.error(f"Dormant candidates failed: {e}")
