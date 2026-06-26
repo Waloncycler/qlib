@@ -119,6 +119,14 @@
         <button v-if="compareCurves && compareCurves.length > 0" @click="compareCurves = null" class="close-comparison-btn" style="background: rgba(34,197,94,0.2); color: #4ade80; border-color: rgba(34,197,94,0.3);">
           ✕ Exit Compare
         </button>
+        <div v-if="compareCurves && compareCurves.length > 0" class="compare-strategy-tabs">
+          <button v-for="(c, i) in compareCurves" :key="i" @click="selectCompareStrategy(i)"
+            class="compare-tab" :class="{ active: compareSelectedIndex === i }"
+            :style="{ borderColor: compareSelectedIndex === i ? c.color : 'transparent' }">
+            <span class="dot" :style="{ background: c.color }"></span>
+            {{ c.label }}
+          </button>
+        </div>
         <v-chart ref="chartRef" class="chart" :option="chartOption" :update-options="{ notMerge: true }" autoresize @click="onChartClick" />
       </div>
 
@@ -2074,6 +2082,49 @@ onUnmounted(() => {
   background: rgba(239, 68, 68, 0.2);
   color: #ef4444;
   border-color: rgba(239, 68, 68, 0.3);
+}
+
+.compare-strategy-tabs {
+  position: absolute;
+  top: 50px;
+  left: 15px;
+  z-index: 99;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 70%;
+}
+
+.compare-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 2px solid transparent;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.7rem;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s;
+  backdrop-filter: blur(8px);
+}
+
+.compare-tab:hover {
+  background: rgba(30, 41, 59, 0.9);
+  color: #e2e8f0;
+}
+
+.compare-tab.active {
+  color: #f1f5f9;
+  font-weight: bold;
+}
+
+.compare-tab .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .comparison-overlay {
