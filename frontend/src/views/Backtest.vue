@@ -489,10 +489,6 @@ const compareSelected = ref([])
 const compareCurves = ref(null) // [{label, curve, color}]
 const compareSelectedIndex = ref(-1)
 const chartRef = ref(null)
-const compareSelectedStrategy = computed(() => {
-  if (!compareCurves.value || compareSelectedIndex.value < 0) return null
-  return compareCurves.value[compareSelectedIndex.value]
-})
 const leaderboardLoading = ref(false)
 const leaderboardData = ref([])
 const showTopConcepts = ref(false)
