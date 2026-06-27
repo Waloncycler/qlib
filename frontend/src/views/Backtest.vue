@@ -62,10 +62,7 @@
           <i class="fa-solid fa-trophy"></i>
           <span style="margin-left: 6px;">Rank</span>
         </button>
-        <button class="mini-btn" @click="openCompareModal" style="background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); padding: 4px 10px; font-size: 0.75rem; white-space: nowrap; font-weight: bold;" title="Compare Strategies">
-          <i class="fa-solid fa-chart-line"></i>
-          <span style="margin-left: 6px;">Compare</span>
-        </button>
+
         <button class="mini-btn" @click="runIntelligentBacktest" :disabled="loading" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 4px 10px; font-size: 0.75rem; white-space: nowrap; font-weight: bold;" title="Run Backtest">
           <i class="fa-solid fa-play"></i>
           <span style="margin-left: 6px;">{{ loading ? '...' : 'Run' }}</span>
@@ -199,7 +196,18 @@
           <!-- Today's ML Top Picks (Chip Style, matching Daily Trades) -->
           <div v-if="todaysPicks" class="mb-2 p-2 bg-slate-800/50 rounded border border-slate-700/50">
             <div class="text-xs text-gray-400 font-bold mb-1" style="display: flex; justify-content: space-between; align-items: center;">
-              <span>Today's Top Picks · {{ todaysPicks.date }}</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span>Today's Top Picks · {{ todaysPicks.date }}</span>
+                <button 
+                  @click="() => { useCompositePicks = !useCompositePicks; fetchTodaysPicks(); }"
+                  class="transition-colors"
+                  style="background: transparent; border: none; padding: 0; outline: none; cursor: pointer; font-size: 0.8rem;"
+                  :style="{ color: useCompositePicks ? '#38bdf8' : '#64748b' }"
+                  :title="useCompositePicks ? '复合打分模式已开启 (包含人气与LLM过滤)' : '纯净模式已开启 (原始模型得分)'"
+                >
+                  <i class="fa-solid fa-wand-magic-sparkles"></i>
+                </button>
+              </div>
               <button 
                 @click="runPremarketSelection"
                 :disabled="isRefreshingPicks"
@@ -369,34 +377,38 @@
             <thead>
               <tr>
                 <th>Rank</th>
-                <th>Model</th>
-                <th>K</th>
-                <th>择时</th>
-                <th>Annual Return</th>
-                <th>Max Drawdown</th>
-                <th>Sharpe</th>
-                <th>Win Rate</th>
+                <th @click="handleSort('label')" class="sortable">Label <i v-if="sortKey === 'label'" :class="['fa-solid', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down']"></i><i v-else class="fa-solid fa-sort sort-icon-dim"></i></th>
+                <th @click="handleSort('model')" class="sortable">Model <i v-if="sortKey === 'model'" :class="['fa-solid', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down']"></i><i v-else class="fa-solid fa-sort sort-icon-dim"></i></th>
+                <th @click="handleSort('K')" class="sortable">K <i v-if="sortKey === 'K'" :class="['fa-solid', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down']"></i><i v-else class="fa-solid fa-sort sort-icon-dim"></i></th>
+                <th>Filters</th>
+                <th @click="handleSort('annual')" class="sortable">Annual Return <i v-if="sortKey === 'annual'" :class="['fa-solid', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down']"></i><i v-else class="fa-solid fa-sort sort-icon-dim"></i></th>
+                <th @click="handleSort('drawdown')" class="sortable">Max Drawdown <i v-if="sortKey === 'drawdown'" :class="['fa-solid', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down']"></i><i v-else class="fa-solid fa-sort sort-icon-dim"></i></th>
+                <th @click="handleSort('sharpe')" class="sortable">Sharpe <i v-if="sortKey === 'sharpe'" :class="['fa-solid', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down']"></i><i v-else class="fa-solid fa-sort sort-icon-dim"></i></th>
+                <th @click="handleSort('win_rate')" class="sortable">Win Rate <i v-if="sortKey === 'win_rate'" :class="['fa-solid', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down']"></i><i v-else class="fa-solid fa-sort sort-icon-dim"></i></th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in leaderboardData" :key="item.model_version + '_' + item.top_k + '_' + (item.enable_market_timing !== undefined ? item.enable_market_timing : 'legacy')" :class="{'top-3': item.rank <= 3, 'clickable-row': true}" @click="loadStrategy(item)">
+              <tr v-for="(item, index) in sortedLeaderboardData" :key="item.id" :class="{'top-3': index < 3, 'clickable-row': true}" @click="loadStrategy(item)">
                 <td>
-                  <span v-if="item.rank === 1" style="color: #facc15;">1</span>
-                  <span v-else-if="item.rank === 2" style="color: #94a3b8;">2</span>
-                  <span v-else-if="item.rank === 3" style="color: #b45309;">3</span>
-                  <span v-else>{{ item.rank }}</span>
+                  <span v-if="index === 0" style="color: #facc15;">1</span>
+                  <span v-else-if="index === 1" style="color: #94a3b8;">2</span>
+                  <span v-else-if="index === 2" style="color: #b45309;">3</span>
+                  <span v-else>{{ index + 1 }}</span>
                 </td>
-                <td style="font-weight: 600; color: #e0f2fe;">{{ item.model_version }}</td>
-                <td style="color: #38bdf8;">{{ item.top_k }}</td>
+                <td style="font-weight: 600; color: #e0f2fe;">{{ item.label }}</td>
+                <td style="color: #cbd5e1;">{{ item.model }}</td>
+                <td style="color: #38bdf8;">{{ item.K }}</td>
                 <td style="font-size: 0.75rem;">
-                  <span v-if="item.timing_label === '择时'" style="color: #fbbf24;">择时</span>
-                  <span v-else-if="item.timing_label === '无择时'" style="color: #94a3b8;">无</span>
-                  <span v-else style="color: #475569;">-</span>
+                  <span v-if="item.vol" class="badge badge-vol">量能</span>
+                  <span v-if="item.timing" class="badge badge-timing">择时</span>
+                  <span v-if="item.crash" class="badge badge-crash">防暴跌</span>
+                  <span v-if="item.boost" class="badge badge-boost">连板</span>
+                  <span v-if="!item.vol && !item.timing && !item.crash && !item.boost" style="color: #475569;">无</span>
                 </td>
-                <td :style="{color: parseFloat(item.annual_return) > 0 ? '#34d399' : '#f87171', fontWeight: 'bold'}">{{ item.annual_return }}</td>
-                <td style="color: #f87171;">{{ item.max_drawdown }}</td>
-                <td style="color: #a78bfa;">{{ item.sharpe_ratio }}</td>
-                <td style="color: #60a5fa;">{{ item.win_rate }}</td>
+                <td :style="{color: parseFloat(item.annual) > 0 ? '#34d399' : '#f87171', fontWeight: 'bold'}">{{ item.annual }}%</td>
+                <td style="color: #f87171;">{{ item.drawdown }}%</td>
+                <td style="color: #a78bfa;">{{ item.sharpe }}</td>
+                <td style="color: #60a5fa;">{{ item.win_rate }}%</td>
               </tr>
             </tbody>
           </table>
@@ -417,29 +429,33 @@
             <thead>
               <tr style="border-bottom: 1px solid #334155;">
                 <th style="padding: 8px; text-align: left; color: #94a3b8; font-size: 0.75rem;"></th>
-                <th style="padding: 8px; text-align: left; color: #94a3b8; font-size: 0.75rem;">Model</th>
-                <th style="padding: 8px; text-align: left; color: #94a3b8; font-size: 0.75rem;">K</th>
-                <th style="padding: 8px; text-align: left; color: #94a3b8; font-size: 0.75rem;">择时</th>
-                <th style="padding: 8px; text-align: right; color: #94a3b8; font-size: 0.75rem;">Annual</th>
-                <th style="padding: 8px; text-align: right; color: #94a3b8; font-size: 0.75rem;">Drawdown</th>
-                <th style="padding: 8px; text-align: right; color: #94a3b8; font-size: 0.75rem;">Sharpe</th>
+                <th @click="handleSort('label')" class="sortable" style="padding: 8px; text-align: left; color: #94a3b8; font-size: 0.75rem;">Label <i v-if="sortKey === 'label'" :class="['fa-solid', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down']"></i></th>
+                <th @click="handleSort('model')" class="sortable" style="padding: 8px; text-align: left; color: #94a3b8; font-size: 0.75rem;">Model <i v-if="sortKey === 'model'" :class="['fa-solid', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down']"></i></th>
+                <th @click="handleSort('K')" class="sortable" style="padding: 8px; text-align: left; color: #94a3b8; font-size: 0.75rem;">K <i v-if="sortKey === 'K'" :class="['fa-solid', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down']"></i></th>
+                <th style="padding: 8px; text-align: left; color: #94a3b8; font-size: 0.75rem;">Filters</th>
+                <th @click="handleSort('annual')" class="sortable" style="padding: 8px; text-align: right; color: #94a3b8; font-size: 0.75rem;">Annual <i v-if="sortKey === 'annual'" :class="['fa-solid', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down']"></i></th>
+                <th @click="handleSort('drawdown')" class="sortable" style="padding: 8px; text-align: right; color: #94a3b8; font-size: 0.75rem;">Drawdown <i v-if="sortKey === 'drawdown'" :class="['fa-solid', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down']"></i></th>
+                <th @click="handleSort('sharpe')" class="sortable" style="padding: 8px; text-align: right; color: #94a3b8; font-size: 0.75rem;">Sharpe <i v-if="sortKey === 'sharpe'" :class="['fa-solid', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down']"></i></th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in leaderboardData" :key="item.rank" style="border-bottom: 1px solid rgba(51,65,85,0.5); cursor: pointer;" @click="toggleCompareItem(item)">
+              <tr v-for="item in sortedLeaderboardData" :key="item.id" style="border-bottom: 1px solid rgba(51,65,85,0.5); cursor: pointer;" @click="toggleCompareItem(item)">
                 <td style="padding: 8px;">
                   <input type="checkbox" :checked="isCompareSelected(item)" @click.stop="toggleCompareItem(item)" style="accent-color: #22c55e; cursor: pointer;" />
                 </td>
-                <td style="padding: 8px; color: #e0f2fe; font-weight: 600;">{{ item.model_version }}</td>
-                <td style="padding: 8px; color: #38bdf8;">{{ item.top_k }}</td>
+                <td style="padding: 8px; color: #e0f2fe; font-weight: 600;">{{ item.label }}</td>
+                <td style="padding: 8px; color: #cbd5e1;">{{ item.model }}</td>
+                <td style="padding: 8px; color: #38bdf8;">{{ item.K }}</td>
                 <td style="padding: 8px; font-size: 0.75rem;">
-                  <span v-if="item.timing_label === '择时'" style="color: #fbbf24;">择时</span>
-                  <span v-else-if="item.timing_label === '无择时'" style="color: #94a3b8;">无</span>
-                  <span v-else style="color: #475569;">-</span>
+                  <span v-if="item.vol" class="badge badge-vol">量能</span>
+                  <span v-if="item.timing" class="badge badge-timing">择时</span>
+                  <span v-if="item.crash" class="badge badge-crash">防暴跌</span>
+                  <span v-if="item.boost" class="badge badge-boost">连板</span>
+                  <span v-if="!item.vol && !item.timing && !item.crash && !item.boost" style="color: #475569;">无</span>
                 </td>
-                <td style="padding: 8px; text-align: right; color: #34d399; font-weight: bold;">{{ item.annual_return }}</td>
-                <td style="padding: 8px; text-align: right; color: #f87171;">{{ item.max_drawdown }}</td>
-                <td style="padding: 8px; text-align: right; color: #a78bfa;">{{ item.sharpe_ratio }}</td>
+                <td style="padding: 8px; text-align: right; color: #34d399; font-weight: bold;">{{ item.annual }}%</td>
+                <td style="padding: 8px; text-align: right; color: #f87171;">{{ item.drawdown }}%</td>
+                <td style="padding: 8px; text-align: right; color: #a78bfa;">{{ item.sharpe }}</td>
               </tr>
             </tbody>
           </table>
@@ -486,9 +502,12 @@ use([
 
 const loading = ref(false)
 const enableMlFilter = ref(true)
-const selectedModelVersion = ref('v3_open2close')
+const selectedModelVersion = ref('v3_binary')
 const topK = ref(10)
 const enableMarketTiming = ref(true)
+const enableTurnoverFilter = ref(true)
+const enableCrashFilter = ref(false)
+const enableSelectionBoost = ref(false)
 const showLeaderboard = ref(false)
 const showCompareModal = ref(false)
 const compareSelected = ref([])
@@ -497,6 +516,42 @@ const compareSelectedIndex = ref(-1)
 const chartRef = ref(null)
 const leaderboardLoading = ref(false)
 const leaderboardData = ref([])
+
+const sortKey = ref('sharpe')
+const sortOrder = ref('desc')
+
+const sortedLeaderboardData = computed(() => {
+  const data = [...leaderboardData.value]
+  if (!sortKey.value) return data
+
+  data.sort((a, b) => {
+    let valA = a[sortKey.value]
+    let valB = b[sortKey.value]
+
+    // Handle percentage strings
+    if (typeof valA === 'string' && valA.endsWith('%')) valA = parseFloat(valA.replace('%', ''))
+    if (typeof valB === 'string' && valB.endsWith('%')) valB = parseFloat(valB.replace('%', ''))
+    
+    // Handle falsy or missing values gracefully
+    if (valA === undefined || valA === null) valA = 0
+    if (valB === undefined || valB === null) valB = 0
+
+    if (valA < valB) return sortOrder.value === 'asc' ? -1 : 1
+    if (valA > valB) return sortOrder.value === 'asc' ? 1 : -1
+    return 0
+  })
+  
+  return data
+})
+
+const handleSort = (key) => {
+  if (sortKey.value === key) {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortOrder.value = 'desc'
+  }
+}
 const showTopConcepts = ref(false)
 const expandedTrades = ref({})
 const todaysPicks = ref(null)
@@ -1321,11 +1376,13 @@ const runSingleBacktest = async () => {
 }
 
 const fetchResults = async () => {
+  compareCurves.value = []
+  isComparisonMode.value = false
   loading.value = true
   loadingMsg.value = 'Loading cached results...'
   error.value = null
   try {
-    const res = await axios.get(`/api/backtest/results?enable_ml_filter=${enableMlFilter.value}&model_version=${selectedModelVersion.value}&top_k=${topK.value}&enable_market_timing=${enableMarketTiming.value}`)
+    const res = await axios.get(`/api/backtest/results?enable_ml_filter=${enableMlFilter.value}&model_version=${selectedModelVersion.value}&top_k=${topK.value}&enable_market_timing=${enableMarketTiming.value}&vol=${enableTurnoverFilter.value}&crash=${enableCrashFilter.value}&boost=${enableSelectionBoost.value}`)
     if (res.data.status === 'success') {
       metrics.value = res.data.data.metrics || null
       curveData.value = res.data.data.curve || null
@@ -1362,12 +1419,13 @@ const downloadData = async () => {
 }
 
 const runIntelligentBacktest = async () => {
+  compareCurves.value = []
   isComparisonMode.value = false
   loading.value = true
   loadingMsg.value = enableMlFilter.value ? 'Running ML Hybrid Backtest...' : 'Running Signal Backtest...'
   error.value = null
   try {
-    const res = await axios.post(`/api/backtest/intelligent?enable_ml_filter=${enableMlFilter.value}&model_version=${selectedModelVersion.value}&top_k=${topK.value}&enable_market_timing=${enableMarketTiming.value}`, {}, { timeout: 600000 })
+    const res = await axios.post(`/api/backtest/intelligent?enable_ml_filter=${enableMlFilter.value}&model_version=${selectedModelVersion.value}&top_k=${topK.value}&enable_market_timing=${enableMarketTiming.value}&vol=${enableTurnoverFilter.value}&crash=${enableCrashFilter.value}&boost=${enableSelectionBoost.value}`, {}, { timeout: 600000 })
     if (res.data.status === 'success') {
       metrics.value = res.data.data.metrics
       curveData.value = res.data.data.curve
@@ -1389,7 +1447,7 @@ const openLeaderboard = async () => {
   showLeaderboard.value = true
   leaderboardLoading.value = true
   try {
-    const res = await axios.get('/api/backtest/leaderboard')
+    const res = await axios.get('/api/backtest/strategy-compare')
     if (res.data && res.data.status === 'success') {
       leaderboardData.value = res.data.data
     } else {
@@ -1406,10 +1464,13 @@ const openLeaderboard = async () => {
 
 const loadStrategy = (item) => {
   // 同步所有控制变量，确保加载的数据与 leaderboard 行完全一致
-  enableMlFilter.value = true
-  selectedModelVersion.value = item.model_version
-  topK.value = item.top_k
-  enableMarketTiming.value = item.enable_market_timing !== undefined ? item.enable_market_timing : true
+  enableMlFilter.value = item.model !== 'factor_rank' && item.model !== 'pure_signal'
+  selectedModelVersion.value = item.model
+  topK.value = item.K
+  enableMarketTiming.value = item.timing || false
+  enableTurnoverFilter.value = item.vol || false
+  enableCrashFilter.value = item.crash || false
+  enableSelectionBoost.value = item.boost || false
 
   // 关闭 leaderboard 弹窗
   showLeaderboard.value = false
@@ -1426,7 +1487,7 @@ const openCompareModal = async () => {
   if (leaderboardData.value.length === 0) {
     leaderboardLoading.value = true
     try {
-      const res = await axios.get('/api/backtest/leaderboard')
+      const res = await axios.get('/api/backtest/strategy-compare')
       leaderboardData.value = res.data.data || []
     } catch (e) {
       console.error('Failed to load leaderboard', e)
@@ -1435,15 +1496,16 @@ const openCompareModal = async () => {
   }
   // 默认选中当前策略
   compareSelected.value = [{
-    model_version: selectedModelVersion.value,
-    top_k: topK.value,
-    enable_market_timing: enableMarketTiming.value,
-    timing_label: enableMarketTiming.value ? '择时' : '无择时'
+    id: 'current',
+    label: 'Current Settings',
+    model: selectedModelVersion.value,
+    K: topK.value,
+    timing: enableMarketTiming.value
   }]
   showCompareModal.value = true
 }
 
-const compareItemKey = (item) => `${item.model_version}_${item.top_k}_${item.enable_market_timing !== undefined ? item.enable_market_timing : true}`
+const compareItemKey = (item) => item.id || `${item.model}_${item.K}_${item.timing}`
 
 const isCompareSelected = (item) => {
   return compareSelected.value.some(s => compareItemKey(s) === compareItemKey(item))
@@ -1469,13 +1531,12 @@ const executeCompare = async () => {
 
   for (let i = 0; i < compareSelected.value.length; i++) {
     const item = compareSelected.value[i]
-    const timing = item.enable_market_timing !== undefined ? item.enable_market_timing : true
+    const timing = item.timing || false
     try {
-      const res = await axios.get(`/api/backtest/results?enable_ml_filter=true&model_version=${item.model_version}&top_k=${item.top_k}&enable_market_timing=${timing}`)
+      const res = await axios.get(`/api/backtest/results?enable_ml_filter=true&model_version=${item.model}&top_k=${item.K}&enable_market_timing=${timing}`)
       const data = res.data.data || {}
       const curve = data.curve || []
-      const tLabel = item.timing_label || (timing ? '择时' : '无择时')
-      const label = `${item.model_version} K=${item.top_k} ${tLabel}`
+      const label = item.label || `${item.model} K=${item.K} ${timing ? '择时' : '无择时'}`
       compareCurves.value.push({
         label,
         curve,
@@ -1538,9 +1599,11 @@ const getName = (holdingsList, symbol) => {
   return symbol;
 }
 
+const useCompositePicks = ref(true)
+
 const fetchTodaysPicks = async () => {
   try {
-    const res = await axios.get(`/api/backtest/todays-picks?model_version=${selectedModelVersion.value}&top_k=${topK.value}`)
+    const res = await axios.get(`/api/backtest/todays-picks?model_version=${selectedModelVersion.value}&top_k=${topK.value}&use_composite=${useCompositePicks.value}`)
     if (res.data && res.data.status === 'success') {
       todaysPicks.value = res.data
     } else {
@@ -2254,5 +2317,45 @@ onUnmounted(() => {
   justify-content: center;
   padding: 40px 0;
   color: #9ca3af;
+}
+
+.badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+.badge-vol {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+.badge-timing {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+.badge-crash {
+  background: rgba(248, 113, 113, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+.badge-boost {
+  background: rgba(167, 139, 250, 0.2);
+  color: #a78bfa;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+}
+
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.2s;
+}
+.sortable:hover {
+  color: #f8fafc !important;
+}
+.sort-icon-dim {
+  color: rgba(255,255,255,0.2);
+  margin-left: 4px;
 }
 </style>

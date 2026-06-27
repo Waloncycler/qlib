@@ -13,6 +13,7 @@ from modules.backtest.service import (
     run_data_download_service,
     get_leaderboard_service,
 )
+from core.config import DATA_DIR, WORKSPACE_DIR
 
 router = APIRouter()
 
@@ -22,10 +23,26 @@ class SingleBacktestRequest(BaseModel):
     end_date: str
 
 @router.get("/api/backtest/results")
-def get_backtest_results_route(enable_ml_filter: bool = Query(False), model_version: str = Query("v3_open2close"), top_k: int = Query(10), enable_market_timing: bool = Query(True)):
+def get_backtest_results_route(
+    enable_ml_filter: bool = Query(False), 
+    model_version: str = Query("v3_binary"), 
+    top_k: int = Query(10), 
+    enable_market_timing: bool = Query(True),
+    vol: bool = Query(True),
+    crash: bool = Query(False),
+    boost: bool = Query(False)
+):
     """Returns the latest signal backtest results (new default)."""
     try:
-        data = get_signal_backtest_results(enable_ml_filter=enable_ml_filter, model_version=model_version, top_k=top_k, enable_market_timing=enable_market_timing)
+        data = get_signal_backtest_results(
+            enable_ml_filter=enable_ml_filter, 
+            model_version=model_version, 
+            top_k=top_k, 
+            enable_market_timing=enable_market_timing,
+            enable_turnover_filter=vol,
+            enable_crash_filter=crash,
+            enable_selection_boost=boost
+        )
         return {"status": "success", "data": data}
     except Exception as e:
         logger.error(f"Error fetching backtest results: {e}")
@@ -50,10 +67,26 @@ def run_single_stock_backtest_route(req: SingleBacktestRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/api/backtest/intelligent")
-def run_intelligent_backtest_route(enable_ml_filter: bool = Query(False), model_version: str = Query("v3_open2close"), top_k: int = Query(10), enable_market_timing: bool = Query(True)):
+def run_intelligent_backtest_route(
+    enable_ml_filter: bool = Query(False), 
+    model_version: str = Query("v3_binary"), 
+    top_k: int = Query(10), 
+    enable_market_timing: bool = Query(True),
+    vol: bool = Query(True),
+    crash: bool = Query(False),
+    boost: bool = Query(False)
+):
     """Run AI signal backtest (new default)."""
     try:
-        result = run_signal_backtest_service(enable_ml_filter=enable_ml_filter, model_version=model_version, top_k=top_k, enable_market_timing=enable_market_timing)
+        result = run_signal_backtest_service(
+            enable_ml_filter=enable_ml_filter, 
+            model_version=model_version, 
+            top_k=top_k, 
+            enable_market_timing=enable_market_timing,
+            enable_turnover_filter=vol,
+            enable_crash_filter=crash,
+            enable_selection_boost=boost
+        )
         return {"status": "success", "data": result}
     except Exception as e:
         logger.error(f"Error running signal backtest: {e}")
@@ -69,11 +102,11 @@ def get_backtest_leaderboard_route():
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/api/backtest/todays-picks")
-def get_todays_picks_route(model_version: str = Query("v3_open2close"), top_k: int = Query(10)):
+def get_todays_picks_route(model_version: str = Query("v3_binary"), top_k: int = Query(10), use_composite: bool = Query(True)):
     """Get the ML filtered picks for today's AI pre-market report."""
     try:
         from modules.backtest.scoring import get_todays_picks_service
-        return get_todays_picks_service(model_version=model_version, top_k=top_k)
+        return get_todays_picks_service(model_version=model_version, top_k=top_k, use_composite=use_composite)
     except Exception as e:
         logger.error(f"Error fetching today's picks: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -88,7 +121,6 @@ def download_data_route():
         logger.error(f"Error downloading data: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-from core.config import DATA_DIR
 
 @router.get("/api/backtest/pool/dates")
 def get_available_pool_dates():
@@ -246,3 +278,31 @@ def get_live_quotes(request: LiveQuotesRequest):
     except Exception as e:
         logger.error(f"Error fetching live quotes: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================
+# Strategy Comparison API
+# ============================================================
+
+STRATEGY_COMPARISON_PATH = WORKSPACE_DIR / "data" / "cn_stock" / "predictions" / "strategy_comparison.json"
+
+
+@router.get("/api/backtest/strategy-compare")
+def get_strategy_comparison():
+    """返回全量策略对比数据（按 Sharpe 降序）。"""
+    try:
+        if not STRATEGY_COMPARISON_PATH.exists():
+            return {"status": "success", "data": []}
+        with open(STRATEGY_COMPARISON_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        # 按 sharpe 降序排列
+        data.sort(key=lambda x: x.get("sharpe", 0), reverse=True)
+        # 重新编号 id
+        for i, item in enumerate(data):
+            item["id"] = i + 1
+        return {"status": "success", "data": data}
+    except Exception as e:
+        logger.error(f"Error reading strategy comparison: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+

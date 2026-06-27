@@ -6,16 +6,19 @@ from loguru import logger
 from core.config import WORKSPACE_DIR, resolver, PROJECT_DIR
 
 
-def _cache_name(enable_ml_filter, model_version, top_k, enable_market_timing):
-    """生成缓存文件名，区分择时/无择时"""
+def _cache_name(enable_ml_filter, model_version, top_k, enable_market_timing, vol=True, crash=False, boost=False):
+    """生成缓存文件名，区分择时/无择时及各种高级过滤参数"""
     ml_prefix = "_ml" if enable_ml_filter else "_signal"
     timing_suffix = "_timed" if enable_market_timing else "_raw"
-    return f"{ml_prefix}_{model_version}_top{top_k}{timing_suffix}_backtest_cache.json"
+    vol_suffix = "_vol" if vol else ""
+    crash_suffix = "_crash" if crash else ""
+    boost_suffix = "_boost" if boost else ""
+    return f"{ml_prefix}_{model_version}_top{top_k}{timing_suffix}{vol_suffix}{crash_suffix}{boost_suffix}_backtest_cache.json"
 
 
-def get_signal_backtest_results(enable_ml_filter: bool = False, model_version: str = "v3_open2close", top_k: int = 10, enable_market_timing: bool = True):
+def get_signal_backtest_results(enable_ml_filter: bool = False, model_version: str = "v3_binary", top_k: int = 10, enable_market_timing: bool = True, enable_turnover_filter: bool = True, enable_crash_filter: bool = False, enable_selection_boost: bool = False):
     """Returns cached signal backtest results, or runs the backtest if no cache exists."""
-    cache_name = _cache_name(enable_ml_filter, model_version, top_k, enable_market_timing)
+    cache_name = _cache_name(enable_ml_filter, model_version, top_k, enable_market_timing, enable_turnover_filter, enable_crash_filter, enable_selection_boost)
     cache_path = WORKSPACE_DIR / "data" / "cn_stock" / "backtest_ohlcv" / cache_name
 
     if cache_path.exists():
@@ -27,23 +30,41 @@ def get_signal_backtest_results(enable_ml_filter: bool = False, model_version: s
 
     # No cache — auto-run the backtest
     logger.info(f"No cache found at {cache_name}, auto-running backtest...")
-    return run_signal_backtest_service(enable_ml_filter=enable_ml_filter, model_version=model_version, top_k=top_k, enable_market_timing=enable_market_timing)
+    return run_signal_backtest_service(
+        enable_ml_filter=enable_ml_filter, 
+        model_version=model_version, 
+        top_k=top_k, 
+        enable_market_timing=enable_market_timing,
+        enable_turnover_filter=enable_turnover_filter,
+        enable_crash_filter=enable_crash_filter,
+        enable_selection_boost=enable_selection_boost
+    )
 
 
-def run_signal_backtest_service(enable_ml_filter: bool = False, model_version: str = "v3_open2close", top_k: int = 10, enable_market_timing: bool = True):
+def run_signal_backtest_service(enable_ml_filter: bool = False, model_version: str = "v3_binary", top_k: int = 10, enable_market_timing: bool = True, enable_turnover_filter: bool = True, enable_crash_filter: bool = False, enable_selection_boost: bool = False):
     """
     Runs the signal backtest and caches results.
     This is the main entry point called from the router.
     """
     from modules.backtest.signal_backtest import run_signal_backtest, BacktestConfig
 
-    exit_timing = "close" if model_version == "v3_open2close" else "open"
-    logger.info(f"Running AI signal backtest... (ML Filter: {enable_ml_filter}, Model: {model_version}, Top K: {top_k}, Exit: {exit_timing}, Timing: {enable_market_timing})")
-    config = BacktestConfig(enable_ml_filter=enable_ml_filter, model_version=model_version, top_k=top_k, exit_timing=exit_timing, enable_market_timing=enable_market_timing)
+    exit_timing = "close" if model_version in ("v3_open2close", "v3_binary") else "open"
+    logger.info(f"Running AI signal backtest... (ML: {enable_ml_filter}, Model: {model_version}, K: {top_k}, Exit: {exit_timing}, Timing: {enable_market_timing}, Vol: {enable_turnover_filter}, Crash: {enable_crash_filter}, Boost: {enable_selection_boost})")
+    
+    config = BacktestConfig(
+        enable_ml_filter=enable_ml_filter, 
+        model_version=model_version, 
+        top_k=top_k, 
+        exit_timing=exit_timing, 
+        enable_market_timing=enable_market_timing,
+        enable_turnover_filter=enable_turnover_filter,
+        enable_crash_filter=enable_crash_filter,
+        enable_selection_boost=enable_selection_boost
+    )
     result = run_signal_backtest(config)
 
-    # Cache to disk (separate caches for timing on/off)
-    cache_name = _cache_name(enable_ml_filter, model_version, top_k, enable_market_timing)
+    # Cache to disk
+    cache_name = _cache_name(enable_ml_filter, model_version, top_k, enable_market_timing, enable_turnover_filter, enable_crash_filter, enable_selection_boost)
     cache_path = WORKSPACE_DIR / "data" / "cn_stock" / "backtest_ohlcv" / cache_name
     cache_path.parent.mkdir(parents=True, exist_ok=True)
 

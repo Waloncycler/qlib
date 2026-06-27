@@ -15,7 +15,7 @@ from modules.market.adapters.base import to_qlib_symbol
 from modules.market.adapters.popularity import EastmoneyPopularityAdapter, TonghuashunPopularityAdapter
 
 
-def get_todays_picks_service(model_version="v3_open2close", top_k=10):
+def get_todays_picks_service(model_version="v3_open2close", top_k=10, use_composite=True):
     """Fetches the latest AI pre-market report and scores it with ML + popularity."""
     from modules.backtest.signal_backtest import _parse_reports
 
@@ -112,7 +112,10 @@ def get_todays_picks_service(model_version="v3_open2close", top_k=10):
             pop_status = "人气股"
 
         # Adjust score
-        adjusted_score = base_score * multiplier + pop_boost
+        if use_composite:
+            adjusted_score = base_score * multiplier + pop_boost
+        else:
+            adjusted_score = base_score
 
         # Risk Veto
         if is_risky:

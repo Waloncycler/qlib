@@ -17,7 +17,7 @@ from loguru import logger
 from dataclasses import dataclass, field
 from typing import Dict, List, Set, Optional, Tuple
 
-from core.config import DATA_DIR
+from core.config import DATA_DIR, WORKSPACE_DIR
 from modules.backtest.data_downloader import load_ohlcv, load_benchmark
 
 
@@ -30,7 +30,7 @@ class BacktestConfig:
     core_weight_multiplier: float = 2.0
     new_concept_multiplier: float = 1.5
     enable_ml_filter: bool = False
-    model_version: str = "v3_open2close"
+    model_version: str = "v3_binary"
     exit_timing: str = "open" # "open" or "close"
     top_k: int = 10
     enable_market_timing: bool = True     # 是否开启大盘择时
@@ -43,6 +43,8 @@ class BacktestConfig:
     max_vol_ratio: float = 2.0            # 最大量比阈值（前日量/5日均量），高于此值视为放量出货
     enable_factor_rank: bool = False     # 是否开启因子排序选股（替代 ML 排序）
     factor_name: str = "turnover"        # 排序因子名（turnover/amount/body_ratio/gap）
+    enable_selection_boost: bool = False # 是否开启AI连续入选加分（实验性，已验证为反向指标）
+    selection_boost_factor: float = 0.05 # 每连续入选1天加分比例（0.05=5%）
 
 
 @dataclass
@@ -254,6 +256,82 @@ def _rank_select_by_factor(
     return selected
 
 
+def _load_selection_history():
+    """加载所有 AI 早报池历史，返回 {date_str: set(symbols)}。
+    
+    用于计算每只股票"连续入选天数"特征。
+    符号格式统一为 UPPER(with_prefix)，如 SH600118、SZ002837。
+    """
+    pool_dir = WORKSPACE_DIR / "data" / "cn_stock" / "stock_pools"
+    if not pool_dir.exists():
+        return {}
+
+    def _to_backtest_symbol(code: str) -> str:
+        """将 6 位纯数字 code 转为大写带前缀格式（与 backtest pool 一致）"""
+        code = code.strip()
+        if len(code) != 6:
+            return code.upper()
+        if code.startswith(("6", "68")):
+            return f"SH{code}"
+        return f"SZ{code}"
+
+    selection_by_date = {}
+    for fpath in sorted(pool_dir.glob("stock_pool_*.json")):
+        try:
+            date_str = fpath.stem.replace("stock_pool_", "")
+            with open(fpath, "r") as f:
+                data = json.load(f)
+            symbols = set()
+            for s in data.get("stocks", []):
+                code = s.get("code", "")
+                if code:
+                    symbols.add(_to_backtest_symbol(code))
+            selection_by_date[date_str] = symbols
+        except Exception:
+            continue
+    return selection_by_date
+
+
+def _compute_selection_boost(
+    today_syms: set,
+    date_str: str,
+    selection_history: dict,
+    boost_factor: float = 0.05,
+    max_boost: float = 0.30,
+) -> dict:
+    """计算每只标的的连续入选加分系数。
+
+    加分 = boost_factor * min(consecutive_days, max_boost / boost_factor)
+    即最多加 max_boost（默认30%）。
+
+    返回 {symbol: boost_multiplier}（1.0 = 不加分）
+    """
+    if not selection_history or not today_syms:
+        return {}
+
+    sorted_dates = sorted(selection_history.keys())
+    # 找到 date_str 之前最近一个有数据的日期
+    prev_dates = [d for d in sorted_dates if d < date_str]
+    if not prev_dates:
+        return {}
+
+    # 从最近的日期往前数连续入选天数
+    boosts = {}
+    max_days = int(max_boost / boost_factor)  # 最多加多少天
+    for sym in today_syms:
+        consecutive = 0
+        for d in reversed(prev_dates):
+            if sym in selection_history.get(d, set()):
+                consecutive += 1
+                if consecutive >= max_days:
+                    break
+            else:
+                break
+        if consecutive > 0:
+            boosts[sym] = max(0.1, 1.0 - boost_factor * consecutive)
+
+    return boosts
+
 
 def _load_all_prices(symbols: Set[str]) -> Dict[str, pd.DataFrame]:
     """Load OHLCV DataFrames for all symbols, indexed by date."""
@@ -301,7 +379,6 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
     # Load ML predictions if enabled
     ml_preds = None
     if config.enable_ml_filter:
-        from core.config import WORKSPACE_DIR
         pred_path = WORKSPACE_DIR / "data" / "cn_stock" / "predictions" / f"{config.model_version}.pkl"
         if pred_path.exists():
             logger.info("Loading ML predictions for filtering...")
@@ -322,7 +399,6 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
     # Load crash filter predictions if enabled
     crash_preds = None
     if config.enable_crash_filter:
-        from core.config import WORKSPACE_DIR
         crash_path = WORKSPACE_DIR / "data" / "cn_stock" / "predictions" / "crash_filter.pkl"
         if crash_path.exists():
             logger.info(f"Loading crash filter predictions (threshold={config.crash_threshold})...")
@@ -335,6 +411,13 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
         else:
             logger.warning(f"Crash filter enabled but {crash_path} not found. Skipping crash filter.")
             config.enable_crash_filter = False
+
+    # Load AI selection history for consecutive-selection boost
+    selection_history = {}
+    if config.enable_selection_boost:
+        selection_history = _load_selection_history()
+        if selection_history:
+            logger.info(f"Loaded AI selection history: {len(selection_history)} days for selection boost")
 
     # Load benchmark
     benchmark_df = load_benchmark()
@@ -394,6 +477,19 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                                 multiplier += 0.2
                             adjusted_preds[sym] = adjusted_preds[sym] * multiplier
                         
+                        # AI 连续入选加分：连续入选天越多，加分越高
+                        if config.enable_selection_boost and selection_history:
+                            boosts = _compute_selection_boost(
+                                set(adjusted_preds.index), date_str,
+                                selection_history,
+                                boost_factor=config.selection_boost_factor,
+                            )
+                            if boosts:
+                                for sym, boost in boosts.items():
+                                    if sym in adjusted_preds.index:
+                                        adjusted_preds[sym] = adjusted_preds[sym] * boost
+                                logger.debug(f"Selection boost applied to {len(boosts)} stocks on {date_str}")
+                        
                         # Crash Filter: 排除暴跌概率高的标的（在排序取 Top K 之前）
                         if config.enable_crash_filter and crash_preds is not None:
                             try:
@@ -429,7 +525,7 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                         if day_idx == len(sorted_dates) - 1:
                             logger.info(f"Checking override for final day: {date_str}, day_idx={day_idx}, len={len(sorted_dates)}")
                             try:
-                                from modules.backtest.service import get_todays_picks_service
+                                from modules.backtest.scoring import get_todays_picks_service
                                 live_res = get_todays_picks_service(model_version=config.model_version, top_k=config.top_k)
                                 logger.info(f"live_res: {str(live_res)[:500]}")
                                 if live_res.get("status") == "success" and "top_picks" in live_res:
@@ -440,7 +536,6 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                                         
                                         # SAVE TO FILE SO IT IS NOT WIPED OUT TOMORROW
                                         try:
-                                            from core.config import WORKSPACE_DIR
                                             fpath = WORKSPACE_DIR / "data" / "cn_stock" / "stock_pools" / f"stock_pool_{date_str}.json"
                                             
                                             # 安全检查：如果已有 pool 文件包含更多股票，不要覆盖
@@ -538,7 +633,7 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
             live_quotes = {}
             if date_str == pd.Timestamp.now().strftime("%Y-%m-%d"):
                 try:
-                    from modules.backtest.service import get_live_quotes_service
+                    from modules.backtest.live_quotes import get_live_quotes_service
                     all_query_syms = list(set(current_shares.keys()).union(set(intended_entries)).union(set(intended_exits)))
                     res = get_live_quotes_service(all_query_syms)
                     if res and res.get("status") == "success":
@@ -729,9 +824,9 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                 else:
                     portfolio_value_at_open += current_shares.get(sym, 0) * current_entry_prices.get(sym, 0)
 
-            # 半仓买入：只用 50% 的总资产分配给新目标
+            # 半仓买入：只用 50% 的总资产分配给新目标，但不能超过可用现金（防止透支买入导致虚增NAV）
             # 大盘择时：跌破均线时降低仓位（intended_total_weight 已在上面计算）
-            available_capital = portfolio_value_at_open * 0.5 * intended_total_weight
+            available_capital = min(cash, portfolio_value_at_open * 0.5 * intended_total_weight)
 
             # 重新分配权重：只在新 entries 之间分配 available_capital
             entry_targets = {s: w for s, w in tradeable_targets.items() if s in new_entries}
@@ -844,7 +939,7 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
         if config.exit_timing == "close":
             current_entry_dates = new_entry_dates
         # 收盘卖出资金到账 + 扣除买入支出
-        cash = max(0, new_cash + close_exit_pending_proceeds)
+        cash = new_cash + close_exit_pending_proceeds
 
         # --- Calculate end-of-day NAV (mark to close) ---
         eod_nav = cash
@@ -924,9 +1019,12 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                             if open_p > 0:
                                 ret = round((close_p - open_p) / open_p, 4)
                         elif sym in exit_symbols:
-                            pre_close = close_p / (1 + pct) if pct != -1.0 else open_p
-                            if pre_close > 0:
-                                ret = round((open_p - pre_close) / pre_close, 4)
+                            if config.exit_timing == "close":
+                                ret = round(pct, 4)
+                            else:
+                                pre_close = close_p / (1 + pct) if pct != -1.0 else open_p
+                                if pre_close > 0:
+                                    ret = round((open_p - pre_close) / pre_close, 4)
                         else:
                             ret = round(pct, 4)
                 except:
