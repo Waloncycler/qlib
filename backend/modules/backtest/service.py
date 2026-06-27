@@ -13,7 +13,7 @@ def _cache_name(enable_ml_filter, model_version, top_k, enable_market_timing):
     return f"{ml_prefix}_{model_version}_top{top_k}{timing_suffix}_backtest_cache.json"
 
 
-def get_signal_backtest_results(enable_ml_filter: bool = False, model_version: str = "v1_default", top_k: int = 10, enable_market_timing: bool = True):
+def get_signal_backtest_results(enable_ml_filter: bool = False, model_version: str = "v3_open2close", top_k: int = 10, enable_market_timing: bool = True):
     """Returns cached signal backtest results, or runs the backtest if no cache exists."""
     cache_name = _cache_name(enable_ml_filter, model_version, top_k, enable_market_timing)
     cache_path = WORKSPACE_DIR / "data" / "cn_stock" / "backtest_ohlcv" / cache_name
@@ -30,7 +30,7 @@ def get_signal_backtest_results(enable_ml_filter: bool = False, model_version: s
     return run_signal_backtest_service(enable_ml_filter=enable_ml_filter, model_version=model_version, top_k=top_k, enable_market_timing=enable_market_timing)
 
 
-def run_signal_backtest_service(enable_ml_filter: bool = False, model_version: str = "v1_default", top_k: int = 10, enable_market_timing: bool = True):
+def run_signal_backtest_service(enable_ml_filter: bool = False, model_version: str = "v3_open2close", top_k: int = 10, enable_market_timing: bool = True):
     """
     Runs the signal backtest and caches results.
     This is the main entry point called from the router.

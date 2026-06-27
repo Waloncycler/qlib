@@ -28,7 +28,7 @@ print("=" * 70)
 
 from modules.backtest.signal_backtest import run_signal_backtest, BacktestConfig
 
-for model, exit_timing in [("v1_default", "open"), ("v3_open2close", "close")]:
+for model, exit_timing in [("v3_open2close", "close")]:
     config = BacktestConfig(
         enable_ml_filter=True, model_version=model,
         top_k=4, exit_timing=exit_timing, enable_market_timing=False,
@@ -107,7 +107,7 @@ print("检查 3: 所有策略同时持仓数不超限")
 print("=" * 70)
 # ============================================================
 
-for model, exit_timing in [("v1_default", "open"), ("v2_open2open", "open"), ("v3_open2close", "close")]:
+for model, exit_timing in [("v3_open2close", "close")]:
     for k in [2, 4]:
         config = BacktestConfig(
             enable_ml_filter=True, model_version=model,
@@ -130,7 +130,7 @@ print("检查 4: 大盘择时参数生效")
 print("=" * 70)
 # ============================================================
 
-for model, exit_timing in [("v3_open2close", "close"), ("v1_default", "open")]:
+for model, exit_timing in [("v3_open2close", "close")]:
     k = 4
     config_timed = BacktestConfig(enable_ml_filter=True, model_version=model, top_k=k, exit_timing=exit_timing, enable_market_timing=True)
     config_raw = BacktestConfig(enable_ml_filter=True, model_version=model, top_k=k, exit_timing=exit_timing, enable_market_timing=False)

@@ -84,8 +84,6 @@ python scripts/full_audit.py
 
 | 模型 | Label | 交易模式 | 说明 |
 |------|-------|---------|------|
-| v1_default | T收盘→T+1收盘 | 开盘卖+开盘买，100%仓位 | Alpha158 基础模型 |
-| v2_open2open | T开盘→T+1开盘 | 开盘卖+开盘买，100%仓位 | Alpha158 变体 |
 | v3_open2close | T开盘→T+1收盘 | **半仓滚动**，最多持 2K 只 | Alpha158 + 12短线特征 |
 
 **v3_open2close 半仓滚动模式**：

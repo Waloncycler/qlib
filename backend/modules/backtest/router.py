@@ -22,7 +22,7 @@ class SingleBacktestRequest(BaseModel):
     end_date: str
 
 @router.get("/api/backtest/results")
-def get_backtest_results_route(enable_ml_filter: bool = Query(False), model_version: str = Query("v1_default"), top_k: int = Query(10), enable_market_timing: bool = Query(True)):
+def get_backtest_results_route(enable_ml_filter: bool = Query(False), model_version: str = Query("v3_open2close"), top_k: int = Query(10), enable_market_timing: bool = Query(True)):
     """Returns the latest signal backtest results (new default)."""
     try:
         data = get_signal_backtest_results(enable_ml_filter=enable_ml_filter, model_version=model_version, top_k=top_k, enable_market_timing=enable_market_timing)
@@ -50,7 +50,7 @@ def run_single_stock_backtest_route(req: SingleBacktestRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/api/backtest/intelligent")
-def run_intelligent_backtest_route(enable_ml_filter: bool = Query(False), model_version: str = Query("v1_default"), top_k: int = Query(10), enable_market_timing: bool = Query(True)):
+def run_intelligent_backtest_route(enable_ml_filter: bool = Query(False), model_version: str = Query("v3_open2close"), top_k: int = Query(10), enable_market_timing: bool = Query(True)):
     """Run AI signal backtest (new default)."""
     try:
         result = run_signal_backtest_service(enable_ml_filter=enable_ml_filter, model_version=model_version, top_k=top_k, enable_market_timing=enable_market_timing)

@@ -30,12 +30,19 @@ class BacktestConfig:
     core_weight_multiplier: float = 2.0
     new_concept_multiplier: float = 1.5
     enable_ml_filter: bool = False
-    model_version: str = "v1_default"
+    model_version: str = "v3_open2close"
     exit_timing: str = "open" # "open" or "close"
     top_k: int = 10
     enable_market_timing: bool = True     # 是否开启大盘择时
     market_timing_ma_days: int = 20       # 均线周期 (默认 20天)
     market_timing_down_weight: float = 0.3 # 跌破均线后的目标总仓位 (30%)
+    enable_crash_filter: bool = False     # 是否开启暴亏过滤器
+    crash_threshold: float = 0.5          # 暴亏概率阈值，高于此值的标的被排除
+    enable_turnover_filter: bool = True   # 是否开启量能过滤（排除放量出货+缩量高位）
+    min_turnover: float = 3.0             # 最低换手率阈值（%），低于此值的标的被排除
+    max_vol_ratio: float = 2.0            # 最大量比阈值（前日量/5日均量），高于此值视为放量出货
+    enable_factor_rank: bool = False     # 是否开启因子排序选股（替代 ML 排序）
+    factor_name: str = "turnover"        # 排序因子名（turnover/amount/body_ratio/gap）
 
 
 @dataclass
@@ -129,6 +136,125 @@ def _compute_target_weights(
     return {sym: w / total for sym, w in raw_weights.items()}
 
 
+def _filter_by_volume(
+    pool: Dict[str, dict],
+    prices: Dict[str, pd.DataFrame],
+    date_ts: pd.Timestamp,
+    config: 'BacktestConfig'
+) -> Dict[str, dict]:
+    """量能过滤：排除低活跃/放量出货/缩量高位标的。
+
+    规则（基于换手率×量比组合矩阵分析）：
+      1. 换手率 < min_turnover → 不活跃，排除
+      2. 量比 > max_vol_ratio → 放量出货，排除
+      3. 换手率 > 10% 且量比 < 0.8 → 高位缩量，动能衰竭，排除
+
+    Returns: 过滤后的 pool（原 pool 的子集）
+    """
+    if not config.enable_turnover_filter:
+        return pool
+
+    filtered = {}
+    for sym, info in pool.items():
+        if sym not in prices:
+            filtered[sym] = info
+            continue
+        pdf = prices[sym]
+        prev_data = pdf[pdf.index < date_ts]
+        if len(prev_data) < 6:
+            filtered[sym] = info
+            continue
+
+        prev_turnover = prev_data.iloc[-1].get("turnover", np.nan)
+        prev_vol = prev_data.iloc[-1].get("volume", np.nan)
+        vol_ma5 = prev_data.tail(5)["volume"].mean()
+
+        if pd.isna(prev_turnover) or pd.isna(prev_vol) or vol_ma5 <= 0:
+            filtered[sym] = info
+            continue
+
+        vol_ratio = prev_vol / vol_ma5
+
+        # 规则1: 低换手率
+        if prev_turnover < config.min_turnover:
+            continue
+        # 规则2: 放量出货
+        if vol_ratio > config.max_vol_ratio:
+            continue
+        # 规则3: 高位缩量
+        if prev_turnover > 10.0 and vol_ratio < 0.8:
+            continue
+
+        filtered[sym] = info
+
+    removed = len(pool) - len(filtered)
+    if removed > 0:
+        logger.info(f"Volume filter removed {removed} stocks on {date_ts.date()}")
+    return filtered
+
+
+def _rank_select_by_factor(
+    pool: Dict[str, dict],
+    prices: Dict[str, pd.DataFrame],
+    date_ts: pd.Timestamp,
+    config: 'BacktestConfig'
+) -> Dict[str, dict]:
+    """用因子排序从池中选 Top K，返回 Top K 子集。
+
+    支持的因子：
+    - turnover: 前日换手率（正向，越高越好）
+    - amount: 前日成交额（正向）
+    - body_ratio: 前日 K线实体比率（反向，越小越好=蓄势）
+    - gap: 前日竞价缺口（正向）
+    """
+    if len(pool) <= config.top_k:
+        return pool
+
+    factor_name = config.factor_name
+    scores = {}
+
+    for sym in pool:
+        if sym not in prices:
+            continue
+        pdf = prices[sym]
+        prev_data = pdf[pdf.index < date_ts]
+        if len(prev_data) < 2:
+            continue
+
+        prev_row = prev_data.iloc[-1]
+        prev2_row = prev_data.iloc[-2] if len(prev_data) >= 2 else prev_row
+
+        po = float(prev_row.get("open", 0))
+        pc = float(prev_row.get("close", 0))
+        ph = float(prev_row.get("high", 0))
+        pl = float(prev_row.get("low", 0))
+        prev_close = float(prev2_row.get("close", pc))
+        range_val = ph - pl
+
+        if factor_name == "turnover":
+            val = float(prev_row.get("turnover", 0))
+        elif factor_name == "amount":
+            val = float(prev_row.get("amount", 0))
+        elif factor_name == "body_ratio":
+            val = -(pc - po) / range_val if range_val > 0 else 0  # 反向
+        elif factor_name == "gap":
+            val = (po - prev_close) / prev_close if prev_close > 0 else 0
+        else:
+            val = float(prev_row.get("turnover", 0))
+
+        if pd.notna(val):
+            scores[sym] = val
+
+    # 排序取 Top K
+    ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+    top_k_syms = set(sym for sym, _ in ranked[:config.top_k])
+
+    selected = {sym: info for sym, info in pool.items() if sym in top_k_syms}
+    logger.info(f"Factor rank ({factor_name}) selected {len(selected)} from {len(pool)} on {date_ts.date()}")
+    return selected
+
+
+
 def _load_all_prices(symbols: Set[str]) -> Dict[str, pd.DataFrame]:
     """Load OHLCV DataFrames for all symbols, indexed by date."""
     prices = {}
@@ -193,6 +319,23 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
             logger.warning(f"ML filter enabled but {pred_path} not found. Skipping ML filter.")
             config.enable_ml_filter = False
 
+    # Load crash filter predictions if enabled
+    crash_preds = None
+    if config.enable_crash_filter:
+        from core.config import WORKSPACE_DIR
+        crash_path = WORKSPACE_DIR / "data" / "cn_stock" / "predictions" / "crash_filter.pkl"
+        if crash_path.exists():
+            logger.info(f"Loading crash filter predictions (threshold={config.crash_threshold})...")
+            crash_preds = pd.read_pickle(crash_path)
+            if isinstance(crash_preds, pd.DataFrame) and crash_preds.shape[1] == 1:
+                crash_preds = crash_preds.iloc[:, 0]
+            if isinstance(crash_preds.index, pd.MultiIndex):
+                new_idx = crash_preds.index.set_levels(crash_preds.index.levels[1].str.upper(), level=1)
+                crash_preds.index = new_idx
+        else:
+            logger.warning(f"Crash filter enabled but {crash_path} not found. Skipping crash filter.")
+            config.enable_crash_filter = False
+
     # Load benchmark
     benchmark_df = load_benchmark()
     if not benchmark_df.empty:
@@ -251,6 +394,32 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                                 multiplier += 0.2
                             adjusted_preds[sym] = adjusted_preds[sym] * multiplier
                         
+                        # Crash Filter: 排除暴跌概率高的标的（在排序取 Top K 之前）
+                        if config.enable_crash_filter and crash_preds is not None:
+                            try:
+                                crash_avail = crash_preds.index.get_level_values(0).unique()
+                                crash_valid_dates = crash_avail[crash_avail < date_ts]
+                                if not crash_valid_dates.empty:
+                                    latest_crash_date = crash_valid_dates.max()
+                                    day_crash = crash_preds.loc[latest_crash_date]
+                                    pool_crash = day_crash.reindex(adjusted_preds.index).fillna(0)
+                                    vetoed = pool_crash[pool_crash > config.crash_threshold].index.tolist()
+                                    if vetoed:
+                                        adjusted_preds = adjusted_preds.drop(vetoed)
+                                        logger.info(f"Crash filter vetoed {len(vetoed)} stocks on {date_str}: {vetoed}")
+                            except Exception as e:
+                                logger.warning(f"Crash filter error on {date_str}: {e}")
+
+                        # Volume Filter: 排除低活跃/放量出货/缩量高位标的
+                        if config.enable_turnover_filter:
+                            vol_filtered_pool = _filter_by_volume(
+                                {s: today_pool.get(s, {}) for s in adjusted_preds.index},
+                                prices, date_ts, config
+                            )
+                            removed = set(adjusted_preds.index) - set(vol_filtered_pool.keys())
+                            if removed:
+                                adjusted_preds = adjusted_preds.drop(list(removed))
+
                         # Sort by adjusted score descending and take Top K
                         top_syms = adjusted_preds.sort_values(ascending=False).head(config.top_k).index.tolist()
                         
@@ -324,6 +493,14 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                 today_pool = {} # Fail-safe to avoid buying the entire pool
 
         # Determine target portfolio
+        # Volume Filter: 在选股前过滤（纯信号模式和ML模式都生效）
+        if config.enable_turnover_filter:
+            today_pool = _filter_by_volume(today_pool, prices, date_ts, config)
+
+        # Factor Rank: 用因子排序从池中选 Top K（替代 ML 排序）
+        if config.enable_factor_rank and not config.enable_ml_filter:
+            today_pool = _rank_select_by_factor(today_pool, prices, date_ts, config)
+
         target_weights = _compute_target_weights(today_pool, config)
 
         # ---------------------------------------------------------

@@ -35,8 +35,6 @@
         </div>
         <div v-if="enableMlFilter" class="control-item">
           <select v-model="selectedModelVersion" @change="fetchResults" class="model-select" style="background: #1e293b; color: #38bdf8; border: 1px solid #0ea5e9; border-radius: 4px; font-size: 0.7rem; padding: 2px 4px; outline: none; cursor: pointer; max-width: 100px;">
-            <option value="v1_default">V1</option>
-            <option value="v2_open2open">V2</option>
             <option value="v3_open2close">V3</option>
           </select>
         </div>
@@ -488,7 +486,7 @@ use([
 
 const loading = ref(false)
 const enableMlFilter = ref(true)
-const selectedModelVersion = ref('v1_default')
+const selectedModelVersion = ref('v3_open2close')
 const topK = ref(10)
 const enableMarketTiming = ref(true)
 const showLeaderboard = ref(false)
