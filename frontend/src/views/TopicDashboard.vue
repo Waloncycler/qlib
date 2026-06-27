@@ -732,22 +732,22 @@ const updateChartOption = () => {
         name: 'Topic Index', type: 'candlestick', data: values,
         itemStyle: { color: '#ef4444', color0: '#10b981', borderColor: '#ef4444', borderColor0: '#10b981' }
       },
-      {
-        name: 'MA5', type: 'line', data: values.map((v, i) => {
-          if (i < 4) return null
-          const slice = values.slice(i - 4, i + 1)
-          const avg = slice.reduce((s, d) => s + d[2], 0) / 5
-          return parseFloat(avg.toFixed(2))
-        }), smooth: true, symbol: 'none', lineStyle: { color: '#facc15', width: 1.5 }
-      },
-      {
-        name: 'MA10', type: 'line', data: values.map((v, i) => {
-          if (i < 9) return null
-          const slice = values.slice(i - 9, i + 1)
-          const avg = slice.reduce((s, d) => s + d[2], 0) / 10
-          return parseFloat(avg.toFixed(2))
-        }), smooth: true, symbol: 'none', lineStyle: { color: '#38bdf8', width: 1.5 }
-      },
+      ...(() => {
+        const closes = values.map(v => v[2])
+        const ma5 = [], ma10 = []
+        let s5 = 0, s10 = 0
+        for (let i = 0; i < closes.length; i++) {
+          s5 += closes[i]; s10 += closes[i]
+          if (i >= 5) s5 -= closes[i - 5]
+          if (i >= 10) s10 -= closes[i - 10]
+          ma5.push(i >= 4 ? parseFloat((s5 / Math.min(i + 1, 5)).toFixed(2)) : null)
+          ma10.push(i >= 9 ? parseFloat((s10 / Math.min(i + 1, 10)).toFixed(2)) : null)
+        }
+        return [
+          { name: 'MA5', type: 'line', data: ma5, smooth: true, symbol: 'none', lineStyle: { color: '#facc15', width: 1.5 } },
+          { name: 'MA10', type: 'line', data: ma10, smooth: true, symbol: 'none', lineStyle: { color: '#38bdf8', width: 1.5 } },
+        ]
+      })(),
       {
         name: 'Limit Up', type: 'scatter', data: upScatterData,
         symbolSize: 0,
