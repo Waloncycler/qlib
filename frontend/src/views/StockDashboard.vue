@@ -284,16 +284,10 @@ const handleSearch = async () => {
   eastmoneyNews.value = []
   nlpSummaries.value = null
   
-  // 1. Trigger real-time fetch for MARKET layer FIRST
-  const triggerRes = await triggerRealtimeFetch(s, 'market')
-  if (!triggerRes || triggerRes.status !== 'success') {
-    return
-  }
-  
-  showSuccess(`Fetching market data for ${s}...`)
-  
-  // Render Market Layer instantly
+  // 1. Try to render from local cache FIRST, then trigger background fetch
   let stockName = s;
+  
+  // Try loading from disk immediately (no network wait)
   try {
     const quotesData = await fetchJson('market', `${s}_tencent_quotes.json`)
     if (quotesData && typeof quotesData === 'object') {
@@ -302,16 +296,34 @@ const handleSearch = async () => {
         stockName = `${quotesData[keys[0]].name} (${s})`
       }
     }
-  } catch(e) {
-    console.warn("Could not fetch stock name", e);
-  }
+  } catch(e) { /* will fetch later */ }
 
   const klineData = await fetchCsv('market', `${s}_tencent_sina_kline.csv`)
   if (klineData && klineData.length) {
+    // Cache hit - render immediately
     klineRawData = klineData
     stockNameCache = stockName
     klineOption.value = createKlineOption(stockName, klineData, chartToggles.value)
     hasData.value = true
+    // Trigger background refresh (non-blocking)
+    triggerRealtimeFetch(s, 'market').then(async () => {
+      const freshKline = await fetchCsv('market', `${s}_tencent_sina_kline.csv`)
+      if (freshKline && freshKline.length && JSON.stringify(freshKline) !== JSON.stringify(klineData)) {
+        klineRawData = freshKline
+        klineOption.value = createKlineOption(stockNameCache, freshKline, chartToggles.value)
+      }
+    }).catch(() => {})
+  } else {
+    // No cache - must wait for network fetch
+    const triggerRes = await triggerRealtimeFetch(s, 'market')
+    if (!triggerRes || triggerRes.status !== 'success') return
+    const freshKline = await fetchCsv('market', `${s}_tencent_sina_kline.csv`)
+    if (freshKline && freshKline.length) {
+      klineRawData = freshKline
+      stockNameCache = stockName
+      klineOption.value = createKlineOption(stockName, freshKline, chartToggles.value)
+      hasData.value = true
+    }
   }
   
   // 2. LAZY LOAD each layer independently — no layer blocks another
