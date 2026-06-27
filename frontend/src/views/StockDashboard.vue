@@ -329,66 +329,64 @@ const handleSearch = async () => {
   // 2. LAZY LOAD each layer independently — no layer blocks another
 
 
-  // --- Signals Layer (independent) ---
-  triggerRealtimeFetch(s, 'signals').then(async () => {
+  // --- Signals Layer (cache first, fetch in background) ---
+  const loadSignals = async () => {
     const dtJson = await fetchJson('signals', `${s}_dragon_tiger.json`)
     if (dtJson && dtJson.length) dragonTiger.value = dtJson[0]
-    
     const lockupJson = await fetchJson('signals', `${s}_lockup_expiry.json`)
     if (lockupJson && lockupJson.length) lockupData.value = lockupJson[0]
-
     const allThs = await fetchCsv('signals', 'ths_hot_reasons.csv')
     if (allThs && allThs.length) {
       const rawCode = s.replace(/[A-Za-z]/g, '')
       thsReasons.value = allThs.filter(r => r.code && String(r.code).includes(rawCode))
     }
-  }).catch(err => console.error("Signals layer error:", err))
+  }
+  loadSignals().catch(err => console.error("Signals layer error:", err))
+  triggerRealtimeFetch(s, 'signals').then(() => loadSignals()).catch(() => {})
 
-  // --- Capital Layer (independent) ---
-  triggerRealtimeFetch(s, 'capital').then(async () => {
+  // --- Capital Layer (cache first) ---
+  const loadCapital = async () => {
     const marginData = await fetchCsv('capital', `${s}_margin_trading.csv`)
     if (marginData && marginData.length) {
       const dates = marginData.map(d => String(d.date))
-      marginOption.value = createLineOption('Margin Trading Balance (融资余额)', dates, [{
+      marginOption.value = createLineOption('融资余额', dates, [{
         name: 'Balance', data: marginData.map(d => d.margin_balance || d['融资余额']),
         itemStyle: { color: '#38bdf8' }, areaStyle: { color: 'rgba(56, 189, 248, 0.1)' }
       }])
-    } else {
-      marginOption.value = createLineOption('Margin Trading Balance (融资余额)', [], [])
     }
-
     const flowData = await fetchCsv('capital', `${s}_fund_flow_120d.csv`)
     if (flowData && flowData.length) {
       const dates = flowData.map(d => String(d.date))
-      fundFlowOption.value = createBarOption('120-Day Capital Inflow Trend', dates, [{
+      fundFlowOption.value = createBarOption('120日资金流向', dates, [{
         name: 'Net Flow', data: flowData.map(d => d.net_inflow || d.main_net_flow),
         itemStyle: { color: (p) => p.value > 0 ? '#f7525f' : '#2ebd85' }
       }])
-    } else {
-      fundFlowOption.value = createBarOption('120-Day Capital Inflow Trend', [], [])
     }
-  }).catch(err => console.error("Capital layer error:", err))
+  }
+  loadCapital().catch(err => console.error("Capital layer error:", err))
+  triggerRealtimeFetch(s, 'capital').then(() => loadCapital()).catch(() => {})
 
-  // --- Fundamentals Layer (independent) ---
-  triggerRealtimeFetch(s, 'fundamentals').then(async () => {
+  // --- Fundamentals Layer (cache first) ---
+  const loadFundamentals = async () => {
     const finData = await fetchCsv('fundamentals', `${s}_mootdx_finance.csv`)
-    if (finData && finData.length) {
-      financeData.value = finData.slice(0, 15)
-    }
-  }).catch(err => console.error("Fundamentals layer error:", err))
+    if (finData && finData.length) financeData.value = finData.slice(0, 15)
+  }
+  loadFundamentals().catch(err => console.error("Fundamentals layer error:", err))
+  triggerRealtimeFetch(s, 'fundamentals').then(() => loadFundamentals()).catch(() => {})
 
-  // --- News Layer (independent) ---
-  triggerRealtimeFetch(s, 'news').then(async () => {
+  // --- News Layer (cache first) ---
+  const loadNews = async () => {
     const cls = await fetchJson('news', 'cls_telegraph.json')
     if (cls && cls.length) clsTelegraphs.value = cls
-    
     const emNews = await fetchJson('news', `${s}_eastmoney_news.json`)
     if (emNews && emNews.length) eastmoneyNews.value = emNews
     
     // Fetch AI NLP Summaries for the News Tab
     const nlpData = await fetchNlpSummaries(s)
     if (nlpData) nlpSummaries.value = nlpData
-  }).catch(err => console.error("News layer error:", err))
+  }
+  loadNews().catch(err => console.error("News layer error:", err))
+  triggerRealtimeFetch(s, 'news').then(() => loadNews()).catch(() => {})
 }
 
 onMounted(() => {
