@@ -733,6 +733,22 @@ const updateChartOption = () => {
         itemStyle: { color: '#ef4444', color0: '#10b981', borderColor: '#ef4444', borderColor0: '#10b981' }
       },
       {
+        name: 'MA5', type: 'line', data: values.map((v, i) => {
+          if (i < 4) return null
+          const slice = values.slice(i - 4, i + 1)
+          const avg = slice.reduce((s, d) => s + d[2], 0) / 5
+          return parseFloat(avg.toFixed(2))
+        }), smooth: true, symbol: 'none', lineStyle: { color: '#facc15', width: 1.5 }
+      },
+      {
+        name: 'MA10', type: 'line', data: values.map((v, i) => {
+          if (i < 9) return null
+          const slice = values.slice(i - 9, i + 1)
+          const avg = slice.reduce((s, d) => s + d[2], 0) / 10
+          return parseFloat(avg.toFixed(2))
+        }), smooth: true, symbol: 'none', lineStyle: { color: '#38bdf8', width: 1.5 }
+      },
+      {
         name: 'Limit Up', type: 'scatter', data: upScatterData,
         symbolSize: 0,
         itemStyle: { color: 'rgba(239, 68, 68, 0.85)', borderColor: '#fff', borderWidth: 0.5 },
