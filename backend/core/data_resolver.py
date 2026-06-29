@@ -16,8 +16,7 @@ from loguru import logger
 import concurrent.futures
 import threading
 
-CUR_DIR = Path(__file__).resolve().parent
-PROJECT_DIR = CUR_DIR.parent
+from core.config import DATA_DIR, PROJECT_DIR, CUR_DIR, global_v8_lock
 sys.path.append(str(PROJECT_DIR))
 
 from modules.market.adapters import (
@@ -229,8 +228,24 @@ class DataResolver:
                 check_file = save_dir / "fundamentals" / f"{symbol}_mootdx_finance.csv"
 
             if check_file.exists():
-                # If file is less than 12 hours old, it's safe to skip fetching after market close
-                if time.time() - check_file.stat().st_mtime < 12 * 3600:
+                mtime = check_file.stat().st_mtime
+                is_fresh = False
+                
+                # If file is less than 12 hours old, check if it has the latest close data
+                if time.time() - mtime < 12 * 3600:
+                    is_fresh = True
+                    from core.trading_calendar import is_trading_day
+                    from datetime import datetime
+                    
+                    now_dt = datetime.now()
+                    # If today is a trading day and we are past market close
+                    if is_trading_day() and now_dt.hour >= 15:
+                        # The file must be modified after 15:00 today to contain today's complete data
+                        mtime_dt = datetime.fromtimestamp(mtime)
+                        if mtime_dt.date() < now_dt.date() or mtime_dt.hour < 15:
+                            is_fresh = False
+                            
+                if is_fresh:
                     logger.info(f"Market closed & data on disk for {symbol}_{layer} is fresh. Skipping network fetch.")
                     self._resolve_cache[cache_key] = now
                     return True
@@ -250,7 +265,8 @@ class DataResolver:
         start_date = pd.Timestamp.now() - pd.Timedelta(days=180)
 
         def run_layer(l):
-            collector.download_layer(layer=l, symbol=symbol, save_dir=save_dir, start_date=start_date)
+            with global_v8_lock:
+                collector.download_layer(layer=l, symbol=symbol, save_dir=save_dir, start_date=start_date)
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=len(layers)) as executor:
             futures = {executor.submit(run_layer, l): l for l in layers}

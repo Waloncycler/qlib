@@ -14,7 +14,16 @@ from modules.audit.router import router as audit_router
 from modules.intelligence.router import router as tasks_router
 from modules.user.router import router as user_prefs_router
 
-app = FastAPI(title="Qlib CN Stock API Gateway")
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from core.scheduler import start_scheduler, stop_scheduler
+    start_scheduler()
+    yield
+    stop_scheduler()
+
+app = FastAPI(title="Qlib CN Stock API Gateway", lifespan=lifespan)
 
 # Add CORS so Vue dev server can talk to it
 app.add_middleware(
@@ -32,15 +41,7 @@ app.include_router(audit_router)
 app.include_router(tasks_router)
 app.include_router(user_prefs_router)
 
-from core.scheduler import start_scheduler, stop_scheduler
 
-@app.on_event("startup")
-def startup_event():
-    start_scheduler()
-
-@app.on_event("shutdown")
-def shutdown_event():
-    stop_scheduler()
 
 if __name__ == "__main__":
     import uvicorn

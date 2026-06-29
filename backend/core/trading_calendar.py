@@ -8,6 +8,8 @@ from loguru import logger
 # so a single fetch is sufficient for the entire day.
 _trade_dates_cache: set | None = None
 
+from core.config import global_v8_lock
+
 
 def _load_trade_dates() -> set:
     """Fetch and cache all A-share trading dates. Falls back to weekday check on failure."""
@@ -16,7 +18,8 @@ def _load_trade_dates() -> set:
         return _trade_dates_cache
 
     try:
-        cal_df = ak.tool_trade_date_hist_sina()
+        with global_v8_lock:
+            cal_df = ak.tool_trade_date_hist_sina()
         _trade_dates_cache = set(
             pd.to_datetime(cal_df['trade_date']).dt.strftime("%Y-%m-%d").tolist()
         )
@@ -28,7 +31,7 @@ def _load_trade_dates() -> set:
     return _trade_dates_cache
 
 
-def is_trading_day(date_str: str = None) -> bool:
+def is_trading_day(date_str: str | None = None) -> bool:
     """
     Checks if a given date string (YYYY-MM-DD) is a trading day in A-shares.
     If no date is provided, uses today's date.

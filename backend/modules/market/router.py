@@ -16,9 +16,10 @@ class SearchRequest(BaseModel):
 
 @router.post("/api/iwencai/search")
 def iwencai_search(req: SearchRequest):
-    """NL search via iWencai"""
+    from core.config import global_v8_lock
     try:
-        df = iwencai_adapter.fetch_iwencai(req.query)
+        with global_v8_lock:
+            df = iwencai_adapter.fetch_iwencai(req.query)
         if df.empty:
             return {"status": "success", "data": []}
         df = df.fillna("")
@@ -31,11 +32,13 @@ def iwencai_search(req: SearchRequest):
 @router.get("/api/stock/{symbol}/nlp_summaries")
 def get_nlp_summaries(symbol: str):
     """Fetches NLP summaries from iWencai for UI rendering."""
+    from core.config import global_v8_lock
     try:
         raw_code = ''.join([c for c in symbol if c.isdigit()])
-        announcements = iwencai_adapter.semantic_search(f"{raw_code} 近一年 风险 诉讼 减持 监管函 立案", channel="announcement", size=5)
-        reports = iwencai_adapter.semantic_search(f"{raw_code} 近半年 风险提示 评级下调 业绩不达预期", channel="report", size=5)
-        hudongyi = iwencai_adapter.semantic_search(f"{raw_code} 近半年 互动易回复", channel="news", size=5)
+        with global_v8_lock:
+            announcements = iwencai_adapter.semantic_search(f"{raw_code} 近一年 风险 诉讼 减持 监管函 立案", channel="announcement", size=5)
+            reports = iwencai_adapter.semantic_search(f"{raw_code} 近半年 风险提示 评级下调 业绩不达预期", channel="report", size=5)
+            hudongyi = iwencai_adapter.semantic_search(f"{raw_code} 近半年 互动易回复", channel="news", size=5)
         return {
             "status": "success",
             "data": {

@@ -3,7 +3,7 @@
     <header class="header">
       <div>
         <h1 class="title">Market Dashboard</h1>
-        <p class="subtitle">市场总览 · 历史趋势 + 当日数据 + AI 策略</p>
+        <p class="subtitle">市场总览 · {{ latestDate }}</p>
       </div>
       <div class="actions">
         <!-- Tabs -->
@@ -34,46 +34,153 @@
 
     <!-- ========== Tab: 趋势图表 ========== -->
     <template v-if="activeTab === 'trend'">
-      <!-- Summary Stats -->
-      <div class="grid-cards">
-        <div class="stat-card glass-panel" v-for="stat in summaryStats" :key="stat.label">
-          <div class="stat-label">{{ stat.label }}</div>
-          <div class="stat-value" :class="stat.colorClass">{{ stat.value }}</div>
+      <!-- Premium Pulse Dashboard -->
+      <div class="pulse-dashboard mb-6" v-if="latestSentiment">
+        
+        <!-- 1. Sentiment Thermometer -->
+        <div class="pulse-card glass-panel sentiment-card" :class="sentimentColor">
+          <div class="card-header">
+            <i class="fa-solid fa-temperature-half"></i>
+            <span>市场情绪</span>
+          </div>
+          <div class="sentiment-body">
+            <div class="thermometer-container">
+              <div class="thermometer-track">
+                <div class="thermometer-fill" :style="{ height: latestSentiment.sentiment_score + '%' }"></div>
+              </div>
+            </div>
+            <div class="sentiment-info">
+              <div class="sentiment-score">{{ Number(latestSentiment.sentiment_score).toFixed(2) }}</div>
+              <div class="sentiment-label">{{ sentimentLabel }}</div>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <!-- Table toggle -->
-      <div class="view-toggle glass-panel">
-        <button :class="{ active: displayMode === 'charts' }" @click="displayMode = 'charts'">
-          <i class="fa-solid fa-chart-line mr-2"></i> Charts
-        </button>
-        <button :class="{ active: displayMode === 'table' }" @click="displayMode = 'table'">
-          <i class="fa-solid fa-table mr-2"></i> Table
-        </button>
-      </div>
-
-      <!-- Table View -->
-      <div class="table-container glass-panel" v-if="displayMode === 'table' && sentimentData.length > 0">
-        <div class="table-scroll custom-scrollbar">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th v-for="col in tableColumns" :key="col" :class="{ 'sticky-col': col === 'date' }">{{ col }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(row, idx) in [...sentimentData].reverse()" :key="idx">
-                <td v-for="col in tableColumns" :key="col" :class="{ 'sticky-col': col === 'date' }">
-                  {{ formatTableCell(row[col]) }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <!-- 2. Market Breadth -->
+        <div class="pulse-card glass-panel breadth-card">
+          <div class="card-header">
+            <i class="fa-solid fa-chart-pie"></i>
+            <span>市场广度</span>
+          </div>
+          <div class="breadth-body">
+            <div class="breadth-numbers">
+              <div class="up-text">涨 {{ latestSentiment.up_count }}</div>
+              <div class="down-text">跌 {{ latestSentiment.down_count }}</div>
+            </div>
+            <div class="ratio-bar-container">
+              <div class="ratio-bar-up" :style="{ width: breadthRatio + '%' }"></div>
+              <div class="ratio-bar-down" :style="{ width: (100 - breadthRatio) + '%' }"></div>
+            </div>
+            <div class="ratio-label">Up/Down Ratio: {{ latestSentiment.up_down_ratio }}</div>
+          </div>
         </div>
+
+        <!-- 3. Limit Up Ecosystem -->
+        <div class="pulse-card glass-panel limit-up-card">
+          <div class="card-header">
+            <i class="fa-solid fa-fire text-red-500"></i>
+            <span>涨停生态</span>
+          </div>
+          <div class="metrics-grid">
+            <div class="metric-item">
+              <span class="metric-label">涨停家数</span>
+              <span class="metric-val text-red-400">
+                {{ latestSentiment.limit_up_count }} 家
+                <span class="text-xs text-gray-400 ml-1 font-normal">(剔除ST真实: {{ latestSentiment.real_limit_up_count }})</span>
+              </span>
+            </div>
+            
+            <div class="metric-item">
+              <span class="metric-label">连板梯队</span>
+              <span class="metric-val text-red-400 text-sm font-normal">
+                首板 {{ latestSentiment.limit_up_count - (latestSentiment.consecutive_limit_up_2_count || 0) - (latestSentiment.consecutive_limit_up_3_plus_count || 0) }}
+                <i class="fa-solid fa-caret-right text-gray-500 mx-1"></i>
+                二板 {{ latestSentiment.consecutive_limit_up_2_count || 0 }}
+                <i class="fa-solid fa-caret-right text-gray-500 mx-1"></i>
+                三板+ {{ latestSentiment.consecutive_limit_up_3_plus_count || 0 }}
+              </span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">最高连板</span>
+              <span class="metric-val text-red-500 font-bold glow-text">{{ latestSentiment.highest_consecutive_limit_up || 0 }} 板</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">昨日打板回报</span>
+              <span class="metric-val" :class="latestSentiment.yesterday_limit_up_avg_return > 0 ? 'text-red-400' : 'text-green-400'">
+                {{ latestSentiment.yesterday_limit_up_avg_return > 0 ? '+' : ''}}{{ latestSentiment.yesterday_limit_up_avg_return || 0 }}%
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Risk Alert -->
+        <div class="pulse-card glass-panel risk-card">
+          <div class="card-header">
+            <i class="fa-solid fa-icicles text-blue-400"></i>
+            <span>风险预警</span>
+          </div>
+          <div class="metrics-grid">
+            <div class="metric-item">
+              <span class="metric-label">跌停家数</span>
+              <span class="metric-val" :class="latestSentiment.limit_down_count > 10 ? 'text-green-400 font-bold' : 'text-gray-400'">
+                {{ latestSentiment.limit_down_count }} 家
+              </span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">炸板率</span>
+              <span class="metric-val text-yellow-400">{{ (latestSentiment.broken_limit_up_rate * 100).toFixed(1) || 0 }}%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Trend Momentum -->
+        <div class="pulse-card glass-panel momentum-card">
+          <div class="card-header">
+            <i class="fa-solid fa-arrow-trend-up text-purple-400"></i>
+            <span>趋势动能</span>
+          </div>
+          <div class="metrics-grid">
+            <div class="metric-item">
+              <span class="metric-label">20日新高</span>
+              <span class="metric-val text-red-400">{{ latestSentiment.high20 || 0 }} 家</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">60日新高</span>
+              <span class="metric-val text-red-500 font-bold">{{ latestSentiment.high60 || 0 }} 家</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">120日新低</span>
+              <span class="metric-val text-green-400">{{ latestSentiment.low120 || 0 }} 家</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. Capital Storm -->
+        <div class="pulse-card glass-panel capital-card">
+          <div class="card-header">
+            <i class="fa-solid fa-bolt text-yellow-500"></i>
+            <span>资金风暴</span>
+          </div>
+          <div class="metrics-grid">
+            <div class="metric-item">
+              <span class="metric-label">两市总成交额</span>
+              <span class="metric-val text-yellow-400 font-bold glow-text">
+                {{ latestSentiment.total_market_turnover ? latestSentiment.total_market_turnover + ' 亿' : '-- 亿' }}
+              </span>
+            </div>
+            <div class="metric-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+              <span class="metric-label">龙虎榜抢筹 (Top 3)</span>
+              <span class="metric-val text-yellow-200 text-sm font-normal">
+                {{ latestSentiment.top_lhb || '等待刷新...' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       <!-- Charts Grid -->
-      <div class="charts-grid" v-show="displayMode === 'charts'">
+      <div class="charts-grid">
         <div class="chart-panel glass-panel">
           <h3 class="chart-title">1. Sentiment & Distribution</h3>
           <v-chart class="chart" :option="opts.c1" group="market" autoresize />
@@ -199,16 +306,40 @@ const pollStatus = () => {
   }, 5000)
 }
 
-const summaryStats = computed(() => {
-  if (!sentimentData.value.length) return []
-  const latest = sentimentData.value[sentimentData.value.length - 1]
-  return [
-    { label: 'Date', value: latest.date, colorClass: '' },
-    { label: 'Up / Down', value: `${latest.up_count} / ${latest.down_count}`, colorClass: latest.up_count > latest.down_count ? 'up' : 'down' },
-    { label: 'Limit Up', value: latest.limit_up_count, colorClass: 'up' },
-    { label: 'Limit Down', value: latest.limit_down_count, colorClass: 'down' },
-    { label: 'Sentiment', value: Number(latest.sentiment_score).toFixed(2), colorClass: 'text-accent' }
-  ]
+const latestSentiment = computed(() => {
+  if (!sentimentData.value.length) return null
+  return sentimentData.value[sentimentData.value.length - 1]
+})
+
+const latestDate = computed(() => latestSentiment.value?.date || '历史趋势 + 当日数据 + AI 策略')
+
+const sentimentLabel = computed(() => {
+  if (!latestSentiment.value) return ''
+  const score = latestSentiment.value.sentiment_score
+  if (score < 30) return '冰点'
+  if (score < 50) return '震荡偏弱'
+  if (score < 70) return '震荡偏强'
+  if (score < 85) return '活跃'
+  return '过热'
+})
+
+const sentimentColor = computed(() => {
+  if (!latestSentiment.value) return ''
+  const score = latestSentiment.value.sentiment_score
+  if (score < 30) return 'score-ice'
+  if (score < 50) return 'score-cool'
+  if (score < 70) return 'score-warm'
+  if (score < 85) return 'score-hot'
+  return 'score-fire'
+})
+
+const breadthRatio = computed(() => {
+  if (!latestSentiment.value) return 50
+  const up = latestSentiment.value.up_count || 0
+  const down = latestSentiment.value.down_count || 0
+  const total = up + down
+  if (total === 0) return 50
+  return (up / total) * 100
 })
 
 const tableColumns = computed(() => {
@@ -670,7 +801,185 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.dashboard { display: flex; flex-direction: column; gap: 16px; padding-bottom: 24px; height: 100%; overflow: hidden; }
+/* ===== NEW PULSE DASHBOARD ===== */
+.pulse-dashboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.pulse-card {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.pulse-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  color: #94a3b8;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Sentiment Thermometer */
+.sentiment-body {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex: 1;
+}
+
+.thermometer-container {
+  width: 12px;
+  height: 80px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.thermometer-track {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.thermometer-fill {
+  width: 100%;
+  border-radius: 10px;
+  transition: height 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Dynamic colors based on score class */
+.score-ice .thermometer-fill { background: linear-gradient(to top, #0284c7, #38bdf8); box-shadow: 0 0 10px #38bdf8; }
+.score-cool .thermometer-fill { background: linear-gradient(to top, #eab308, #fde047); box-shadow: 0 0 10px #fde047; }
+.score-warm .thermometer-fill { background: linear-gradient(to top, #f97316, #fdba74); box-shadow: 0 0 10px #fdba74; }
+.score-hot .thermometer-fill, .score-fire .thermometer-fill { background: linear-gradient(to top, #e11d48, #fb7185); box-shadow: 0 0 10px #fb7185; }
+
+.score-ice .sentiment-score { color: #38bdf8; }
+.score-cool .sentiment-score { color: #fde047; }
+.score-warm .sentiment-score { color: #fdba74; }
+.score-hot .sentiment-score, .score-fire .sentiment-score { color: #fb7185; text-shadow: 0 0 8px rgba(251, 113, 133, 0.5); }
+
+.sentiment-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.sentiment-score {
+  font-size: 2.2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  font-family: 'Inter', sans-serif;
+}
+
+.sentiment-label {
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  margin-top: 4px;
+}
+
+/* Breadth Card */
+.breadth-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+  gap: 12px;
+}
+
+.breadth-numbers {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+.up-text { color: #ef4444; }
+.down-text { color: #10b981; }
+
+.ratio-bar-container {
+  height: 8px;
+  border-radius: 4px;
+  display: flex;
+  overflow: hidden;
+  background: #1e293b;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+}
+.ratio-bar-up {
+  background: linear-gradient(90deg, #b91c1c, #ef4444);
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.ratio-bar-down {
+  background: linear-gradient(90deg, #10b981, #047857);
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ratio-label {
+  font-size: 0.8rem;
+  color: #64748b;
+  text-align: center;
+}
+
+/* Metrics Grid for Eco and Risk */
+.metrics-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  justify-content: center;
+}
+
+.metric-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed rgba(255,255,255,0.1);
+}
+.metric-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.metric-label {
+  font-size: 0.9rem;
+  color: #cbd5e1;
+}
+
+.metric-val {
+  font-size: 1.1rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+}
+
+.glow-text {
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+}
+
+/* ================================ */
+.dashboard { display: flex; flex-direction: column; gap: 16px; padding-bottom: 24px; height: 100%; overflow-y: auto; }
 .header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
 .title { font-size: 1.8rem; margin-bottom: 4px; background: linear-gradient(to right, #fff, #9ba1a6); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
 .subtitle { color: var(--text-secondary); margin: 0; }

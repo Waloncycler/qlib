@@ -129,6 +129,14 @@ def resilient_request(
     kwargs.setdefault("timeout", timeout)
     if "headers" not in kwargs:
         kwargs["headers"] = {"User-Agent": UA}
+    else:
+        kwargs["headers"].setdefault("User-Agent", UA)
+        
+    # EastMoney push2 endpoint often drops TLS or keeps stale connections
+    if "push2.eastmoney.com" in url:
+        url = url.replace("https://", "http://")
+        kwargs["headers"]["Connection"] = "close"
+        
     kwargs.setdefault("verify", verify)
 
     import urllib3
@@ -158,7 +166,9 @@ def resilient_request(
             raise
 
     _cb_record_failure(url)
-    raise last_exc
+    if last_exc:
+        raise last_exc
+    raise ConnectionError(f"Request failed to {url}")
 
 
 def eastmoney_datacenter(
@@ -224,7 +234,7 @@ def get_mootdx_client(market: str = "std") -> Optional[object]:
         config.setup()
         
         # Try retrieving standard server list
-        servers = config.get('SERVER', {}).get('HQ' if market == "std" else 'EX', [])
+        servers = (config.get('SERVER') or {}).get('HQ' if market == "std" else 'EX', [])
         if not servers:
             servers = [["深圳双线主站1", "110.41.147.114", 7709]]
             

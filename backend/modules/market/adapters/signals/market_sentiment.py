@@ -135,6 +135,43 @@ class MarketSentimentAdapter(BaseSourceAdapter):
                 except Exception as e:
                     logger.warning(f"Failed to fetch high/low statistics: {e}")
                 
+                total_market_turnover = 0
+                try:
+                    import requests
+                    resp = requests.get("https://qt.gtimg.cn/q=sh000001,sz399001", timeout=5)
+                    if resp.status_code == 200:
+                        lines = resp.text.strip().split(";")
+                        for line in lines:
+                            if line:
+                                parts = line.split("~")
+                                if len(parts) > 37:
+                                    total_market_turnover += float(parts[37]) / 100000000
+                except Exception as e:
+                    logger.warning(f"Failed to fetch market turnover: {e}")
+                    
+                top_lhb = ""
+                try:
+                    url = "https://datacenter-web.eastmoney.com/api/data/v1/get"
+                    params = {
+                        "reportName": "RPT_DAILYBILLBOARD_DETAILS",
+                        "columns": "SECURITY_CODE,SECURITY_NAME_ABBR,NET_BUY_AMT",
+                        "filter": f"(TRADE_DATE>='{date_str}')",
+                        "pageNumber": "1",
+                        "pageSize": "50",
+                        "sortTypes": "-1",
+                        "sortColumns": "NET_BUY_AMT",
+                        "source": "WEB",
+                        "client": "WEB"
+                    }
+                    import requests
+                    r = requests.get(url, params=params, timeout=5)
+                    d = r.json() or {}
+                    result = d.get("result") or {}
+                    data = result.get("data") or []
+                    top_lhb = " ".join([str(x["SECURITY_NAME_ABBR"]) for x in data[:3]])
+                except Exception as e:
+                    logger.warning(f"Failed to fetch LHB: {e}")
+
                 res.update({
                     "broken_limit_up_count": broken_limit_up_count,
                     "broken_limit_up_rate": broken_limit_up_rate,
@@ -147,7 +184,9 @@ class MarketSentimentAdapter(BaseSourceAdapter):
                     "high120": high120,
                     "low20": low20,
                     "low60": low60,
-                    "low120": low120
+                    "low120": low120,
+                    "total_market_turnover": int(total_market_turnover),
+                    "top_lhb": top_lhb
                 })
                 return res
         except Exception as e:

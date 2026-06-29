@@ -1,6 +1,9 @@
 import sys
+import threading
 from pathlib import Path
 import yaml
+
+global_v8_lock = threading.Lock()
 
 CUR_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = CUR_DIR.parent
