@@ -1765,11 +1765,63 @@ const getName = (holdingsList, symbol) => {
 
 const useCompositePicks = ref(true)
 
+const syncProvisionalHolding = () => {
+  if (!todaysPicks.value || !todaysPicks.value.top_picks || !todaysPicks.value.date) return;
+  if (!holdings.value || holdings.value.length === 0) return;
+
+  const todayStr = todaysPicks.value.date;
+  const lastHolding = holdings.value[holdings.value.length - 1];
+
+  if (lastHolding.date >= todayStr) return;
+
+  const lastSyms = new Set((lastHolding.holdings || []).map(h => h.symbol));
+  const newSyms = new Set(todaysPicks.value.top_picks.map(p => p.symbol));
+  
+  const entries = [];
+  const holds = [];
+  const exits = [];
+  
+  newSyms.forEach(sym => {
+    if (lastSyms.has(sym)) {
+      holds.push(sym);
+    } else {
+      entries.push(sym);
+    }
+  });
+  
+  lastSyms.forEach(sym => {
+    if (!newSyms.has(sym)) {
+      exits.push(sym);
+    }
+  });
+
+  const provisionalWeight = 1.0 / (newSyms.size || 1);
+  const newHoldings = todaysPicks.value.top_picks.map(p => ({
+    symbol: p.symbol,
+    name: p.name,
+    weight: provisionalWeight
+  }));
+
+  holdings.value.push({
+    date: todayStr,
+    holdings: newHoldings,
+    entries,
+    holds,
+    exits,
+    trades: []
+  });
+}
+
 const fetchTodaysPicks = async () => {
   try {
     const res = await axios.get(`/api/backtest/todays-picks?model_version=${selectedModelVersion.value}&top_k=${topK.value}&use_composite=${useCompositePicks.value}`)
     if (res.data && res.data.status === 'success') {
       todaysPicks.value = res.data
+      syncProvisionalHolding()
+      // Immediately fetch live quotes for the newly synthesized holding
+      if (isMarketOpenRef.value) {
+        syncLiveQuotes()
+      }
     } else {
       todaysPicks.value = null
     }
