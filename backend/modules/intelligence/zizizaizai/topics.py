@@ -10,16 +10,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 from modules.intelligence.zizizaizai.auth import get_token
 
-TOKEN = get_token() or ""
-
-HEADERS = {
-    "accept": "application/json, text/plain, */*",
-    "accept-language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
-    "authorization": f"Bearer {TOKEN}",
-    "origin": "https://quant.zizizaizai.com",
-    "referer": "https://quant.zizizaizai.com/",
-    "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-}
+def get_headers():
+    return {
+        "accept": "application/json, text/plain, */*",
+        "accept-language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
+        "authorization": f"Bearer {get_token() or ''}",
+        "origin": "https://quant.zizizaizai.com",
+        "referer": "https://quant.zizizaizai.com/",
+        "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    }
 
 def get_session():
     session = requests.Session()
@@ -38,7 +37,7 @@ def fetch_topics():
         url = f"https://api.zizizaizai.com/v3/topic/tables?page={page}&limit={limit}&brief=1"
         print(f"Fetching page {page}...")
         try:
-            res = session.get(url, headers=HEADERS, timeout=20)
+            res = session.get(url, headers=get_headers(), timeout=20)
         except requests.exceptions.RequestException as e:
             print(f"Failed to fetch page {page}: {e}")
             break
@@ -73,7 +72,7 @@ def fetch_topic_details(topic_id, session):
     url = f"https://api.zizizaizai.com/v3/topic/table/{topic_id}"
     for attempt in range(1, 4):
         try:
-            res = session.get(url, headers=HEADERS, timeout=20)
+            res = session.get(url, headers=get_headers(), timeout=20)
             if res.status_code == 200:
                 data = res.json()
                 if data.get("code") == 20000:
@@ -137,8 +136,9 @@ def main():
     
     def process_topic(topic, idx, total):
         t_id = topic["id"]
+        t_key = topic.get("unique_key", t_id)
         print(f"[{idx}/{total}] Fetching details for topic ID {t_id} ({topic['name']})...")
-        details = fetch_topic_details(t_id, session)
+        details = fetch_topic_details(t_key, session)
         if details:
             with lock:
                 full_data.append(details)
@@ -152,6 +152,10 @@ def main():
         process_topic(topic, i+1, len(topics_to_fetch))
         
     
+    if not full_data:
+        print("Error: full_data is empty. Aborting save to prevent overwriting existing data.")
+        return
+
     with open(out_file, "w", encoding="utf-8") as f:
         json.dump(full_data, f, ensure_ascii=False, indent=2)
         

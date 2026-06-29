@@ -122,7 +122,33 @@
             {{ c.label }}
           </button>
         </div>
-        <v-chart ref="chartRef" class="chart" :option="chartOption" :update-options="{ notMerge: true }" autoresize @click="onChartClick" />
+
+        <!-- Intraday Mode Overlays -->
+        <button v-if="intradayDate" @click="intradayDate = null; intradayPreN = 0; intradayPostN = 0;" class="close-comparison-btn">
+          ✕ Return to Backtest
+        </button>
+        <div v-if="intradayDate" style="position: absolute; top: 16px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; z-index: 10;">
+          <span style="color: #e0f2fe; font-size: 0.85rem; font-weight: bold;">
+            Intraday Overlay · {{ intradayDate }}
+          </span>
+          <div style="display: flex; align-items: center; gap: 4px; background: rgba(30,41,59,0.8); padding: 2px 8px; border-radius: 12px; border: 1px solid #475569;">
+            <span style="font-size: 0.7rem; color: #94a3b8;">Pre</span>
+            <input type="number" v-model="intradayPreN" min="0" max="5" style="width: 30px; background: transparent; border: none; color: #38bdf8; outline: none; font-size: 0.8rem; text-align: center;" />
+            <span style="font-size: 0.7rem; color: #94a3b8; margin-left: 4px;">Post</span>
+            <input type="number" v-model="intradayPostN" min="0" max="5" style="width: 30px; background: transparent; border: none; color: #38bdf8; outline: none; font-size: 0.8rem; text-align: center;" />
+          </div>
+        </div>
+        <div v-if="intradayDate && intradayLoading" class="comparison-overlay">
+          <div class="spinner"></div>
+          <p>Loading Intraday Data...</p>
+        </div>
+        <div v-if="intradayDate && !intradayLoading && (!intradaySeries || intradaySeries.length === 0)" class="comparison-overlay" style="background: rgba(15,23,42,0.85); display: flex; align-items: center; justify-content: center; z-index: 5;">
+          <p style="color: #94a3b8; font-size: 0.9rem;">No intraday data available for this date (Data source limit).</p>
+        </div>
+
+        <!-- Charts -->
+        <v-chart v-if="!intradayDate" ref="chartRef" class="chart" :option="chartOption" :update-options="{ notMerge: true }" autoresize @click="onChartClick" />
+        <v-chart v-else class="chart" :option="intradayChartOption" :update-options="{ notMerge: true }" autoresize />
       </div>
 
       <!-- Analysis Side Panel -->
@@ -249,6 +275,7 @@
               </template>
             </div>
           </div>
+          
           <div class="signals-scroll">
             <div v-if="holdings && holdings.length > 0">
               <div v-for="(h, idx) in reversedHoldings" :key="idx" 
@@ -418,21 +445,21 @@
 
     <!-- Compare Strategies Modal -->
     <div v-if="showCompareModal" class="modal-overlay" @click.self="showCompareModal = false">
-      <div class="leaderboard-modal glass-panel">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-          <h3 style="color: #4ade80; font-weight: bold;">Compare Strategies</h3>
+      <div class="modal-content" style="max-width: 600px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(51,65,85,0.5); padding-bottom: 12px; margin-bottom: 16px;">
+          <h2 style="margin: 0; font-size: 1.25rem; color: #4ade80;">
+            <i class="fa-solid fa-code-compare mr-2"></i>Select Strategies to Compare
+          </h2>
           <button @click="showCompareModal = false" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.2rem;">✕</button>
         </div>
-        <p style="color: #94a3b8; font-size: 0.8rem; margin-bottom: 12px;">Select strategies to overlay on the chart (including current).</p>
-        <div style="max-height: 400px; overflow-y: auto;">
-          <table class="leaderboard-table" style="width: 100%; border-collapse: collapse;">
+        <div style="max-height: 400px; overflow-y: auto; padding-right: 8px;" class="custom-scrollbar">
+          <table style="width: 100%; border-collapse: collapse; text-align: left;">
             <thead>
-              <tr style="border-bottom: 1px solid #334155;">
-                <th style="padding: 8px; text-align: left; color: #94a3b8; font-size: 0.75rem;"></th>
+              <tr style="border-bottom: 2px solid rgba(51,65,85,0.8);">
+                <th style="padding: 8px; width: 40px;"></th>
                 <th @click="handleSort('label')" class="sortable" style="padding: 8px; text-align: left; color: #94a3b8; font-size: 0.75rem;">Label <i v-if="sortKey === 'label'" :class="['fa-solid', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down']"></i></th>
                 <th @click="handleSort('model')" class="sortable" style="padding: 8px; text-align: left; color: #94a3b8; font-size: 0.75rem;">Model <i v-if="sortKey === 'model'" :class="['fa-solid', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down']"></i></th>
                 <th @click="handleSort('K')" class="sortable" style="padding: 8px; text-align: left; color: #94a3b8; font-size: 0.75rem;">K <i v-if="sortKey === 'K'" :class="['fa-solid', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down']"></i></th>
-                <th style="padding: 8px; text-align: left; color: #94a3b8; font-size: 0.75rem;">Filters</th>
                 <th @click="handleSort('annual')" class="sortable" style="padding: 8px; text-align: right; color: #94a3b8; font-size: 0.75rem;">Annual <i v-if="sortKey === 'annual'" :class="['fa-solid', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down']"></i></th>
                 <th @click="handleSort('drawdown')" class="sortable" style="padding: 8px; text-align: right; color: #94a3b8; font-size: 0.75rem;">Drawdown <i v-if="sortKey === 'drawdown'" :class="['fa-solid', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down']"></i></th>
                 <th @click="handleSort('sharpe')" class="sortable" style="padding: 8px; text-align: right; color: #94a3b8; font-size: 0.75rem;">Sharpe <i v-if="sortKey === 'sharpe'" :class="['fa-solid', sortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down']"></i></th>
@@ -443,24 +470,17 @@
                 <td style="padding: 8px;">
                   <input type="checkbox" :checked="isCompareSelected(item)" @click.stop="toggleCompareItem(item)" style="accent-color: #22c55e; cursor: pointer;" />
                 </td>
-                <td style="padding: 8px; color: #e0f2fe; font-weight: 600;">{{ item.label }}</td>
-                <td style="padding: 8px; color: #cbd5e1;">{{ item.model }}</td>
-                <td style="padding: 8px; color: #38bdf8;">{{ item.K }}</td>
-                <td style="padding: 8px; font-size: 0.75rem;">
-                  <span v-if="item.vol" class="badge badge-vol">量能</span>
-                  <span v-if="item.timing" class="badge badge-timing">择时</span>
-                  <span v-if="item.crash" class="badge badge-crash">防暴跌</span>
-                  <span v-if="item.boost" class="badge badge-boost">连板</span>
-                  <span v-if="!item.vol && !item.timing && !item.crash && !item.boost" style="color: #475569;">无</span>
-                </td>
-                <td style="padding: 8px; text-align: right; color: #34d399; font-weight: bold;">{{ item.annual }}%</td>
-                <td style="padding: 8px; text-align: right; color: #f87171;">{{ item.drawdown }}%</td>
-                <td style="padding: 8px; text-align: right; color: #a78bfa;">{{ item.sharpe }}</td>
+                <td style="padding: 8px; color: #e0f2fe; font-weight: 600; font-size: 0.8rem;">{{ item.label }}</td>
+                <td style="padding: 8px; color: #cbd5e1; font-size: 0.8rem;">{{ item.model }}</td>
+                <td style="padding: 8px; color: #38bdf8; font-size: 0.8rem;">{{ item.K }}</td>
+                <td style="padding: 8px; text-align: right; color: #34d399; font-weight: bold; font-size: 0.8rem;">{{ item.annual }}%</td>
+                <td style="padding: 8px; text-align: right; color: #f87171; font-size: 0.8rem;">{{ item.drawdown }}%</td>
+                <td style="padding: 8px; text-align: right; color: #a78bfa; font-size: 0.8rem;">{{ item.sharpe }}</td>
               </tr>
             </tbody>
           </table>
         </div>
-        <div style="margin-top: 12px; display: flex; justify-content: flex-end; gap: 8px;">
+        <div style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid rgba(51,65,85,0.5); padding-top: 16px;">
           <button @click="showCompareModal = false" style="background: rgba(100,116,139,0.2); color: #94a3b8; border: 1px solid #475569; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;">Cancel</button>
           <button @click="executeCompare" :disabled="compareSelected.length === 0" style="background: rgba(34,197,94,0.2); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: bold;" :style="{ opacity: compareSelected.length === 0 ? 0.5 : 1 }">Compare ({{ compareSelected.length }})</button>
         </div>
@@ -720,6 +740,145 @@ const onChartClick = (params) => {
   }
 }
 
+const intradayDate = ref(null)
+const intradayLoading = ref(false)
+const intradaySeries = ref([])
+const intradayPreN = ref(0)
+const intradayPostN = ref(0)
+
+const fetchIntradaySeries = async () => {
+  if (!intradayDate.value) return
+  
+  const targetDate = intradayDate.value
+  const h = holdings.value?.find(item => item.date === targetDate)
+  if (!h) return
+  
+  const symbols = new Set()
+  if (h.holdings) h.holdings.forEach(item => symbols.add(item.symbol))
+  if (h.trades) h.trades.forEach(item => symbols.add(item.symbol))
+  
+  if (symbols.size === 0) return
+  
+  intradayLoading.value = true
+  intradaySeries.value = []
+  
+  try {
+    const daysRes = await axios.get(`/api/market/trading_days?date=${targetDate}&pre_n=${intradayPreN.value}&post_n=${intradayPostN.value}`)
+    const datesToFetch = daysRes.data?.data || [targetDate]
+    
+    const promises = Array.from(symbols).map(async (symbol) => {
+      try {
+        let allData = []
+        let basePreClose = null
+        
+        for (const d of datesToFetch) {
+          const res = await axios.get(`/api/stock/${symbol}/intraday/${d}`)
+          if (res.data && res.data.status === 'success' && res.data.data && res.data.data.length > 0) {
+            const data = res.data.data
+            // The baseline is the pre_close of the activeDate (targetDate) or fallback to first available
+            if (d === targetDate || basePreClose === null) {
+              basePreClose = data[0].pre_close || data[0].price
+            }
+            
+            const isMultiDay = datesToFetch.length > 1
+            const prefix = isMultiDay ? d.slice(5) + ' ' : '' // e.g. "06-25 "
+            
+            const dayData = data.map((pt, idx) => ({
+              time: prefix + pt.time,
+              price: pt.price,
+              isDayStart: idx === 0 && isMultiDay
+            }))
+            allData = allData.concat(dayData)
+          }
+        }
+        
+        if (allData.length > 0) {
+          const seriesData = allData.map(pt => {
+            const pct = basePreClose ? ((pt.price - basePreClose) / basePreClose * 100).toFixed(2) : 0
+            return [pt.time, parseFloat(pct)]
+          })
+          
+          const markLinesData = allData.filter(pt => pt.isDayStart).map(pt => ({ xAxis: pt.time }))
+          
+          return {
+            name: getName(h.holdings, symbol),
+            type: 'line',
+            showSymbol: false,
+            smooth: true,
+            lineStyle: { width: 1.5 },
+            data: seriesData,
+            markLine: markLinesData.length > 0 ? {
+              symbol: ['none', 'none'],
+              label: { show: false },
+              lineStyle: { color: 'rgba(100, 116, 139, 0.4)', type: 'dashed', width: 1 },
+              data: markLinesData
+            } : undefined
+          }
+        }
+      } catch (e) {
+        console.error(`Failed to fetch intraday for ${symbol}`, e)
+      }
+      return null
+    })
+    
+    const results = await Promise.all(promises)
+    intradaySeries.value = results.filter(r => r !== null)
+  } catch (err) {
+    console.error("Failed to fetch intraday data:", err)
+  } finally {
+    intradayLoading.value = false
+  }
+}
+
+watch(activeDate, (newDate) => {
+  if (newDate) {
+    intradayDate.value = newDate
+    fetchIntradaySeries()
+  }
+})
+
+watch([intradayPreN, intradayPostN], () => {
+  fetchIntradaySeries()
+})
+
+const intradayChartOption = computed(() => {
+  return {
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(15, 23, 42, 0.9)',
+      borderColor: '#334155',
+      textStyle: { color: '#e2e8f0', fontSize: 11 },
+      valueFormatter: (value) => value !== undefined ? value + '%' : '-'
+    },
+    legend: {
+      show: true,
+      type: 'scroll',
+      bottom: '0%',
+      textStyle: { color: '#94a3b8', fontSize: 10 },
+      pageIconColor: '#38bdf8',
+      pageTextStyle: { color: '#94a3b8' }
+    },
+    grid: { left: '8%', right: '5%', top: '15%', bottom: '15%' },
+    xAxis: {
+      type: 'category',
+      axisLine: { lineStyle: { color: '#334155' } },
+      axisLabel: { color: '#94a3b8', fontSize: 9 }
+    },
+    yAxis: {
+      type: 'value',
+      splitLine: { lineStyle: { color: '#1e293b', type: 'dashed' } },
+      axisLabel: {
+        color: '#94a3b8',
+        fontSize: 9,
+        formatter: '{value}%'
+      }
+    },
+    series: intradaySeries.value
+  }
+})
+
+
 const toggleSource = (src) => {
   if (openSource.value === src) {
     openSource.value = null
@@ -791,16 +950,21 @@ const syncLiveQuotes = async () => {
       todaysPicks.value.top_picks.forEach(p => symbols.add(p.symbol))
     }
     
-    // 2. Add currently selected Daily Trades (if available)
-    const activeDateStr = activeDate.value
-    if (activeDateStr && holdings.value) {
-      const activeH = holdings.value.find(h => h.date === activeDateStr)
-      if (activeH) {
-        if (activeH.entries) activeH.entries.forEach(s => symbols.add(s))
-        if (activeH.holds) activeH.holds.forEach(s => symbols.add(s))
-        if (activeH.exits) activeH.exits.forEach(s => symbols.add(s))
-      }
+    // 2. Add currently selected Daily Trades, and ALWAYS the latest Daily Trade
+    const datesToSync = []
+    if (activeDate.value) datesToSync.push(activeDate.value)
+    if (holdings.value && holdings.value.length > 0) {
+      datesToSync.push(holdings.value[holdings.value.length - 1].date)
     }
+    
+    datesToSync.forEach(d => {
+      const h = holdings.value.find(item => item.date === d)
+      if (h) {
+        if (h.entries) h.entries.forEach(s => symbols.add(s))
+        if (h.holds) h.holds.forEach(s => symbols.add(s))
+        if (h.exits) h.exits.forEach(s => symbols.add(s))
+      }
+    })
     
     const symArr = Array.from(symbols)
     if (symArr.length === 0) return
@@ -2123,13 +2287,13 @@ onUnmounted(() => {
   top: 15px;
   right: 15px;
   z-index: 100;
-  background: rgba(30, 41, 59, 0.8);
+  background: rgba(30, 41, 59, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #9ca3af;
-  padding: 6px 12px;
-  border-radius: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.7rem;
   transition: all 0.2s;
 }
 
