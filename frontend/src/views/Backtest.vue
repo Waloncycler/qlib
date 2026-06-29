@@ -250,7 +250,7 @@
                     :style="{ background: pick.score > 0 ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.1)', color: pick.score > 0 ? '#34d399' : '#f87171' }">
                 {{ pick.name }}
                 <span class="text-sky-400/60 ml-1" style="font-size: 0.55rem;">{{ pick.theme ? pick.theme.split('/')[0] : '' }}</span>
-                <span v-if="liveQuotes[pick.symbol]" class="ml-1 font-mono font-bold animate-pulse" :class="liveQuotes[pick.symbol].pct_change >= 0 ? 'text-emerald-400' : 'text-red-400'">
+                <span v-if="liveQuotes[pick.symbol]" class="ml-1 font-mono font-bold live-glow" :class="liveQuotes[pick.symbol].pct_change >= 0 ? 'text-emerald-400' : 'text-red-400'">
                   {{ liveQuotes[pick.symbol].pct_change >= 0 ? '+' : '' }}{{ liveQuotes[pick.symbol].pct_change.toFixed(2) }}%
                 </span>
                 <span v-else class="ml-1 font-mono" :class="pick.score > 0 ? 'text-emerald-400' : 'text-red-400'">
@@ -267,7 +267,7 @@
             </div>
             <div style="position: relative; display: flex; align-items: center; justify-content: center; width: 12px; height: 12px; margin-left: 8px;" :title="isMarketOpenRef ? (isLiveSyncing ? 'Syncing...' : 'Market Open - Auto Sync Active') : 'Market Closed'">
               <template v-if="isMarketOpenRef">
-                <span class="animate-ping" style="position: absolute; display: inline-flex; height: 10px; width: 10px; border-radius: 9999px; background-color: #34d399; opacity: 0.75;"></span>
+                <span class="indicator-glow" style="position: absolute; display: inline-flex; height: 10px; width: 10px; border-radius: 9999px; background-color: #34d399; opacity: 0.75;"></span>
                 <span style="position: relative; display: inline-flex; border-radius: 9999px; height: 8px; width: 8px; background-color: #10b981;"></span>
               </template>
               <template v-else>
@@ -287,7 +287,7 @@
                     {{ h.date }} <span style="color: #4b5563;">· {{ (h.entries?.length || 0) + (h.holds?.length || 0) }} held</span>
                   </div>
                   <span style="white-space: nowrap; flex-shrink: 0; margin-left: 8px;" :class="getLiveDailyReturn(h) > 0 ? 'text-emerald-400' : (getLiveDailyReturn(h) < 0 ? 'text-red-400' : 'text-slate-500')">
-                    <span v-if="holdings && holdings.length > 0 && h.date === holdings[holdings.length-1].date && Object.keys(liveQuotes).length > 0" style="font-size: 0.6rem; color: #38bdf8; margin-right: 4px; font-weight: normal;" class="animate-pulse">LIVE</span>
+                    <span v-if="holdings && holdings.length > 0 && h.date === holdings[holdings.length-1].date && Object.keys(liveQuotes).length > 0" style="font-size: 0.6rem; color: #38bdf8; margin-right: 4px; font-weight: normal;" class="live-glow">LIVE</span>
                     {{ getLiveDailyReturn(h) > 0 ? '+' : '' }}{{ (getLiveDailyReturn(h) * 100).toFixed(2) }}%
                   </span>
                 </div>
@@ -297,7 +297,7 @@
                   <span v-for="sym in h.entries" :key="'e'+sym" class="stock-tag" style="padding: 1px 5px; font-size: 0.65rem; background: rgba(16,185,129,0.2); color: #34d399; border: 1px solid rgba(16,185,129,0.3);">
                     ▲ {{ getName(h.holdings, sym) || sym }} 
                     <span v-if="getWeight(h.holdings, sym) > 0" class="text-sky-300 ml-1">({{ (getWeight(h.holdings, sym) * 100).toFixed(1) }}%)</span>
-                    <span v-if="liveQuotes[sym] && getLivePnL(sym, 'entry', h.date) !== null" class="ml-1 font-mono font-bold animate-pulse" :class="getLivePnL(sym, 'entry', h.date) >= 0 ? 'text-emerald-400' : 'text-red-400'">
+                    <span v-if="liveQuotes[sym] && getLivePnL(sym, 'entry', h.date) !== null" class="ml-1 font-mono font-bold live-glow" :class="getLivePnL(sym, 'entry', h.date) >= 0 ? 'text-emerald-400' : 'text-red-400'">
                       PnL: {{ getLivePnL(sym, 'entry', h.date) >= 0 ? '+' : '' }}{{ getLivePnL(sym, 'entry', h.date).toFixed(2) }}%
                     </span>
                     <span v-else-if="getReturn(h.holdings, sym) !== undefined && getReturn(h.holdings, sym) !== null" class="ml-1" :class="getReturn(h.holdings, sym) > 0 ? 'text-emerald-400' : (getReturn(h.holdings, sym) < 0 ? 'text-red-400' : 'text-gray-500')">
@@ -311,7 +311,7 @@
                   <span v-for="sym in h.holds" :key="'h'+sym" class="stock-tag" style="padding: 1px 5px; font-size: 0.65rem; background: rgba(100,116,139,0.2); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3);">
                     ● {{ getName(h.holdings, sym) || sym }} 
                     <span v-if="getWeight(h.holdings, sym) > 0" class="text-sky-300/70 ml-1">({{ (getWeight(h.holdings, sym) * 100).toFixed(1) }}%)</span>
-                    <span v-if="liveQuotes[sym] && getLivePnL(sym, 'hold', h.date) !== null" class="ml-1 font-mono font-bold animate-pulse" :class="getLivePnL(sym, 'hold', h.date) >= 0 ? 'text-emerald-400' : 'text-red-400'">
+                    <span v-if="liveQuotes[sym] && getLivePnL(sym, 'hold', h.date) !== null" class="ml-1 font-mono font-bold live-glow" :class="getLivePnL(sym, 'hold', h.date) >= 0 ? 'text-emerald-400' : 'text-red-400'">
                       PnL: {{ getLivePnL(sym, 'hold', h.date) >= 0 ? '+' : '' }}{{ getLivePnL(sym, 'hold', h.date).toFixed(2) }}%
                     </span>
                     <span v-else-if="getReturn(h.holdings, sym) !== undefined && getReturn(h.holdings, sym) !== null" class="ml-1" :class="getReturn(h.holdings, sym) > 0 ? 'text-emerald-400' : (getReturn(h.holdings, sym) < 0 ? 'text-red-400' : 'text-gray-500')">
@@ -2573,5 +2573,31 @@ onUnmounted(() => {
 .sort-icon-dim {
   color: rgba(255,255,255,0.2);
   margin-left: 4px;
+}
+
+@keyframes intense-breathe {
+  0%, 100% {
+    opacity: 1;
+    text-shadow: 0 0 8px currentColor, 0 0 12px currentColor;
+    transform: scale(1.05);
+  }
+  50% {
+    opacity: 0.6;
+    text-shadow: none;
+    transform: scale(1);
+  }
+}
+.live-glow {
+  animation: intense-breathe 2s ease-in-out infinite;
+  display: inline-block;
+}
+
+@keyframes indicator-ping {
+  0% { transform: scale(1); opacity: 1; box-shadow: 0 0 10px #10b981; }
+  50% { transform: scale(1.8); opacity: 0; box-shadow: 0 0 20px #10b981; }
+  100% { transform: scale(1); opacity: 0; box-shadow: none; }
+}
+.indicator-glow {
+  animation: indicator-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 </style>
