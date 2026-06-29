@@ -1818,10 +1818,8 @@ const fetchTodaysPicks = async () => {
     if (res.data && res.data.status === 'success') {
       todaysPicks.value = res.data
       syncProvisionalHolding()
-      // Immediately fetch live quotes for the newly synthesized holding
-      if (isMarketOpenRef.value) {
-        syncLiveQuotes()
-      }
+      // Immediately fetch live quotes for the newly synthesized holding (even if market closed, to get EOD prices)
+      syncLiveQuotes()
     } else {
       todaysPicks.value = null
     }
@@ -1924,9 +1922,8 @@ onMounted(() => {
     }
   }, 30000)
 
-  if (isMarketOpenRef.value) {
-    syncLiveQuotes()
-  }
+  // Fetch live quotes once on load to populate today's EOD prices if market is closed
+  syncLiveQuotes()
 })
 
 onUnmounted(() => {
