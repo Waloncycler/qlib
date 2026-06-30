@@ -187,32 +187,22 @@ class MarketSentimentAdapter(BaseSourceAdapter):
                         if line:
                             parts = line.split("~")
                             if len(parts) > 37:
-                                total_market_turnover += float(parts[37]) / 100000000
+                                # gtimg returns turnover in 10,000 RMB (万元). To convert to 亿 (Hundred Million), divide by 10,000.
+                                total_market_turnover += float(parts[37]) / 10000
             except Exception as e:
                 logger.warning(f"Failed to fetch market turnover: {e}")
                 
             top_lhb = ""
             try:
-                url = "https://datacenter-web.eastmoney.com/api/data/v1/get"
-                params = {
-                    "reportName": "RPT_DAILYBILLBOARD_DETAILS",
-                    "columns": "SECURITY_CODE,SECURITY_NAME_ABBR,NET_BUY_AMT",
-                    "filter": f"(TRADE_DATE>='{date_str}')",
-                    "pageNumber": "1",
-                    "pageSize": "50",
-                    "sortTypes": "-1",
-                    "sortColumns": "NET_BUY_AMT",
-                    "source": "WEB",
-                    "client": "WEB"
-                }
-                import requests
-                r = requests.get(url, params=params, timeout=5)
-                d = r.json() or {}
-                result = d.get("result") or {}
-                data = result.get("data") or []
-                top_lhb = " ".join([str(x["SECURITY_NAME_ABBR"]) for x in data[:3]])
+                import akshare as ak
+                date_str_no_dash = date_str.replace("-", "")
+                df_lhb = ak.stock_lhb_detail_em(start_date=date_str_no_dash, end_date=date_str_no_dash)
+                if not df_lhb.empty:
+                    df_lhb["龙虎榜净买额"] = df_lhb["龙虎榜净买额"].astype(float)
+                    top_3 = df_lhb.nlargest(3, "龙虎榜净买额")
+                    top_lhb = " ".join(top_3["名称"].tolist())
             except Exception as e:
-                logger.warning(f"Failed to fetch LHB: {e}")
+                logger.warning(f"Failed to fetch LHB via akshare: {e}")
 
             res.update({
                 "broken_limit_up_count": broken_limit_up_count,
