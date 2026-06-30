@@ -199,8 +199,8 @@ class MarketSentimentAdapter(BaseSourceAdapter):
                 df_lhb = ak.stock_lhb_detail_em(start_date=date_str_no_dash, end_date=date_str_no_dash)
                 if not df_lhb.empty:
                     df_lhb["龙虎榜净买额"] = df_lhb["龙虎榜净买额"].astype(float)
-                    top_3 = df_lhb.nlargest(3, "龙虎榜净买额")
-                    top_lhb = " ".join(top_3["名称"].tolist())
+                    top_n = df_lhb.nlargest(10, "龙虎榜净买额")
+                    top_lhb = " ".join(top_n["名称"].tolist())
             except Exception as e:
                 logger.warning(f"Failed to fetch LHB via akshare: {e}")
 

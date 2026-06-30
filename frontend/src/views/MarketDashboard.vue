@@ -169,7 +169,7 @@
               </span>
             </div>
             <div class="metric-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
-              <span class="metric-label">龙虎榜抢筹 (Top 3)</span>
+              <span class="metric-label">龙虎榜抢筹 (Top 10)</span>
               <span class="metric-val text-yellow-200 text-sm font-normal">
                 {{ latestSentiment.top_lhb || '等待刷新...' }}
               </span>
