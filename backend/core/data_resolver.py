@@ -191,16 +191,21 @@ class DataResolver:
 
         # Auto-refresh stale market-wide data before checking individual stock cache
         save_dir = PROJECT_DIR.parent / "data/cn_stock/hierarchical"
+        
+        if not hasattr(self, "_bg_refresh_lock"):
+            self._bg_refresh_lock = threading.Lock()
+            
         if layer == "signals" or not layer:
             market_file_sig = save_dir / "signals" / "ths_hot_reasons.csv"
             if not market_file_sig.exists() or time.time() - market_file_sig.stat().st_mtime > 4 * 3600:
                 logger.info("Market-wide signals are stale. Triggering background refresh...")
                 def _update_signals():
-                    try:
-                        from modules.market.runners.signals_runner import SignalsRunner
-                        SignalsRunner(self.secret)._run_market_wide(save_dir / "signals")
-                    except Exception as e:
-                        logger.error(f"Auto-refresh signals failed: {e}")
+                    with self._bg_refresh_lock:
+                        try:
+                            from modules.market.runners.signals_runner import SignalsRunner
+                            SignalsRunner(self.secret)._run_market_wide(save_dir / "signals")
+                        except Exception as e:
+                            logger.error(f"Auto-refresh signals failed: {e}")
                 threading.Thread(target=_update_signals, daemon=True).start()
 
         if layer == "news" or not layer:
@@ -208,11 +213,12 @@ class DataResolver:
             if not market_file_news.exists() or time.time() - market_file_news.stat().st_mtime > 4 * 3600:
                 logger.info("Market-wide news are stale. Triggering background refresh...")
                 def _update_news():
-                    try:
-                        from modules.market.runners.news_runner import NewsRunner
-                        NewsRunner(self.secret)._run_market_wide(save_dir / "news")
-                    except Exception as e:
-                        logger.error(f"Auto-refresh news failed: {e}")
+                    with self._bg_refresh_lock:
+                        try:
+                            from modules.market.runners.news_runner import NewsRunner
+                            NewsRunner(self.secret)._run_market_wide(save_dir / "news")
+                        except Exception as e:
+                            logger.error(f"Auto-refresh news failed: {e}")
                 threading.Thread(target=_update_news, daemon=True).start()
 
         # If market is closed and data files already exist on disk AND are fresh, skip network fetch

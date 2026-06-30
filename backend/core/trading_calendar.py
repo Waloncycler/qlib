@@ -8,8 +8,6 @@ from loguru import logger
 # so a single fetch is sufficient for the entire day.
 _trade_dates_cache: set | None = None
 
-from core.config import global_v8_lock
-
 
 def _load_trade_dates() -> set:
     """Fetch and cache all A-share trading dates. Falls back to weekday check on failure."""
@@ -18,6 +16,7 @@ def _load_trade_dates() -> set:
         return _trade_dates_cache
 
     try:
+        from core.config import global_v8_lock
         with global_v8_lock:
             cal_df = ak.tool_trade_date_hist_sina()
         _trade_dates_cache = set(

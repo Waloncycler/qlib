@@ -4,6 +4,10 @@ import sys
 # Force MLFlow to allow file store to fix backend crashes
 os.environ["MLFLOW_ALLOW_FILE_STORE"] = "true"
 
+# IMPORT AKSHARE HERE GLOBALLY to initialize V8 sequentially.
+# If it's imported inside FastAPI request threads concurrently, py_mini_racer crashes on Apple Silicon!
+import akshare as ak
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 

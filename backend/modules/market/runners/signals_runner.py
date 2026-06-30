@@ -170,11 +170,8 @@ class SignalsRunner:
             except Exception as e:
                 logger.error(f"Failed to fetch Industry rankings: {e}")
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-            futures = [
-                executor.submit(process_sentiment),
-                executor.submit(process_ths_hot),
-                executor.submit(process_ths_north),
-                executor.submit(process_em_ind),
-            ]
-            concurrent.futures.wait(futures)
+        # Run sequentially to avoid mini_racer (V8) crash in akshare on Apple Silicon (not thread-safe)
+        process_sentiment()
+        process_ths_hot()
+        process_ths_north()
+        process_em_ind()

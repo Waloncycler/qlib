@@ -11,337 +11,24 @@ Logic:
 import json
 import math
 import pandas as pd
-import numpy as np
-from pathlib import Path
 from loguru import logger
-from dataclasses import dataclass, field
-from typing import Dict, List, Set, Optional, Tuple
+from typing import Dict, List, Set, Optional, Any, cast
 
-from core.config import DATA_DIR, WORKSPACE_DIR
-from modules.backtest.data_downloader import load_ohlcv, load_benchmark
+from core.config import WORKSPACE_DIR
+from modules.backtest.data_downloader import load_benchmark
 
-
-@dataclass
-class BacktestConfig:
-    """Configuration for signal backtest."""
-    initial_capital: float = 10_000_000.0
-    buy_cost: float = 0.0013       # 0.03% commission + 0.1% slippage
-    sell_cost: float = 0.0018      # 0.03% commission + 0.05% stamp duty + 0.1% slippage
-    core_weight_multiplier: float = 2.0
-    new_concept_multiplier: float = 1.5
-    enable_ml_filter: bool = False
-    model_version: str = "v3_binary"
-    exit_timing: str = "open" # "open" or "close"
-    top_k: int = 10
-    enable_market_timing: bool = True     # 是否开启大盘择时
-    market_timing_ma_days: int = 20       # 均线周期 (默认 20天)
-    market_timing_down_weight: float = 0.3 # 跌破均线后的目标总仓位 (30%)
-    enable_crash_filter: bool = False     # 是否开启暴亏过滤器
-    crash_threshold: float = 0.5          # 暴亏概率阈值，高于此值的标的被排除
-    enable_turnover_filter: bool = True   # 是否开启量能过滤（排除放量出货+缩量高位）
-    min_turnover: float = 3.0             # 最低换手率阈值（%），低于此值的标的被排除
-    max_vol_ratio: float = 2.0            # 最大量比阈值（前日量/5日均量），高于此值视为放量出货
-    enable_factor_rank: bool = False     # 是否开启因子排序选股（替代 ML 排序）
-    factor_name: str = "turnover"        # 排序因子名（turnover/amount/body_ratio/gap）
-    enable_selection_boost: bool = False # 是否开启AI连续入选加分（实验性，已验证为反向指标）
-    selection_boost_factor: float = 0.05 # 每连续入选1天加分比例（0.05=5%）
-
-
-@dataclass
-class DailyRecord:
-    """Record for a single trading day."""
-    date: str
-    nav: float                        # Net asset value
-    daily_return: float               # Strategy daily return
-    benchmark_return: float           # Benchmark daily return
-    holdings_count: int               # Number of stocks held
-    turnover: float                   # Turnover ratio (0~1)
-    new_entries: List[str] = field(default_factory=list)
-    exits: List[str] = field(default_factory=list)
-
-
-def _parse_reports() -> Dict[str, dict]:
-    """Parse AI Morning Reports and return structured daily pools.
-    
-    For dates where a curated OpenClaw stock pool exists locally
-    (data/cn_stock/stock_pools/), it OVERRIDES the zizi report pool
-    to ensure trades match the curated Top Picks.
-    """
-    reports_path = DATA_DIR / "signals" / "zizizaizai_reports.json"
-    if not reports_path.exists():
-        logger.error(f"Reports file not found: {reports_path}")
-        return {}
-
-    with open(reports_path, "r", encoding="utf-8") as f:
-        reports = json.load(f)
-
-    # Build per-day pool: {date -> {symbol -> {"weight_type": "core"|"other", "is_new": bool, "concept": str}}}
-    daily_pools = {}
-    for r in reports:
-        raw_date = r.get("created_time", "")
-        if not raw_date:
-            continue
-        date = raw_date.split(" ")[0]
-
-        if date not in daily_pools:
-            daily_pools[date] = {}
-
-        for pool in r.get("stock_pool", []):
-            concept = pool.get("concept", "Unknown")
-            is_new = pool.get("is_new", False)
-
-            for stock in pool.get("core_stocks", []):
-                sym = stock.get("symbol", "")
-                if sym and not sym.startswith("BJ"):
-                    existing = daily_pools[date].get(sym)
-                    if not existing or existing["weight_type"] != "core":
-                        daily_pools[date][sym] = {
-                            "weight_type": "core",
-                            "is_new": is_new or (existing["is_new"] if existing else False),
-                            "concept": concept,
-                            "name": stock.get("name", ""),
-                        }
-
-            for stock in pool.get("other_stocks", []):
-                sym = stock.get("symbol", "")
-                if sym and not sym.startswith("BJ"):
-                    if sym not in daily_pools[date]:
-                        daily_pools[date][sym] = {
-                            "weight_type": "other",
-                            "is_new": is_new,
-                            "concept": concept,
-                            "name": stock.get("name", ""),
-                        }
-
-    # --- Apply curated pool overrides (moved to pool_generator) ---
-    from modules.backtest.pool_generator import apply_curated_overrides
-    return apply_curated_overrides(daily_pools)
-
-
-def _compute_target_weights(
-    pool: Dict[str, dict],
-    config: BacktestConfig
-) -> Dict[str, float]:
-    """Compute normalized target weights for a daily pool."""
-    raw_weights = {}
-    for sym, info in pool.items():
-        w = 1.0
-        if info["weight_type"] == "core":
-            w *= config.core_weight_multiplier
-        if info["is_new"]:
-            w *= config.new_concept_multiplier
-        raw_weights[sym] = w
-
-    total = sum(raw_weights.values())
-    if total == 0:
-        return {}
-    return {sym: w / total for sym, w in raw_weights.items()}
-
-
-def _filter_by_volume(
-    pool: Dict[str, dict],
-    prices: Dict[str, pd.DataFrame],
-    date_ts: pd.Timestamp,
-    config: 'BacktestConfig'
-) -> Dict[str, dict]:
-    """量能过滤：排除低活跃/放量出货/缩量高位标的。
-
-    规则（基于换手率×量比组合矩阵分析）：
-      1. 换手率 < min_turnover → 不活跃，排除
-      2. 量比 > max_vol_ratio → 放量出货，排除
-      3. 换手率 > 10% 且量比 < 0.8 → 高位缩量，动能衰竭，排除
-
-    Returns: 过滤后的 pool（原 pool 的子集）
-    """
-    if not config.enable_turnover_filter:
-        return pool
-
-    filtered = {}
-    for sym, info in pool.items():
-        if sym not in prices:
-            filtered[sym] = info
-            continue
-        pdf = prices[sym]
-        prev_data = pdf[pdf.index < date_ts]
-        if len(prev_data) < 6:
-            filtered[sym] = info
-            continue
-
-        prev_turnover = prev_data.iloc[-1].get("turnover", np.nan)
-        prev_vol = prev_data.iloc[-1].get("volume", np.nan)
-        vol_ma5 = prev_data.tail(5)["volume"].mean()
-
-        if pd.isna(prev_turnover) or pd.isna(prev_vol) or vol_ma5 <= 0:
-            filtered[sym] = info
-            continue
-
-        vol_ratio = prev_vol / vol_ma5
-
-        # 规则1: 低换手率
-        if prev_turnover < config.min_turnover:
-            continue
-        # 规则2: 放量出货
-        if vol_ratio > config.max_vol_ratio:
-            continue
-        # 规则3: 高位缩量
-        if prev_turnover > 10.0 and vol_ratio < 0.8:
-            continue
-
-        filtered[sym] = info
-
-    removed = len(pool) - len(filtered)
-    if removed > 0:
-        logger.info(f"Volume filter removed {removed} stocks on {date_ts.date()}")
-    return filtered
-
-
-def _rank_select_by_factor(
-    pool: Dict[str, dict],
-    prices: Dict[str, pd.DataFrame],
-    date_ts: pd.Timestamp,
-    config: 'BacktestConfig'
-) -> Dict[str, dict]:
-    """用因子排序从池中选 Top K，返回 Top K 子集。
-
-    支持的因子：
-    - turnover: 前日换手率（正向，越高越好）
-    - amount: 前日成交额（正向）
-    - body_ratio: 前日 K线实体比率（反向，越小越好=蓄势）
-    - gap: 前日竞价缺口（正向）
-    """
-    if len(pool) <= config.top_k:
-        return pool
-
-    factor_name = config.factor_name
-    scores = {}
-
-    for sym in pool:
-        if sym not in prices:
-            continue
-        pdf = prices[sym]
-        prev_data = pdf[pdf.index < date_ts]
-        if len(prev_data) < 2:
-            continue
-
-        prev_row = prev_data.iloc[-1]
-        prev2_row = prev_data.iloc[-2] if len(prev_data) >= 2 else prev_row
-
-        po = float(prev_row.get("open", 0))
-        pc = float(prev_row.get("close", 0))
-        ph = float(prev_row.get("high", 0))
-        pl = float(prev_row.get("low", 0))
-        prev_close = float(prev2_row.get("close", pc))
-        range_val = ph - pl
-
-        if factor_name == "turnover":
-            val = float(prev_row.get("turnover", 0))
-        elif factor_name == "amount":
-            val = float(prev_row.get("amount", 0))
-        elif factor_name == "body_ratio":
-            val = -(pc - po) / range_val if range_val > 0 else 0  # 反向
-        elif factor_name == "gap":
-            val = (po - prev_close) / prev_close if prev_close > 0 else 0
-        else:
-            val = float(prev_row.get("turnover", 0))
-
-        if pd.notna(val):
-            scores[sym] = val
-
-    # 排序取 Top K
-    ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-    top_k_syms = set(sym for sym, _ in ranked[:config.top_k])
-
-    selected = {sym: info for sym, info in pool.items() if sym in top_k_syms}
-    logger.info(f"Factor rank ({factor_name}) selected {len(selected)} from {len(pool)} on {date_ts.date()}")
-    return selected
-
-
-def _load_selection_history():
-    """加载所有 AI 早报池历史，返回 {date_str: set(symbols)}。
-    
-    用于计算每只股票"连续入选天数"特征。
-    符号格式统一为 UPPER(with_prefix)，如 SH600118、SZ002837。
-    """
-    pool_dir = WORKSPACE_DIR / "data" / "cn_stock" / "stock_pools"
-    if not pool_dir.exists():
-        return {}
-
-    def _to_backtest_symbol(code: str) -> str:
-        """将 6 位纯数字 code 转为大写带前缀格式（与 backtest pool 一致）"""
-        code = code.strip()
-        if len(code) != 6:
-            return code.upper()
-        if code.startswith(("6", "68")):
-            return f"SH{code}"
-        return f"SZ{code}"
-
-    selection_by_date = {}
-    for fpath in sorted(pool_dir.glob("stock_pool_*.json")):
-        try:
-            date_str = fpath.stem.replace("stock_pool_", "")
-            with open(fpath, "r") as f:
-                data = json.load(f)
-            symbols = set()
-            for s in data.get("stocks", []):
-                code = s.get("code", "")
-                if code:
-                    symbols.add(_to_backtest_symbol(code))
-            selection_by_date[date_str] = symbols
-        except Exception:
-            continue
-    return selection_by_date
-
-
-def _compute_selection_boost(
-    today_syms: set,
-    date_str: str,
-    selection_history: dict,
-    boost_factor: float = 0.05,
-    max_boost: float = 0.30,
-) -> dict:
-    """计算每只标的的连续入选加分系数。
-
-    加分 = boost_factor * min(consecutive_days, max_boost / boost_factor)
-    即最多加 max_boost（默认30%）。
-
-    返回 {symbol: boost_multiplier}（1.0 = 不加分）
-    """
-    if not selection_history or not today_syms:
-        return {}
-
-    sorted_dates = sorted(selection_history.keys())
-    # 找到 date_str 之前最近一个有数据的日期
-    prev_dates = [d for d in sorted_dates if d < date_str]
-    if not prev_dates:
-        return {}
-
-    # 从最近的日期往前数连续入选天数
-    boosts = {}
-    max_days = int(max_boost / boost_factor)  # 最多加多少天
-    for sym in today_syms:
-        consecutive = 0
-        for d in reversed(prev_dates):
-            if sym in selection_history.get(d, set()):
-                consecutive += 1
-                if consecutive >= max_days:
-                    break
-            else:
-                break
-        if consecutive > 0:
-            boosts[sym] = max(0.1, 1.0 - boost_factor * consecutive)
-
-    return boosts
-
-
-def _load_all_prices(symbols: Set[str]) -> Dict[str, pd.DataFrame]:
-    """Load OHLCV DataFrames for all symbols, indexed by date."""
-    prices = {}
-    for sym in symbols:
-        df = load_ohlcv(sym)
-        if not df.empty:
-            df = df.set_index("date").sort_index()
-            prices[sym] = df
-    return prices
+# Expose dataclasses and parser at module level for external imports
+from modules.backtest.config import BacktestConfig, DailyRecord
+from modules.backtest.helpers import (
+    _parse_reports,
+    _compute_target_weights,
+    _filter_by_volume,
+    _rank_select_by_factor,
+    _load_selection_history,
+    _compute_selection_boost,
+    _load_all_prices,
+)
+from modules.backtest.metrics import calculate_backtest_metrics
 
 
 def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
@@ -383,14 +70,14 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
         if pred_path.exists():
             logger.info("Loading ML predictions for filtering...")
             ml_preds = pd.read_pickle(pred_path)
-            # Ensure it's a series or dataframe. Qlib pred.pkl is usually a pd.Series or pd.DataFrame with multi-index (datetime, instrument)
+            # Ensure it's a series or dataframe
             if isinstance(ml_preds, pd.DataFrame) and ml_preds.shape[1] == 1:
                 ml_preds = ml_preds.iloc[:, 0]
             
             # Convert instrument index to uppercase to match signal_backtest logic
             if isinstance(ml_preds.index, pd.MultiIndex):
                 # The second level is usually 'instrument'
-                new_idx = ml_preds.index.set_levels(ml_preds.index.levels[1].str.upper(), level=1)
+                new_idx = ml_preds.index.set_levels(ml_preds.index.levels[1].str.upper(), level=1)  # type: ignore
                 ml_preds.index = new_idx
         else:
             logger.warning(f"ML filter enabled but {pred_path} not found. Skipping ML filter.")
@@ -406,7 +93,7 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
             if isinstance(crash_preds, pd.DataFrame) and crash_preds.shape[1] == 1:
                 crash_preds = crash_preds.iloc[:, 0]
             if isinstance(crash_preds.index, pd.MultiIndex):
-                new_idx = crash_preds.index.set_levels(crash_preds.index.levels[1].str.upper(), level=1)
+                new_idx = crash_preds.index.set_levels(crash_preds.index.levels[1].str.upper(), level=1)  # type: ignore
                 crash_preds.index = new_idx
         else:
             logger.warning(f"Crash filter enabled but {crash_path} not found. Skipping crash filter.")
@@ -441,10 +128,9 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
 
     prev_nav = capital
     cash = capital
-    cumulative_strategy = 0.0
 
     for day_idx, date_str in enumerate(sorted_dates):
-        date_ts = pd.Timestamp(date_str)
+        date_ts = pd.Timestamp(date_str)  # type: ignore
         today_pool = daily_pools[date_str]
 
         # ML Filter: Keep only Top K scored stocks in today's pool
@@ -452,8 +138,7 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
         if config.enable_ml_filter and ml_preds is not None:
             try:
                 available_dates = ml_preds.index.get_level_values(0).unique()
-                # STRICTLY LESS THAN date_ts to prevent look-ahead bias (未来函数)
-                # We trade at the open of date_ts, so we can only use ML scores generated after the close of the PREVIOUS day.
+                # STRICTLY LESS THAN date_ts to prevent look-ahead bias
                 valid_dates = available_dates[available_dates < date_ts]
                 
                 if not valid_dates.empty:
@@ -466,7 +151,6 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                     
                     if not valid_preds.empty:
                         # Apply Historical Proxy Multipliers (Hybrid Scoring for Backtest)
-                        # We use LLM tags as a proxy for Popularity/Risk to avoid 10,000+ API calls during backtest
                         adjusted_preds = valid_preds.copy()
                         for sym in valid_preds.index:
                             info = today_pool.get(sym, {})
@@ -477,7 +161,7 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                                 multiplier += 0.2
                             adjusted_preds[sym] = adjusted_preds[sym] * multiplier
                         
-                        # AI 连续入选加分：连续入选天越多，加分越高
+                        # AI 连续入选加分
                         if config.enable_selection_boost and selection_history:
                             boosts = _compute_selection_boost(
                                 set(adjusted_preds.index), date_str,
@@ -490,7 +174,7 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                                         adjusted_preds[sym] = adjusted_preds[sym] * boost
                                 logger.debug(f"Selection boost applied to {len(boosts)} stocks on {date_str}")
                         
-                        # Crash Filter: 排除暴跌概率高的标的（在排序取 Top K 之前）
+                        # Crash Filter
                         if config.enable_crash_filter and crash_preds is not None:
                             try:
                                 crash_avail = crash_preds.index.get_level_values(0).unique()
@@ -506,11 +190,11 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                             except Exception as e:
                                 logger.warning(f"Crash filter error on {date_str}: {e}")
 
-                        # Volume Filter: 排除低活跃/放量出货/缩量高位标的
+                        # Volume Filter
                         if config.enable_turnover_filter:
                             vol_filtered_pool = _filter_by_volume(
                                 {s: today_pool.get(s, {}) for s in adjusted_preds.index},
-                                prices, date_ts, config
+                                prices, date_ts, config  # type: ignore
                             )
                             removed = set(adjusted_preds.index) - set(vol_filtered_pool.keys())
                             if removed:
@@ -520,8 +204,6 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                         top_syms = adjusted_preds.sort_values(ascending=False).head(config.top_k).index.tolist()
                         
                         # --- OVERRIDE FOR THE FINAL DAY ---
-                        # To ensure the backtest's "today" perfectly matches the live "Today's Top Picks",
-                        # we fetch the real-time popularity-filtered picks on the very last day of the backtest.
                         if day_idx == len(sorted_dates) - 1:
                             logger.info(f"Checking override for final day: {date_str}, day_idx={day_idx}, len={len(sorted_dates)}")
                             try:
@@ -529,7 +211,7 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                                 live_res = get_todays_picks_service(model_version=config.model_version, top_k=config.top_k)
                                 logger.info(f"live_res: {str(live_res)[:500]}")
                                 if live_res.get("status") == "success" and "top_picks" in live_res:
-                                    live_syms = [p["symbol"] for p in live_res["top_picks"]]
+                                    live_syms = [p["symbol"] for p in live_res["top_picks"]]  # type: ignore
                                     if live_syms:
                                         top_syms = live_syms
                                         logger.info(f"Final day override: using {len(top_syms)} live picks for {date_str}: {top_syms}")
@@ -538,7 +220,7 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                                         try:
                                             fpath = WORKSPACE_DIR / "data" / "cn_stock" / "stock_pools" / f"stock_pool_{date_str}.json"
                                             
-                                            # 安全检查：如果已有 pool 文件包含更多股票，不要覆盖
+                                            # 安全检查
                                             skip_write = False
                                             if fpath.exists():
                                                 try:
@@ -556,9 +238,9 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                                                     "date": f"{date_str} 09:00:00",
                                                     "stocks": [
                                                         {
-                                                            "code": p["symbol"].replace("SH", "").replace("SZ", "").replace("BJ", ""),
-                                                            "name": p["name"],
-                                                            "theme": p.get("popularity", "人气热点叠加")
+                                                            "code": p["symbol"].replace("SH", "").replace("SZ", "").replace("BJ", ""),  # type: ignore
+                                                            "name": p["name"],  # type: ignore
+                                                            "theme": p.get("popularity", "人气热点叠加")  # type: ignore
                                                         } for p in live_res["top_picks"]
                                                     ]
                                                 }
@@ -567,7 +249,6 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                                                 logger.info(f"Persisted final day override to {fpath}")
                                         except Exception as write_err:
                                             logger.error(f"Failed to persist final day override: {write_err}")
-                                            
                                     else:
                                         logger.warning("live_syms is empty")
                                 else:
@@ -579,50 +260,41 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                         today_pool = {s: info for s, info in today_pool.items() if s in top_syms}
                     else:
                         logger.warning(f"valid_preds is empty for {date_str}")
-                        today_pool = {}  # No ML scores available for today's pool
+                        today_pool = {}
                 else:
                     logger.warning(f"valid_dates is empty for {date_str}")
-                    today_pool = {} # No ML predictions available before this date
+                    today_pool = {}
             except Exception as e:
                 logger.error(f"Error applying ML filter on {date_str}: {e}")
-                today_pool = {} # Fail-safe to avoid buying the entire pool
+                today_pool = {}
 
         # Determine target portfolio
-        # Volume Filter: 在选股前过滤（纯信号模式和ML模式都生效）
         if config.enable_turnover_filter:
-            today_pool = _filter_by_volume(today_pool, prices, date_ts, config)
+            today_pool = _filter_by_volume(today_pool, prices, date_ts, config)  # type: ignore
 
-        # Factor Rank: 用因子排序从池中选 Top K（替代 ML 排序）
         if config.enable_factor_rank and not config.enable_ml_filter:
-            today_pool = _rank_select_by_factor(today_pool, prices, date_ts, config)
+            today_pool = _rank_select_by_factor(today_pool, prices, date_ts, config)  # type: ignore
 
         target_weights = _compute_target_weights(today_pool, config)
 
-        # ---------------------------------------------------------
-        # Intended trades (for UI display even if data is missing)
-        # ---------------------------------------------------------
+        # Intended trades
         prev_symbols_intended = set(current_holdings.keys())
         target_symbols_intended = set(target_weights.keys())
         intended_entries = list(target_symbols_intended - prev_symbols_intended)
         intended_exits = list(prev_symbols_intended - target_symbols_intended)
         intended_holds = list(prev_symbols_intended & target_symbols_intended)
 
-        # ---------------------------------------------------------
-        # Critical Fix: Check if market data for today exists
-        # We only need to verify if the required symbols for today (holds + entries + exits) have prices.
-        # If the majority of our specific target portfolio is missing data, assume data isn't published yet.
-        # ---------------------------------------------------------
+        # Check if market data for today exists
         required_syms = prev_symbols_intended.union(target_symbols_intended)
         missing_required = 0
         if len(required_syms) > 0:
             missing_required = sum(1 for sym in required_syms if sym not in prices or date_ts not in prices[sym].index)
             
         if len(required_syms) > 0 and missing_required >= (len(required_syms) * 0.5):
-            # Log missing data and carry over previous state
             logger.warning(f"Market data missing for {date_str}. Rolling forward previous NAV. Recording intended trades.")
             records.append({
                 "date": date_str,
-                "nav": round(prev_nav, 2),
+                "nav": round(float(prev_nav), 2),
                 "daily_return": 0.0,
                 "benchmark_return": 0.0,
                 "holdings_count": len(current_shares),
@@ -630,14 +302,16 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
             })
             
             synthetic_trades = []
-            live_quotes = {}
+            live_quotes: Dict[str, dict] = {}
             if date_str == pd.Timestamp.now().strftime("%Y-%m-%d"):
                 try:
                     from modules.backtest.live_quotes import get_live_quotes_service
                     all_query_syms = list(set(current_shares.keys()).union(set(intended_entries)).union(set(intended_exits)))
                     res = get_live_quotes_service(all_query_syms)
                     if res and res.get("status") == "success":
-                        live_quotes = res.get("data", {})
+                        data = res.get("data")
+                        if isinstance(data, dict):
+                            live_quotes = data
                 except Exception as e:
                     logger.error(f"Failed to fetch live quotes for missing day fallback: {e}")
 
@@ -656,6 +330,11 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                         "amount": round(amount, 2),
                         "fee": round(fee, 2)
                     })
+                current_holdings.pop(sym, None)
+                current_shares.pop(sym, None)
+                current_entry_prices.pop(sym, None)
+                current_entry_dates.pop(sym, None)
+                
             for sym in intended_entries:
                 if sym in live_quotes and live_quotes[sym].get("open_price", 0) > 0:
                     synthetic_trades.append({
@@ -667,6 +346,10 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                         "amount": "-",
                         "fee": "-"
                     })
+                current_holdings[sym] = 1.0
+                current_shares[sym] = 1.0
+                current_entry_prices[sym] = live_quotes[sym]["open_price"] if sym in live_quotes else 0.0
+                current_entry_dates[sym] = date_str
             
             holding_syms = []
             all_involved = set(current_shares.keys()).union(set(intended_exits)).union(set(intended_entries))
@@ -684,7 +367,7 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                     try:
                         if sym in ml_preds.loc[latest_ml_date].index:
                             score = round(float(ml_preds.loc[latest_ml_date, sym]), 4)
-                    except:
+                    except Exception:
                         pass
                 
                 ret = None
@@ -700,10 +383,10 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                         
                 if ret is None and sym in prices and date_ts in prices[sym].index:
                     try:
-                        pct = float(prices[sym].loc[date_ts, "pct_change"])
+                        pct = float(cast(Any, prices[sym].loc[date_ts, "pct_change"]))
                         if not math.isnan(pct):
                             ret = round(pct / 100.0, 4)
-                    except:
+                    except Exception:
                         pass
 
                 holding_syms.append({
@@ -738,8 +421,8 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
         intended_total_weight = 1.0
         if config.enable_market_timing and not benchmark_df.empty and date_ts in benchmark_df.index:
             ma_col = f"ma{config.market_timing_ma_days}"
-            bench_close = benchmark_df.loc[date_ts, "close"]
-            bench_ma = benchmark_df.loc[date_ts, ma_col]
+            bench_close = float(cast(Any, benchmark_df.loc[date_ts, "close"]))
+            bench_ma = float(cast(Any, benchmark_df.loc[date_ts, ma_col]))
             if pd.notna(bench_ma) and bench_close < bench_ma:
                 intended_total_weight = config.market_timing_down_weight
 
@@ -754,19 +437,14 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
 
         if config.exit_timing == "close":
             # === 半仓滚动模式 ===
-            # 规则：
-            # 1. 昨天买的股票如果今天还在 ML Top K → 继续持有（holds），不卖不买，省手续费
-            # 2. 昨天买的股票如果今天不在 ML Top K → 收盘卖出（exits）
-            # 3. 今天 ML Top K 中的新股票 → 开盘买入（entries）
             exits = set()
             for sym in prev_symbols:
                 entry_date = current_entry_dates.get(sym, "")
-                if entry_date != date_str:  # 不是今天买的 → 持了一天以上
+                if entry_date != date_str:  # 不是今天买的
                     if sym not in target_symbols:
-                        exits.add(sym)  # 不在今天的信号里 → 卖出
-                    # else: 信号重叠 → 继续持有，省手续费
-            new_entries = target_symbols - prev_symbols  # 只有全新的才买入
-            holds = prev_symbols - exits  # 继续持有的（今天买的 + 信号重叠的）
+                        exits.add(sym)
+            new_entries = target_symbols - prev_symbols
+            holds = prev_symbols - exits
         else:
             # === 开盘卖出模式 ===
             new_entries = target_symbols - prev_symbols
@@ -780,9 +458,9 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
         for sym in exits:
             if sym in prices and date_ts in prices[sym].index:
                 if config.exit_timing == "close":
-                    sell_price = prices[sym].loc[date_ts, "close"]
+                    sell_price = float(cast(Any, prices[sym].loc[date_ts, "close"]))
                 else:
-                    sell_price = prices[sym].loc[date_ts, "open"]
+                    sell_price = float(cast(Any, prices[sym].loc[date_ts, "open"]))
                 shares = current_shares.get(sym, 0)
                 gross_proceeds = shares * sell_price
                 fee = gross_proceeds * config.sell_cost
@@ -800,15 +478,9 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                         "fee": round(fee, 2)
                     })
 
-        # Remove exited positions from tracking (but capital not yet available if close exit)
-        # For exit_timing="close": 固定半仓滚动模式
-        #   - 开盘买入只用 50% 总资金
-        #   - 收盘卖出上一交易日的仓位（资金次日才可用）
-        # For exit_timing="open": 开盘卖出+开盘买入，资金立即可用，100%仓位
+        # Remove exited positions from tracking
         close_exit_pending_proceeds = 0.0
         if config.exit_timing == "close":
-            # === 固定半仓滚动模式 ===
-            # 收盘卖出旧仓的资金要到收盘才到账
             close_exit_pending_proceeds = exit_proceeds
             for sym in exits:
                 current_holdings.pop(sym, None)
@@ -816,30 +488,21 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                 current_entry_prices.pop(sym, None)
                 current_entry_dates.pop(sym, None)
 
-            # 计算当前总资产（开盘价）
             portfolio_value_at_open = cash
             for sym in holds:
                 if sym in prices and date_ts in prices[sym].index:
-                    portfolio_value_at_open += current_shares[sym] * prices[sym].loc[date_ts, "open"]
+                    portfolio_value_at_open += current_shares[sym] * float(cast(Any, prices[sym].loc[date_ts, "open"]))
                 else:
                     portfolio_value_at_open += current_shares.get(sym, 0) * current_entry_prices.get(sym, 0)
 
-            # 半仓买入：只用 50% 的总资产分配给新目标，但不能超过可用现金（防止透支买入导致虚增NAV）
-            # 大盘择时：跌破均线时降低仓位（intended_total_weight 已在上面计算）
             available_capital = min(cash, portfolio_value_at_open * 0.5 * intended_total_weight)
 
-            # 重新分配权重：只在新 entries 之间分配 available_capital
             entry_targets = {s: w for s, w in tradeable_targets.items() if s in new_entries}
-            hold_targets = {s: w for s, w in tradeable_targets.items() if s in holds}
-
-            # 合并：holds 保持原仓位不变，entries 用半仓资金分配
-            # 重写 tradeable_targets，让 entries 用半仓资金等权分配
             if entry_targets:
                 entry_total = sum(entry_targets.values())
                 for s in entry_targets:
-                    entry_targets[s] = (entry_targets[s] / entry_total) * available_capital  # 绝对金额
+                    entry_targets[s] = (entry_targets[s] / entry_total) * available_capital
         else:
-            # === 开盘卖出模式（100% 仓位）===
             for sym in exits:
                 current_holdings.pop(sym, None)
                 current_shares.pop(sym, None)
@@ -847,36 +510,34 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
             portfolio_value_at_open = cash + exit_proceeds
             for sym in holds:
                 if sym in prices and date_ts in prices[sym].index:
-                    portfolio_value_at_open += current_shares[sym] * prices[sym].loc[date_ts, "open"]
+                    portfolio_value_at_open += current_shares[sym] * float(cast(Any, prices[sym].loc[date_ts, "open"]))
                 else:
                     portfolio_value_at_open += current_shares.get(sym, 0) * current_entry_prices.get(sym, 0)
-            entry_targets = None  # 使用默认逻辑
+            entry_targets = None
 
         # --- Rebalance: We rebalance all holdings to target weights ---
         entry_symbols = []
         new_shares = {}
         new_entry_prices = {}
+        new_entry_dates = {}
 
         if config.exit_timing == "close" and entry_targets is not None:
-            # === 半仓滚动模式 ===
-            # holds 保持原仓位不变，entries 用半仓资金买入
-            new_cash = cash  # 初始 cash（不含收盘到账的 exit_proceeds）
-            new_entry_dates = {}
+            new_cash = cash
             for sym in list(current_shares.keys()):
-                new_shares[sym] = current_shares[sym]  # 保持 holds
+                new_shares[sym] = current_shares[sym]
                 new_entry_prices[sym] = current_entry_prices.get(sym, 0)
                 new_entry_dates[sym] = current_entry_dates.get(sym, "")
 
             for sym, allocated_amount in entry_targets.items():
                 if sym in prices and date_ts in prices[sym].index:
-                    buy_price = prices[sym].loc[date_ts, "open"]
+                    buy_price = float(cast(Any, prices[sym].loc[date_ts, "open"]))
                     if buy_price > 0:
                         trade_fee = allocated_amount * config.buy_cost
                         net_allocated = allocated_amount - trade_fee
                         shares = net_allocated / buy_price
                         new_shares[sym] = shares
                         new_entry_prices[sym] = buy_price
-                        new_entry_dates[sym] = date_str  # 记录买入日期
+                        new_entry_dates[sym] = date_str
                         new_cash -= allocated_amount
                         entry_symbols.append(sym)
 
@@ -890,11 +551,10 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                             "fee": round(trade_fee, 2)
                         })
         else:
-            # === 100% 仓位模式（open2open）===
             new_cash = portfolio_value_at_open
             for sym, weight in tradeable_targets.items():
                 if sym in prices and date_ts in prices[sym].index:
-                    buy_price = prices[sym].loc[date_ts, "open"]
+                    buy_price = float(cast(Any, prices[sym].loc[date_ts, "open"]))
                     if buy_price > 0:
                         allocated = portfolio_value_at_open * weight
                         current_val = 0
@@ -933,21 +593,19 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                             })
 
         current_shares = new_shares
-        # current_holdings 应反映所有持仓（holds + entries），不只 targets
-        current_holdings = {sym: 1.0 for sym in new_shares.keys()}
+        current_holdings = {sym: 1.0 for sym in new_shares}
         current_entry_prices.update(new_entry_prices)
         if config.exit_timing == "close":
             current_entry_dates = new_entry_dates
-        # 收盘卖出资金到账 + 扣除买入支出
         cash = new_cash + close_exit_pending_proceeds
 
         # --- Calculate end-of-day NAV (mark to close) ---
         eod_nav = cash
-        stock_returns_today = {}
+        stock_returns_today: Dict[str, float] = {}
         for sym, shares in current_shares.items():
             if sym in prices and date_ts in prices[sym].index:
-                close_price = prices[sym].loc[date_ts, "close"]
-                open_price = prices[sym].loc[date_ts, "open"]
+                close_price = float(cast(Any, prices[sym].loc[date_ts, "close"]))
+                open_price = float(cast(Any, prices[sym].loc[date_ts, "open"]))
                 eod_nav += shares * close_price
                 if open_price > 0:
                     stock_returns_today[sym] = (close_price - open_price) / open_price
@@ -955,15 +613,14 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                 eod_nav += shares * current_entry_prices.get(sym, 0)
 
         if eod_nav == 0 and len(current_shares) > 0:
-            eod_nav = prev_nav  # Fallback
+            eod_nav = prev_nav
 
         daily_return = (eod_nav - prev_nav) / prev_nav if prev_nav > 0 else 0.0
 
-        # Benchmark return
         bench_return = 0.0
         if not benchmark_df.empty and date_ts in benchmark_df.index:
-            bench_close = benchmark_df.loc[date_ts, "close"]
-            bench_open = benchmark_df.loc[date_ts, "open"]
+            bench_close = float(cast(Any, benchmark_df.loc[date_ts, "close"]))
+            bench_open = float(cast(Any, benchmark_df.loc[date_ts, "open"]))
             if bench_open > 0:
                 bench_return = (bench_close - bench_open) / bench_open
 
@@ -1003,16 +660,16 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
             if config.enable_ml_filter and ml_preds is not None and latest_ml_date is not None:
                 try:
                     if sym in ml_preds.loc[latest_ml_date].index:
-                        score = round(float(ml_preds.loc[latest_ml_date, sym]), 4)
-                except:
+                        score = round(float(cast(Any, ml_preds.loc[latest_ml_date, sym])), 4)
+                except Exception:
                     pass
             
             ret = None
             if sym in prices and date_ts in prices[sym].index:
                 try:
-                    open_p = float(prices[sym].loc[date_ts, "open"])
-                    close_p = float(prices[sym].loc[date_ts, "close"])
-                    pct = float(prices[sym].loc[date_ts, "pct_change"]) / 100.0
+                    open_p = float(cast(Any, prices[sym].loc[date_ts, "open"]))
+                    close_p = float(cast(Any, prices[sym].loc[date_ts, "close"]))
+                    pct = float(cast(Any, prices[sym].loc[date_ts, "pct_change"])) / 100.0
                     
                     if not math.isnan(pct):
                         if sym in entry_symbols:
@@ -1027,16 +684,16 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
                                     ret = round((open_p - pre_close) / pre_close, 4)
                         else:
                             ret = round(pct, 4)
-                except:
+                except Exception:
                     pass
                     
             weight = 0.0
             if eod_nav > 0 and sym in current_shares:
                 if sym in prices and date_ts in prices[sym].index:
                     try:
-                        c_p = float(prices[sym].loc[date_ts, "close"])
+                        c_p = float(cast(Any, prices[sym].loc[date_ts, "close"]))
                         weight = round((current_shares[sym] * c_p) / eod_nav, 4)
-                    except:
+                    except Exception:
                         pass
                 else:
                     weight = round((current_shares[sym] * current_entry_prices.get(sym, 0)) / eod_nav, 4)
@@ -1064,126 +721,14 @@ def run_signal_backtest(config: Optional[BacktestConfig] = None) -> dict:
         prev_nav = eod_nav
 
     # --- Compute aggregate metrics ---
-    if not records:
-        return {"curve": [], "metrics": {}, "holdings": [], "concept_attribution": []}
-
-    returns_series = pd.Series([r["daily_return"] for r in records])
-    bench_series = pd.Series([r["benchmark_return"] for r in records])
-
-    # NAV curves
-    strategy_cumulative = (1 + returns_series).cumprod()
-    benchmark_cumulative = (1 + bench_series).cumprod()
-
-    # Annualized return (assume 244 trading days)
-    total_days = len(records)
-    total_return = strategy_cumulative.iloc[-1] - 1
-    ann_return = (1 + total_return) ** (244 / max(total_days, 1)) - 1
-
-    # Max drawdown
-    running_max = strategy_cumulative.cummax()
-    drawdown = (strategy_cumulative - running_max) / running_max
-    
-    drawdown_periods = []
-    if len(drawdown) > 0 and not drawdown.isna().all():
-        end_idx = drawdown.idxmin()
-        max_drawdown = drawdown.min()
-        start_idx = strategy_cumulative.iloc[:end_idx + 1].idxmax()
-        max_dd_start = records[start_idx]["date"]
-        max_dd_end = records[end_idx]["date"]
-        
-        # Find all drawdowns > 20% + the max drawdown
-        underwater = drawdown < 0
-        blocks = (~underwater).cumsum()
-        for block_id, group in drawdown.groupby(blocks):
-            group_min = group.min()
-            if group_min < 0:
-                is_global_max = (group.idxmin() == end_idx)
-                if group_min <= -0.20 or is_global_max:
-                    trough_idx = group.idxmin()
-                    peak_idx = max(0, group.index[0] - 1)
-                    drawdown_periods.append({
-                        "start": records[peak_idx]["date"],
-                        "end": records[trough_idx]["date"],
-                        "drawdown": round(float(group_min), 4)
-                    })
-    else:
-        max_drawdown = 0.0
-        max_dd_start = ""
-        max_dd_end = ""
-
-    # Sharpe ratio (annualized, rf=0)
-    sharpe = (returns_series.mean() / returns_series.std() * np.sqrt(244)) if returns_series.std() > 0 else 0.0
-
-    # Information ratio (excess return vs benchmark)
-    excess = returns_series - bench_series
-    ir = (excess.mean() / excess.std() * np.sqrt(244)) if excess.std() > 0 else 0.0
-
-    # Hit rate (% of days with positive return)
-    hit_rate = (returns_series > 0).sum() / max(len(returns_series), 1)
-
-    # Profit/loss ratio
-    gains = returns_series[returns_series > 0]
-    losses = returns_series[returns_series < 0]
-    avg_gain = gains.mean() if len(gains) > 0 else 0
-    avg_loss = abs(losses.mean()) if len(losses) > 0 else 1
-    profit_loss_ratio = avg_gain / avg_loss if avg_loss > 0 else 0
-
-    # Benchmark metrics
-    bench_total = benchmark_cumulative.iloc[-1] - 1
-    bench_ann = (1 + bench_total) ** (244 / max(total_days, 1)) - 1
-
-    metrics = {
-        "total_return": round(float(total_return), 4),
-        "annualized_return": round(float(ann_return), 4),
-        "max_drawdown": round(float(max_drawdown), 4),
-        "max_drawdown_start": max_dd_start,
-        "max_drawdown_end": max_dd_end,
-        "drawdown_periods": drawdown_periods,
-        "sharpe_ratio": round(float(sharpe), 3),
-        "information_ratio": round(float(ir), 3),
-        "hit_rate": round(float(hit_rate), 4),
-        "profit_loss_ratio": round(float(profit_loss_ratio), 3),
-        "total_trading_days": total_days,
-        "avg_holdings_count": round(float(np.mean([r["holdings_count"] for r in records])), 1),
-        "avg_turnover": round(float(np.mean([r["turnover"] for r in records])), 4),
-        "benchmark_total_return": round(float(bench_total), 4),
-        "benchmark_annualized_return": round(float(bench_ann), 4),
-    }
-
-    # Build curve output
-    curve_data = []
-    for i, rec in enumerate(records):
-        curve_data.append({
-            "date": rec["date"],
-            "strategy": round(float(strategy_cumulative.iloc[i]) - 1, 6),
-            "benchmark": round(float(benchmark_cumulative.iloc[i]) - 1, 6),
-            "daily_return": round(float(rec["daily_return"]), 6),
-            "holdings_count": rec["holdings_count"],
-            "turnover": rec["turnover"],
-        })
-
-    # Concept attribution
-    concept_attr = []
-    for concept, rets in concept_returns.items():
-        rets_arr = np.array(rets)
-        concept_attr.append({
-            "concept": concept,
-            "total_return": round(float(rets_arr.sum()), 4),
-            "avg_daily_return": round(float(rets_arr.mean()), 6),
-            "days_active": len(rets),
-            "hit_rate": round(float((rets_arr > 0).sum() / max(len(rets_arr), 1)), 4),
-        })
-
-    # Sort by total return descending
-    concept_attr.sort(key=lambda x: x["total_return"], reverse=True)
-
-    logger.info(f"Backtest complete: {total_days} days, total return={total_return:.2%}, sharpe={sharpe:.3f}")
+    metrics_res = calculate_backtest_metrics(records, concept_returns)
+    logger.info(f"Backtest complete: {len(records)} days, total return={metrics_res['metrics']['total_return']:.2%}")
 
     return {
-        "curve": curve_data,
-        "metrics": metrics,
+        "curve": metrics_res["curve"],
+        "metrics": metrics_res["metrics"],
         "holdings": daily_holdings_log,
-        "concept_attribution": concept_attr,
+        "concept_attribution": metrics_res["concept_attribution"],
     }
 
 
@@ -1191,6 +736,6 @@ if __name__ == "__main__":
     result = run_signal_backtest()
     print(f"Metrics: {json.dumps(result['metrics'], indent=2)}")
     print(f"Curve points: {len(result['curve'])}")
-    print(f"Top 5 concepts:")
+    print("Top 5 concepts:")
     for c in result["concept_attribution"][:5]:
         print(f"  {c['concept']}: {c['total_return']:.2%} ({c['days_active']} days, hit={c['hit_rate']:.0%})")

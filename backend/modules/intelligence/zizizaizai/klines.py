@@ -119,7 +119,8 @@ def main():
             
         print(f"[{idx+1}/{total}] Fetching klines for topic ID {t_id} ({t_name})...")
         
-        url = f"https://api.zizizaizai.com/v3/topic/table/{t_id}/kline"
+        t_key = topic.get("unique_key", t_id)
+        url = f"https://api.zizizaizai.com/v3/topic/table/{t_key}/kline"
         data = fetch_kline(url, session)
         
         if data and data.get("code") == 20000:

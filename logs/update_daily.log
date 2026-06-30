@@ -125,3 +125,13 @@ Traceback (most recent call last):
     raise CalledProcessError(retcode, process.args,
                              output=stdout, stderr=stderr)
 subprocess.CalledProcessError: Command '['/Users/walox/qlib/.venv/bin/python', '/Users/walox/qlib/backend/modules/intelligence/sentiment/fetch_ziruxing.py']' returned non-zero exit status 1.
+Traceback (most recent call last):
+  File "/Users/walox/qlib/backend/tasks/update_daily.py", line 17, in <module>
+    from core.trading_calendar import is_trading_day
+  File "/Users/walox/qlib/backend/core/trading_calendar.py", line 11, in <module>
+    from core.config import global_v8_lock
+  File "/Users/walox/qlib/backend/core/config.py", line 31, in <module>
+    from core.data_resolver import DataResolver
+  File "/Users/walox/qlib/backend/core/data_resolver.py", line 31, in <module>
+    from core.trading_calendar import is_trading_hours
+ImportError: cannot import name 'is_trading_hours' from partially initialized module 'core.trading_calendar' (most likely due to a circular import) (/Users/walox/qlib/backend/core/trading_calendar.py)
